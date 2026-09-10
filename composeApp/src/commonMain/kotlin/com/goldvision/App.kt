@@ -3211,49 +3211,37 @@ private fun LiveStatus(updateText: String) {
         else -> "مباشر"
     }
 
-    Column(modifier = Modifier.fillMaxWidth()) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 3.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = "أسعار الذهب الآن  ⓘ",
+            color = White,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Bold
+        )
+
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 3.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(5.dp)
         ) {
             Text(
-                text = "أسعار الذهب الآن  ⓘ",
-                color = White,
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Bold
+                text = "$updateText ↻",
+                color = Gray,
+                fontSize = 10.sp,
+                maxLines = 1
             )
-
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(5.dp)
-            ) {
-                Text(
-                    text = "$updateText ↻",
-                    color = Gray,
-                    fontSize = 10.sp,
-                    maxLines = 1
-                )
-                Box(
-                    modifier = Modifier
-                        .size(9.dp)
-                        .clip(RoundedCornerShape(6.dp))
-                        .background(statusColor)
-                )
-                Text(statusLabel, color = White, fontSize = 11.sp)
-            }
-        }
-
-        GoldMarket.lastError?.let { message ->
-            Text(
-                text = message,
-                color = Red,
-                fontSize = 9.sp,
-                modifier = Modifier.fillMaxWidth(),
-                textAlign = TextAlign.End
+            Box(
+                modifier = Modifier
+                    .size(9.dp)
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(statusColor)
             )
+            Text(statusLabel, color = if (hasError) Red else White, fontSize = 11.sp)
         }
     }
 }
