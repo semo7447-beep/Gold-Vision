@@ -27,6 +27,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -281,6 +282,7 @@ private fun GoldVisionApp() {
     var showChartFull by remember { mutableStateOf(false) }
     var showDealEvaluator by remember { mutableStateOf(false) }
     var showAddGoldItem by remember { mutableStateOf(false) }
+    var editingGoldItemIndex by remember { mutableStateOf<Int?>(null) }
     val savedDeals = remember { mutableStateListOf<SavedDeal>() }
     val savedGoldItems = remember { mutableStateListOf<GoldItem>() }
 
@@ -333,11 +335,21 @@ private fun GoldVisionApp() {
                     onSaveDeal = { deal -> savedDeals.add(0, deal) }
                 )
             } else if (showAddGoldItem) {
+                val editingIndex = editingGoldItemIndex
                 AddGoldItemScreen(
-                    onBack = { showAddGoldItem = false },
-                    onSave = { item ->
-                        savedGoldItems.add(0, item)
+                    editingItem = editingIndex?.let { savedGoldItems.getOrNull(it) },
+                    onBack = {
                         showAddGoldItem = false
+                        editingGoldItemIndex = null
+                    },
+                    onSave = { item ->
+                        if (editingIndex != null && editingIndex in savedGoldItems.indices) {
+                            savedGoldItems[editingIndex] = item
+                        } else {
+                            savedGoldItems.add(0, item)
+                        }
+                        showAddGoldItem = false
+                        editingGoldItemIndex = null
                     }
                 )
             } else {
@@ -382,7 +394,11 @@ private fun GoldVisionApp() {
                     2 -> NewsScreen()
                     3 -> PortfolioScreen(
                         savedItems = savedGoldItems,
-                        onNavigateAddItem = { showAddGoldItem = true }
+                        onNavigateAddItem = { showAddGoldItem = true },
+                        onEditItem = { index ->
+                            editingGoldItemIndex = index
+                            showAddGoldItem = true
+                        }
                     )
                     4 -> ZakatScreen(
                         savedItems = savedGoldItems,
@@ -399,6 +415,7 @@ private fun GoldVisionApp() {
                 showChartFull = false
                 showDealEvaluator = false
                 showAddGoldItem = false
+                editingGoldItemIndex = null
                 selectedBottom = index
             }
         )
@@ -1398,18 +1415,21 @@ private fun NegotiationRow(label: String, price: Double, shopPriceWithTax: Doubl
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun AddGoldItemScreen(
+    editingItem: GoldItem?,
     onBack: () -> Unit,
     onSave: (GoldItem) -> Unit
 ) {
-    var name by remember { mutableStateOf("") }
-    var selectedEmoji by remember { mutableStateOf(pieceEmojiOptions.first().first) }
-    var karat by remember { mutableStateOf("21K") }
-    var weight by remember { mutableDoubleStateOf(5.0) }
-    var purchasePrice by remember { mutableDoubleStateOf(3000.0) }
+    val isEditing = editingItem != null
+    var name by remember { mutableStateOf(editingItem?.name ?: "") }
+    var selectedEmoji by remember { mutableStateOf(editingItem?.emoji ?: pieceEmojiOptions.first().first) }
+    var karat by remember { mutableStateOf(editingItem?.karat ?: "21K") }
+    var weight by remember { mutableDoubleStateOf(editingItem?.weightGrams ?: 5.0) }
+    // عند التعديل، السعر المحفوظ (purchasePriceWithTax) شامل الضريبة أصلاً
+    var purchasePrice by remember { mutableDoubleStateOf(editingItem?.purchasePriceWithTax ?: 3000.0) }
     var includingTax by remember { mutableStateOf(true) }
-    var manufacturing by remember { mutableDoubleStateOf(35.0) }
-    var purchaseDate by remember { mutableStateOf(todayDateText()) }
-    var notes by remember { mutableStateOf("") }
+    var manufacturing by remember { mutableDoubleStateOf(editingItem?.manufacturingPerGram ?: 35.0) }
+    var purchaseDate by remember { mutableStateOf(editingItem?.purchaseDate ?: todayDateText()) }
+    var notes by remember { mutableStateOf(editingItem?.notes ?: "") }
     var showDatePicker by remember { mutableStateOf(false) }
 
     // الذهب الاستثماري عيار 24 (سبائك/عملات) معفى من ضريبة القيمة المضافة
@@ -1451,7 +1471,7 @@ private fun AddGoldItemScreen(
                     .clickable { onBack() }
             )
             Text(
-                "إضافة قطعة",
+                if (isEditing) "تعديل القطعة" else "إضافة قطعة",
                 color = White,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,
@@ -1813,7 +1833,12 @@ private fun AddGoldItemScreen(
                     },
                 contentAlignment = Alignment.Center
             ) {
-                Text("حفظ في المحفظة", color = Black, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                Text(
+                    if (isEditing) "حفظ التعديلات" else "حفظ في المحفظة",
+                    color = Black,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold
+                )
             }
         }
 
@@ -2303,7 +2328,8 @@ private fun portfolioTotals(savedItems: List<GoldItem>): PortfolioTotals = Portf
 @Composable
 private fun PortfolioScreen(
     savedItems: List<GoldItem>,
-    onNavigateAddItem: () -> Unit
+    onNavigateAddItem: () -> Unit,
+    onEditItem: (Int) -> Unit
 ) {
     val savedValues = savedItems.map { it to it.currentValue() }
     val totalValue = portfolioItems.sumOf { it.valueRiyal } + savedValues.sumOf { it.second }
@@ -2354,13 +2380,14 @@ private fun PortfolioScreen(
                 .padding(horizontal = 12.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            items(savedValues) { (item, value) ->
+            itemsIndexed(savedValues) { index, (item, value) ->
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(9.dp))
                         .border(1.dp, Border, RoundedCornerShape(9.dp))
                         .background(CardBlack)
+                        .clickable { onEditItem(index) }
                         .padding(10.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
