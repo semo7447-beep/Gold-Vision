@@ -44,6 +44,7 @@ import androidx.compose.material.icons.outlined.Bolt
 import androidx.compose.material.icons.outlined.Calculate
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Language
@@ -284,7 +285,7 @@ private fun GoldVisionApp() {
     var showAddGoldItem by remember { mutableStateOf(false) }
     var editingGoldItemIndex by remember { mutableStateOf<Int?>(null) }
     val savedDeals = remember { mutableStateListOf<SavedDeal>() }
-    val savedGoldItems = remember { mutableStateListOf<GoldItem>() }
+    val savedGoldItems = remember { mutableStateListOf<GoldItem>().apply { addAll(defaultGoldItems) } }
 
     var liveTimeText by remember { mutableStateOf(currentDateTimeText()) }
     LaunchedEffect(Unit) {
@@ -350,7 +351,16 @@ private fun GoldVisionApp() {
                         }
                         showAddGoldItem = false
                         editingGoldItemIndex = null
-                    }
+                    },
+                    onDelete = if (editingIndex != null) {
+                        {
+                            if (editingIndex in savedGoldItems.indices) {
+                                savedGoldItems.removeAt(editingIndex)
+                            }
+                            showAddGoldItem = false
+                            editingGoldItemIndex = null
+                        }
+                    } else null
                 )
             } else {
                 when (selectedBottom) {
@@ -1417,9 +1427,11 @@ private fun NegotiationRow(label: String, price: Double, shopPriceWithTax: Doubl
 private fun AddGoldItemScreen(
     editingItem: GoldItem?,
     onBack: () -> Unit,
-    onSave: (GoldItem) -> Unit
+    onSave: (GoldItem) -> Unit,
+    onDelete: (() -> Unit)? = null
 ) {
     val isEditing = editingItem != null
+    var showDeleteConfirm by remember { mutableStateOf(false) }
     var name by remember { mutableStateOf(editingItem?.name ?: "") }
     var selectedEmoji by remember { mutableStateOf(editingItem?.emoji ?: pieceEmojiOptions.first().first) }
     var karat by remember { mutableStateOf(editingItem?.karat ?: "21K") }
@@ -1478,7 +1490,18 @@ private fun AddGoldItemScreen(
                 textAlign = TextAlign.Center,
                 modifier = Modifier.weight(1f)
             )
-            Spacer(Modifier.size(22.dp))
+            if (isEditing && onDelete != null) {
+                Icon(
+                    imageVector = Icons.Outlined.Delete,
+                    contentDescription = "حذف القطعة",
+                    tint = Red,
+                    modifier = Modifier
+                        .size(22.dp)
+                        .clickable { showDeleteConfirm = true }
+                )
+            } else {
+                Spacer(Modifier.size(22.dp))
+            }
         }
 
         Spacer(Modifier.height(16.dp))
@@ -1866,6 +1889,65 @@ private fun AddGoldItemScreen(
             }
         ) {
             DatePicker(state = datePickerState)
+        }
+    }
+
+    if (showDeleteConfirm && onDelete != null) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.65f))
+                .clickable(
+                    indication = null,
+                    interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+                ) { showDeleteConfirm = false },
+            contentAlignment = Alignment.Center
+        ) {
+            Column(
+                modifier = Modifier
+                    .padding(horizontal = 28.dp)
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(14.dp))
+                    .border(1.dp, Border, RoundedCornerShape(14.dp))
+                    .background(CardBlack)
+                    .clickable(
+                        indication = null,
+                        interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+                    ) { }
+                    .padding(18.dp)
+            ) {
+                Text("حذف القطعة؟", color = White, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.height(6.dp))
+                Text("لا يمكن التراجع عن هذا الإجراء.", color = Gray, fontSize = 11.sp)
+                Spacer(Modifier.height(16.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(42.dp)
+                            .clip(RoundedCornerShape(9.dp))
+                            .border(1.dp, Border, RoundedCornerShape(9.dp))
+                            .clickable { showDeleteConfirm = false },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("إلغاء", color = Gray, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    }
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(42.dp)
+                            .clip(RoundedCornerShape(9.dp))
+                            .background(Red)
+                            .clickable { onDelete() },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("حذف نهائياً", color = White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
         }
     }
 }
@@ -2291,38 +2373,34 @@ private fun NewsScreen() {
 }
 
 // ==================== شاشة المحفظة الكاملة ====================
-private data class PortfolioItem(
-    val name: String,
-    val karat: String,
-    val weightGrams: Double,
-    val valueRiyal: Double
+// بيانات تعريفية أولية (نفس شكل GoldItem تماماً) تُحمَّل في savedGoldItems
+// عند بدء التطبيق، عشان تبقى قابلة للتعديل والحذف زي أي قطعة يضيفها المستخدم
+// — مفيش تمييز بين "بيانات جاهزة" و"بيانات المستخدم" بعد كده
+private val defaultGoldItems = listOf(
+    GoldItem("سبيكة ذهب", "🟨", "24K", 10.0, 4037.50, 0.0, "01 / 01 / 2025", ""),
+    GoldItem("خاتم ذهب", "💍", "21K", 5.28, 1864.32, 0.0, "01 / 01 / 2025", ""),
+    GoldItem("سوار ذهب", "⭕", "22K", 8.0, 2960.80, 0.0, "01 / 01 / 2025", ""),
+    GoldItem("قلادة ذهب", "📿", "18K", 6.0, 1814.28, 0.0, "01 / 01 / 2025", ""),
+    GoldItem("عملة ذهبية", "🪙", "24K", 4.0, 1615.00, 0.0, "01 / 01 / 2025", ""),
+    GoldItem("أقراط ذهب", "👂", "21K", 2.0, 706.56, 0.0, "01 / 01 / 2025", "")
 )
 
-private val portfolioItems = listOf(
-    PortfolioItem("سبيكة ذهب", "24K", 10.0, 4037.50),
-    PortfolioItem("خاتم ذهب", "21K", 5.28, 1864.32),
-    PortfolioItem("سوار ذهب", "22K", 8.0, 2960.80),
-    PortfolioItem("قلادة ذهب", "18K", 6.0, 1814.28),
-    PortfolioItem("عملة ذهبية", "24K", 4.0, 1615.00),
-    PortfolioItem("أقراط ذهب", "21K", 2.0, 706.56)
-)
-
-// يحسب القيمة الحالية لقطعة أضافها المستخدم بسعر السوق الحي (ذهب + مصنعية + ضريبة)
+// يحسب القيمة الحالية لقطعة بسعر السوق الحي (ذهب + مصنعية + ضريبة، معفى لعيار 24)
 private fun GoldItem.currentValue(): Double {
     val pricePerGram = GoldMarket.prices.first { it.karat == karat }.price
     val beforeVat = pricePerGram * weightGrams
     val manufacturingValue = manufacturingPerGram * weightGrams
     val subtotal = beforeVat + manufacturingValue
-    return subtotal + subtotal * 0.15
+    val vat = if (karat == "24K") 0.0 else subtotal * 0.15
+    return subtotal + vat
 }
 
-// إجمالي المحفظة: أصناف العرض التوضيحي الثابتة + كل قطعة أضافها المستخدم
 private data class PortfolioTotals(val totalValue: Double, val itemCount: Int, val totalWeight: Double)
 
 private fun portfolioTotals(savedItems: List<GoldItem>): PortfolioTotals = PortfolioTotals(
-    totalValue = portfolioItems.sumOf { it.valueRiyal } + savedItems.sumOf { it.currentValue() },
-    itemCount = portfolioItems.size + savedItems.size,
-    totalWeight = portfolioItems.sumOf { it.weightGrams } + savedItems.sumOf { it.weightGrams }
+    totalValue = savedItems.sumOf { it.currentValue() },
+    itemCount = savedItems.size,
+    totalWeight = savedItems.sumOf { it.weightGrams }
 )
 
 @Composable
@@ -2332,9 +2410,9 @@ private fun PortfolioScreen(
     onEditItem: (Int) -> Unit
 ) {
     val savedValues = savedItems.map { it to it.currentValue() }
-    val totalValue = portfolioItems.sumOf { it.valueRiyal } + savedValues.sumOf { it.second }
-    val totalWeight = portfolioItems.sumOf { it.weightGrams } + savedItems.sumOf { it.weightGrams }
-    val itemCount = portfolioItems.size + savedItems.size
+    val totalValue = savedValues.sumOf { it.second }
+    val totalWeight = savedItems.sumOf { it.weightGrams }
+    val itemCount = savedItems.size
 
     Column(modifier = Modifier.fillMaxSize()) {
         Text(
@@ -2413,33 +2491,6 @@ private fun PortfolioScreen(
                     }
                     Text(
                         "${fmt(value, 2, grouped = true)} ريال",
-                        color = Gold,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            }
-            items(portfolioItems) { product ->
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(9.dp))
-                        .border(1.dp, Border, RoundedCornerShape(9.dp))
-                        .background(CardBlack)
-                        .padding(10.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column {
-                        Text(product.name, color = White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                        Text(
-                            "${product.karat} • ${fmt(product.weightGrams, 2)} جرام",
-                            color = Gray,
-                            fontSize = 10.sp
-                        )
-                    }
-                    Text(
-                        "${fmt(product.valueRiyal, 2, grouped = true)} ريال",
                         color = Gold,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Bold
