@@ -2512,17 +2512,38 @@ private fun ZakatScreen(
     var showAllItems by remember { mutableStateOf(true) }
     var currentZakatDate by remember { mutableStateOf("10 / 05 / 2025") }
     var previousZakatDate by remember { mutableStateOf("15 / 05 / 2024") }
+    var showZakatInfo by remember { mutableStateOf(false) }
+
+    // أوزان الذهب المملوكة لكل عيار، تُدخل يدوياً أو تُملأ تلقائياً من
+    // القطع المحفوظة في المحفظة عبر زر "استخدام الأوزان الموجودة في المحفظة"
+    var weight24 by remember { mutableDoubleStateOf(0.0) }
+    var weight22 by remember { mutableDoubleStateOf(0.0) }
+    var weight21 by remember { mutableDoubleStateOf(0.0) }
+    var weight18 by remember { mutableDoubleStateOf(0.0) }
+
+    fun fillWeightsFromPortfolio() {
+        weight24 = savedItems.filter { it.karat == "24K" }.sumOf { it.weightGrams }
+        weight22 = savedItems.filter { it.karat == "22K" }.sumOf { it.weightGrams }
+        weight21 = savedItems.filter { it.karat == "21K" }.sumOf { it.weightGrams }
+        weight18 = savedItems.filter { it.karat == "18K" }.sumOf { it.weightGrams }
+    }
 
     val allZakatItems = zakatItems + savedItems.map { it.toZakatItem() }
     val displayedItems = if (showAllItems) allZakatItems else allZakatItems.take(3)
 
-    val totalGoldValue = allZakatItems.sumOf { item ->
-        GoldMarket.prices.first { it.karat == item.karat }.price * item.weightGrams
+    val karatWeights = listOf("24K" to weight24, "22K" to weight22, "21K" to weight21, "18K" to weight18)
+    val totalGoldValue = karatWeights.sumOf { (karat, w) ->
+        GoldMarket.prices.first { it.karat == karat }.price * w
     }
-    val totalWeight = allZakatItems.sumOf { it.weightGrams }
+    val totalWeight = karatWeights.sumOf { it.second }
+    // نسبة النقاء تحوّل كل عيار لمكافئه من الذهب الخالص (عيار 24) قبل مقارنته
+    // بالنصاب — فمثلاً 85 جراماً عيار 24 تعادل نحو 97 جراماً عيار 21
+    val pureGoldEquivalent = karatWeights.sumOf { (karat, w) ->
+        w * (karat.removeSuffix("K").toInt() / 24.0)
+    }
     val nisabGrams = 85.0
     val nisabValue = GoldMarket.prices.first { it.karat == "24K" }.price * nisabGrams
-    val exceedsNisab = totalWeight >= nisabGrams || totalGoldValue >= nisabValue
+    val exceedsNisab = pureGoldEquivalent >= nisabGrams || totalGoldValue >= nisabValue
     val totalZakat = if (exceedsNisab) totalGoldValue * (zakatPercent / 100.0) else 0.0
     val marketScope = rememberCoroutineScope()
 
@@ -2548,9 +2569,11 @@ private fun ZakatScreen(
             Text("الزكاة", color = White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
             Icon(
                 imageVector = Icons.Outlined.Info,
-                contentDescription = null,
+                contentDescription = "معلومات عن زكاة الذهب",
                 tint = Gold,
-                modifier = Modifier.size(20.dp)
+                modifier = Modifier
+                    .size(20.dp)
+                    .clickable { showZakatInfo = true }
             )
         }
 
@@ -2645,6 +2668,43 @@ private fun ZakatScreen(
                 textAlign = TextAlign.End
             )
             Spacer(Modifier.height(12.dp))
+
+            Text(
+                "أوزان الذهب المملوكة (جرام)",
+                color = Gray,
+                fontSize = 9.sp,
+                modifier = Modifier.fillMaxWidth(),
+                textAlign = TextAlign.End
+            )
+            Spacer(Modifier.height(8.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                ZakatKaratWeightInput("24K", weight24) { weight24 = it }
+                ZakatKaratWeightInput("22K", weight22) { weight22 = it }
+                ZakatKaratWeightInput("21K", weight21) { weight21 = it }
+                ZakatKaratWeightInput("18K", weight18) { weight18 = it }
+            }
+
+            Spacer(Modifier.height(12.dp))
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(8.dp))
+                    .background((if (exceedsNisab) Green else Gray).copy(alpha = 0.15f))
+                    .padding(vertical = 8.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    if (exceedsNisab) "الزكاة واجبة" else "الزكاة غير واجبة (أقل من النصاب)",
+                    color = if (exceedsNisab) Green else Gray,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+
+            Spacer(Modifier.height(12.dp))
             Row(modifier = Modifier.fillMaxWidth()) {
                 ZakatDetailItem(
                     title = "نصاب الزكاة (الذهب)",
@@ -2694,11 +2754,12 @@ private fun ZakatScreen(
                     .padding(top = 1.dp)
             )
             Text(
-                "يجب الزكاة إذا تجاوز إجمالي الوزن 85 جرام عيار 24، أو النصاب الحالي والبالغ " +
+                "يجب الزكاة إذا بلغ الذهب المملوك النصاب الشرعي، وهو 85 جراماً من عيار 24 " +
+                        "(أو ما يعادلها بالعيارات الأخرى)، أي ما قيمته الآن نحو " +
                         "${fmt(nisabValue, 2, grouped = true)} ريال.\n" +
-                        "إجمالي وزن (${fmt(totalWeight, 3)} جرام) " +
-                        (if (exceedsNisab) "يتجاوز" else "لا يتجاوز") +
-                        " النصاب، يتم حساب الزكاة على إجمالي قيمة الذهب.",
+                        "قيمة ذهبك الحالية (${fmt(totalGoldValue, 2, grouped = true)} ريال) " +
+                        (if (exceedsNisab) "تتجاوز" else "لا تتجاوز") +
+                        " النصاب.",
                 color = Gray,
                 fontSize = 10.sp,
                 lineHeight = 15.sp,
@@ -2740,6 +2801,34 @@ private fun ZakatScreen(
                     )
                 }
                 Text("تفاصيل الأصناف المحسوبة", color = White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+            }
+
+            Spacer(Modifier.height(10.dp))
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(36.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .border(1.dp, Gold, RoundedCornerShape(8.dp))
+                    .clickable { fillWeightsFromPortfolio() },
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.AccountBalanceWallet,
+                    contentDescription = null,
+                    tint = Gold,
+                    modifier = Modifier.size(13.dp)
+                )
+                Spacer(Modifier.width(6.dp))
+                Text(
+                    "استخدام الأوزان الموجودة في المحفظة",
+                    color = Gold,
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1
+                )
             }
 
             Spacer(Modifier.height(10.dp))
@@ -2927,6 +3016,110 @@ private fun ZakatScreen(
 
         Spacer(Modifier.height(16.dp))
     }
+
+    if (showZakatInfo) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.65f))
+                .clickable(
+                    indication = null,
+                    interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+                ) { showZakatInfo = false },
+            contentAlignment = Alignment.Center
+        ) {
+            Column(
+                modifier = Modifier
+                    .padding(horizontal = 24.dp)
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(14.dp))
+                    .border(1.dp, Border, RoundedCornerShape(14.dp))
+                    .background(CardBlack)
+                    .clickable(
+                        indication = null,
+                        interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+                    ) { }
+                    .padding(18.dp)
+                    .verticalScroll(rememberScrollState())
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("شروط وجوب زكاة الذهب", color = White, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                    Icon(
+                        imageVector = Icons.Outlined.Close,
+                        contentDescription = "إغلاق",
+                        tint = Gray,
+                        modifier = Modifier
+                            .size(18.dp)
+                            .clickable { showZakatInfo = false }
+                    )
+                }
+
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    "النصاب الحالي: ${fmt(nisabValue, 2, grouped = true)} ريال (يعادل 85 جراماً من عيار 24)",
+                    color = Gold,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.End,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Spacer(Modifier.height(14.dp))
+                Text("شروط الوجوب", color = White, fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.End)
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    "• بلوغ النصاب: 85 جراماً من الذهب الخالص (عيار 24)، وما يعادلها بالعيارات الأخرى (نحو 97 جراماً لعيار 21).\n" +
+                            "• مرور الحول: أن يمضي عام هجري كامل على امتلاك النصاب.\n" +
+                            "• الملك التام: أن يكون الذهب مملوكاً بالكامل وغير مرهون.",
+                    color = Gray,
+                    fontSize = 10.5.sp,
+                    lineHeight = 17.sp,
+                    textAlign = TextAlign.End,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Spacer(Modifier.height(14.dp))
+                Text("حكم ذهب الزينة", color = White, fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.End)
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    "• ذهب الاستعمال الشخصي (الحلي المعتاد): لا زكاة فيه عند جمهور أهل العلم.\n" +
+                            "• ذهب الادخار أو الاستثمار: تجب فيه الزكاة اتفاقاً إذا بلغ النصاب وحال عليه الحول.",
+                    color = Gray,
+                    fontSize = 10.5.sp,
+                    lineHeight = 17.sp,
+                    textAlign = TextAlign.End,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Spacer(Modifier.height(14.dp))
+                Text(
+                    "مقدار الزكاة الواجب إخراجه: 2.5% (ربع العشر) من قيمة الذهب.",
+                    color = Gray,
+                    fontSize = 10.5.sp,
+                    lineHeight = 17.sp,
+                    textAlign = TextAlign.End,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Spacer(Modifier.height(16.dp))
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(42.dp)
+                        .clip(RoundedCornerShape(9.dp))
+                        .background(Gold)
+                        .clickable { showZakatInfo = false },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text("حسناً", color = Black, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+    }
 }
 
 @Composable
@@ -2953,6 +3146,26 @@ private fun ZakatDetailItem(title: String, value: String, unit: String, modifier
             overflow = TextOverflow.Ellipsis
         )
         Text(unit, color = Gray, fontSize = 8.sp, maxLines = 1)
+    }
+}
+
+@Composable
+private fun ZakatKaratWeightInput(karat: String, value: Double, onValueChanged: (Double) -> Unit) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(karatLabel(karat).removeSuffix(" عيار"), color = Gray, fontSize = 9.sp)
+        Spacer(Modifier.height(4.dp))
+        NumericInputField(
+            value = value,
+            onValueChanged = onValueChanged,
+            fontSize = 11.sp,
+            minValue = 0.0,
+            modifier = Modifier
+                .width(58.dp)
+                .height(30.dp)
+                .clip(RoundedCornerShape(6.dp))
+                .border(1.dp, Border, RoundedCornerShape(6.dp))
+        )
+        Text("جم", color = Gray, fontSize = 8.sp)
     }
 }
 
