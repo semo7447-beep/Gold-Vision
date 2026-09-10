@@ -1,0 +1,15 @@
+.gradle/
+build/
+.kotlin/
+local.properties
+.idea/
+.DS_Store
+*.iml
+captures/
+.cxx/
+
+# iOS / Xcode (when the iosApp Xcode project is added later)
+iosApp/build/
+iosApp/Pods/
+*.xcuserstate
+DerivedData/
