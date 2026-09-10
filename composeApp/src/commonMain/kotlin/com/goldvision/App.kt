@@ -63,6 +63,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -87,6 +88,7 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
 import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalDate
@@ -105,18 +107,12 @@ private val Red = Color(0xFFFF3B30)
 private val Yellow = Color(0xFFFFC21A)
 private val Border = Color(0xFF9B7300)
 
-private data class KaratPrice(
+// يُستخدم من App.kt (واجهات الشاشات) ومن GoldMarket.kt (جلب الأسعار الحية)
+internal data class KaratPrice(
     val karat: String,
     val price: Double,
     val change: Double,
     val percent: Double
-)
-
-private val prices = listOf(
-    KaratPrice("24K", 403.75, 0.65, 0.16),
-    KaratPrice("22K", 370.10, 0.61, 0.16),
-    KaratPrice("21K", 353.28, 0.58, 0.16),
-    KaratPrice("18K", 302.38, 0.55, 0.18)
 )
 
 // بيانات صفقة محفوظة من شاشة "المحل أعطاك سعراً؟" (اسم المحل + السعر + مستوى التقييم)
@@ -143,9 +139,6 @@ private val zakatItems = listOf(
     ZakatItem("سوار", "⭕", "22K", 20.00, "متبقي 60 يوماً", Yellow),
     ZakatItem("سبيكة", "🟨", "24K", 26.00, "متبقي 60 يوماً", Yellow)
 )
-
-// سعر الفضة تقديري مؤقت (ريال/جرام) — يفضّل ربطه بمزود بيانات حقيقي لاحقاً
-private const val silverPricePerGram = 4.35
 
 // ==================== مواعيد الفيدرالي ====================
 private data class FedMeetingRaw(val year: Int, val month: Int, val day: Int, val time: String)
@@ -238,9 +231,19 @@ private fun GoldVisionApp() {
         }
     }
 
+    // يجلب أسعار الذهب/الفضة العالمية الحقيقية عند فتح التطبيق ثم يحدّثها
+    // تلقائياً كل دقيقة (GoldMarket.kt)
+    LaunchedEffect(Unit) {
+        while (true) {
+            GoldMarket.refresh()
+            delay(60.seconds)
+        }
+    }
+    val marketScope = rememberCoroutineScope()
+
     val fedRows = remember { upcomingFedMeetings().take(4) }
 
-    val selectedPrice = prices.first { it.karat == selectedKarat }.price
+    val selectedPrice = GoldMarket.prices.first { it.karat == selectedKarat }.price
     val beforeVat = selectedPrice * weight
     val vat = (beforeVat + manufacturing * weight) * 0.15
     val total = beforeVat + manufacturing * weight + vat
@@ -251,7 +254,7 @@ private fun GoldVisionApp() {
             .background(Black)
             .statusBarsPadding()
     ) {
-        Header()
+        Header(onRefresh = { marketScope.launch { GoldMarket.refresh() } })
 
         Box(modifier = Modifier.weight(1f)) {
             if (showChartFull) {
@@ -450,8 +453,9 @@ private fun CalculatorFullScreen(
     onNavigateDealEvaluator: () -> Unit,
     savedDeals: List<SavedDeal>
 ) {
-    val selectedPrice = prices.first { it.karat == selectedKarat }
+    val selectedPrice = GoldMarket.prices.first { it.karat == selectedKarat }
     val finalGramPrice = if (weight > 0) total / weight else 0.0
+    val marketScope = rememberCoroutineScope()
 
     Column(
         modifier = Modifier
@@ -467,6 +471,7 @@ private fun CalculatorFullScreen(
                 modifier = Modifier
                     .size(22.dp)
                     .align(Alignment.CenterStart)
+                    .clickable { marketScope.launch { GoldMarket.refresh() } }
             )
             Text(
                 "الحاسبة",
@@ -789,7 +794,7 @@ private fun DealEvaluatorScreen(
     var showMore by remember { mutableStateOf(false) }
     var showSaveDialog by remember { mutableStateOf(false) }
 
-    val karatPrice = prices.first { it.karat == karat }.price
+    val karatPrice = GoldMarket.prices.first { it.karat == karat }.price
     val fairBeforeVat = karatPrice * weight
     val fairManufacturing = manufacturing * weight
     val fairSubtotal = fairBeforeVat + fairManufacturing
@@ -1392,7 +1397,7 @@ private fun PriceChartFullScreen(
 
         if (selectedMetal == "gold") {
             val karatSeeds = mapOf("24K" to 1, "22K" to 2, "21K" to 3, "18K" to 4)
-            prices.forEach { item ->
+            GoldMarket.prices.forEach { item ->
                 KaratChartCard(
                     karat = item.karat,
                     price = item.price,
@@ -1405,15 +1410,15 @@ private fun PriceChartFullScreen(
         } else {
             KaratChartCard(
                 karat = null,
-                price = silverPricePerGram,
-                percent = 0.22,
+                price = GoldMarket.silverPricePerGram,
+                percent = GoldMarket.silverPercentChange,
                 seed = 9,
                 period = selectedPeriod,
                 titleOverride = "الفضة"
             )
             Spacer(Modifier.height(6.dp))
             Text(
-                "* سعر الفضة تقديري حالياً، وسيتم ربطه بمزود بيانات حي قريباً",
+                "* سعر الفضة مرتبط بالسعر العالمي مباشرة (XAG/USD)",
                 color = Gray,
                 fontSize = 9.sp
             )
@@ -1732,13 +1737,14 @@ private fun ZakatScreen() {
     val displayedItems = if (showAllItems) zakatItems else zakatItems.take(3)
 
     val totalGoldValue = zakatItems.sumOf { item ->
-        prices.first { it.karat == item.karat }.price * item.weightGrams
+        GoldMarket.prices.first { it.karat == item.karat }.price * item.weightGrams
     }
     val totalWeight = zakatItems.sumOf { it.weightGrams }
     val nisabGrams = 85.0
-    val nisabValue = prices.first { it.karat == "24K" }.price * nisabGrams
+    val nisabValue = GoldMarket.prices.first { it.karat == "24K" }.price * nisabGrams
     val exceedsNisab = totalWeight >= nisabGrams || totalGoldValue >= nisabValue
     val totalZakat = if (exceedsNisab) totalGoldValue * (zakatPercent / 100.0) else 0.0
+    val marketScope = rememberCoroutineScope()
 
     Column(
         modifier = Modifier
@@ -1755,7 +1761,9 @@ private fun ZakatScreen() {
                 imageVector = Icons.Outlined.Refresh,
                 contentDescription = "تحديث",
                 tint = Gold,
-                modifier = Modifier.size(20.dp)
+                modifier = Modifier
+                    .size(20.dp)
+                    .clickable { marketScope.launch { GoldMarket.refresh() } }
             )
             Text("الزكاة", color = White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
             Icon(
@@ -2169,7 +2177,7 @@ private fun ZakatDetailItem(title: String, value: String, unit: String, modifier
 
 @Composable
 private fun ZakatItemRow(item: ZakatItem, zakatPercent: Double) {
-    val pricePerGram = prices.first { it.karat == item.karat }.price
+    val pricePerGram = GoldMarket.prices.first { it.karat == item.karat }.price
     val goldValue = pricePerGram * item.weightGrams
     val zakatAmount = goldValue * (zakatPercent / 100.0)
 
@@ -2392,7 +2400,7 @@ private fun SettingsDivider() {
 
 // ==================== الشريط العلوي ====================
 @Composable
-private fun Header() {
+private fun Header(onRefresh: () -> Unit) {
     CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
         Row(
             modifier = Modifier
@@ -2427,7 +2435,7 @@ private fun Header() {
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(5.dp)
             ) {
-                CircleButton(Icons.Outlined.Refresh)
+                CircleButton(Icons.Outlined.Refresh, onClick = onRefresh)
                 SmallGoldButton("SAR  ˅")
                 CircleButton(Icons.Outlined.Bolt)
             }
@@ -2519,11 +2527,13 @@ private fun GoldLogo() {
 }
 
 @Composable
-private fun CircleButton(icon: ImageVector) {
+private fun CircleButton(icon: ImageVector, onClick: () -> Unit = {}) {
     Box(
         modifier = Modifier
             .size(42.dp)
-            .border(1.dp, Gold, RoundedCornerShape(22.dp)),
+            .clip(RoundedCornerShape(22.dp))
+            .border(1.dp, Gold, RoundedCornerShape(22.dp))
+            .clickable { onClick() },
         contentAlignment = Alignment.Center
     ) {
         Icon(
@@ -2551,37 +2561,57 @@ private fun SmallGoldButton(text: String) {
 // ==================== شريط الحالة المباشرة ====================
 @Composable
 private fun LiveStatus(updateText: String) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 3.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            text = "أسعار الذهب الآن  ⓘ",
-            color = White,
-            fontSize = 13.sp,
-            fontWeight = FontWeight.Bold
-        )
+    val hasError = GoldMarket.lastError != null
+    val statusColor = if (hasError) Red else Green
+    val statusLabel = when {
+        GoldMarket.isLoading -> "يحدّث..."
+        hasError -> "غير محدث"
+        else -> "مباشر"
+    }
 
+    Column(modifier = Modifier.fillMaxWidth()) {
         Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(5.dp)
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 3.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = "$updateText ↻",
-                color = Gray,
-                fontSize = 10.sp,
-                maxLines = 1
+                text = "أسعار الذهب الآن  ⓘ",
+                color = White,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Bold
             )
-            Box(
-                modifier = Modifier
-                    .size(9.dp)
-                    .clip(RoundedCornerShape(6.dp))
-                    .background(Green)
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(5.dp)
+            ) {
+                Text(
+                    text = "$updateText ↻",
+                    color = Gray,
+                    fontSize = 10.sp,
+                    maxLines = 1
+                )
+                Box(
+                    modifier = Modifier
+                        .size(9.dp)
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(statusColor)
+                )
+                Text(statusLabel, color = White, fontSize = 11.sp)
+            }
+        }
+
+        GoldMarket.lastError?.let { message ->
+            Text(
+                text = message,
+                color = Red,
+                fontSize = 9.sp,
+                modifier = Modifier.fillMaxWidth(),
+                textAlign = TextAlign.End
             )
-            Text("مباشر", color = White, fontSize = 11.sp)
         }
     }
 }
@@ -2596,7 +2626,7 @@ private fun PriceCards(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(7.dp)
     ) {
-        prices.forEach { item ->
+        GoldMarket.prices.forEach { item ->
             val active = selected == item.karat
             val isMostUsed = item.karat == "21K"
             Box(
@@ -2805,7 +2835,7 @@ private fun GoldCalculator(
 }
 
 private fun selectedPrice(karat: String): Double =
-    prices.first { it.karat == karat }.price
+    GoldMarket.prices.first { it.karat == karat }.price
 
 @Composable
 private fun CalculatorMode(
