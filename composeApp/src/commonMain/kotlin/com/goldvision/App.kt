@@ -270,7 +270,7 @@ private fun GoldVisionApp() {
         }
     }
 
-    // يجلب أسعار الذهب/الفضة العالمية الحقيقية عند فتح التطبيق ثم يحدّثها
+    // يجلب أسعار الذهب العالمية الحقيقية عند فتح التطبيق ثم يحدّثها
     // تلقائياً كل دقيقة (GoldMarket.kt)
     LaunchedEffect(Unit) {
         while (true) {
@@ -1732,8 +1732,6 @@ private fun PriceChartFullScreen(
     onPeriodSelected: (String) -> Unit,
     onBack: () -> Unit
 ) {
-    var selectedMetal by remember { mutableStateOf("gold") } // "gold" أو "silver"
-
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -1753,28 +1751,6 @@ private fun PriceChartFullScreen(
                     .clickable { onBack() }
             )
             Text("تتبع الأسعار", color = Gold, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-        }
-
-        Spacer(Modifier.height(12.dp))
-
-        // تبويب الذهب / الفضة
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(42.dp)
-                .clip(RoundedCornerShape(10.dp))
-                .border(1.dp, Border, RoundedCornerShape(10.dp))
-        ) {
-            MetalTab(
-                text = "الذهب",
-                selected = selectedMetal == "gold",
-                modifier = Modifier.weight(1f)
-            ) { selectedMetal = "gold" }
-            MetalTab(
-                text = "الفضة",
-                selected = selectedMetal == "silver",
-                modifier = Modifier.weight(1f)
-            ) { selectedMetal = "silver" }
         }
 
         Spacer(Modifier.height(12.dp))
@@ -1809,69 +1785,32 @@ private fun PriceChartFullScreen(
 
         Spacer(Modifier.height(14.dp))
 
-        if (selectedMetal == "gold") {
-            val karatSeeds = mapOf("24K" to 1, "22K" to 2, "21K" to 3, "18K" to 4)
-            GoldMarket.prices.forEach { item ->
-                KaratChartCard(
-                    karat = item.karat,
-                    price = item.price,
-                    percent = item.percent,
-                    seed = karatSeeds[item.karat] ?: 1,
-                    period = selectedPeriod
-                )
-                Spacer(Modifier.height(10.dp))
-            }
-        } else {
+        val karatSeeds = mapOf("24K" to 1, "22K" to 2, "21K" to 3, "18K" to 4)
+        GoldMarket.prices.forEach { item ->
             KaratChartCard(
-                karat = null,
-                price = GoldMarket.silverPricePerGram,
-                percent = GoldMarket.silverPercentChange,
-                seed = 9,
-                period = selectedPeriod,
-                titleOverride = "الفضة"
+                karat = item.karat,
+                price = item.price,
+                percent = item.percent,
+                seed = karatSeeds[item.karat] ?: 1,
+                period = selectedPeriod
             )
-            Spacer(Modifier.height(6.dp))
-            Text(
-                "* سعر الفضة تقديري حالياً، وسيتم ربطه بمزود بيانات حي قريباً",
-                color = Gray,
-                fontSize = 9.sp
-            )
+            Spacer(Modifier.height(10.dp))
         }
 
         Spacer(Modifier.height(16.dp))
     }
 }
 
-@Composable
-private fun MetalTab(text: String, selected: Boolean, modifier: Modifier, onClick: () -> Unit) {
-    Box(
-        modifier = modifier
-            .fillMaxHeight()
-            .clip(RoundedCornerShape(9.dp))
-            .background(if (selected) Gold else Color.Transparent)
-            .clickable { onClick() },
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text,
-            color = if (selected) Black else White,
-            fontSize = 13.sp,
-            fontWeight = FontWeight.Bold
-        )
-    }
-}
-
-// بطاقة رسم بياني لعيار ذهب واحد (أو الفضة)، بسعرها الحالي بالريال السعودي
+// بطاقة رسم بياني لعيار ذهب واحد، بسعره الحالي بالريال السعودي
 @Composable
 private fun KaratChartCard(
-    karat: String?,
+    karat: String,
     price: Double,
     percent: Double,
     seed: Int,
-    period: String,
-    titleOverride: String? = null
+    period: String
 ) {
-    val title = titleOverride ?: "عيار ${karatLabel(karat!!).removeSuffix(" عيار")} - ريال سعودي"
+    val title = "عيار ${karatLabel(karat).removeSuffix(" عيار")} - ريال سعودي"
     AppCard(title = title, modifier = Modifier.fillMaxWidth().height(215.dp)) {
         Row(
             modifier = Modifier.fillMaxWidth(),

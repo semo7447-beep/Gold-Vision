@@ -25,9 +25,6 @@ import kotlinx.serialization.json.Json
 // لأن هذا المزوّد لا يرجّع تغيّراً يومياً في هذا المسار.
 internal object GoldMarket {
 
-    // 1 أونصة تروي (الوحدة العالمية لتسعير المعادن الثمينة) = 31.1034768 جرام
-    private const val GRAMS_PER_TROY_OUNCE = 31.1034768
-
     // الريال السعودي مربوط رسمياً بسعر ثابت للدولار الأمريكي منذ 1986
     private const val USD_TO_SAR = 3.75
 
@@ -39,14 +36,6 @@ internal object GoldMarket {
     )
 
     var prices by mutableStateOf(defaultPrices)
-        private set
-
-    // الفضة الحية غير متاحة على الخطة المجانية لهذا المزوّد، فتبقى قيمة
-    // تقديرية ثابتة إلى أن تُربط بمصدر حي مخصص لها
-    var silverPricePerGram by mutableStateOf(4.35)
-        private set
-
-    var silverPercentChange by mutableStateOf(0.22)
         private set
 
     var isLoading by mutableStateOf(false)
