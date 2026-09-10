@@ -1832,7 +1832,7 @@ private fun PriceChartFullScreen(
             )
             Spacer(Modifier.height(6.dp))
             Text(
-                "* سعر الفضة مرتبط بالسعر العالمي مباشرة (XAG/USD)",
+                "* سعر الفضة تقديري حالياً، وسيتم ربطه بمزود بيانات حي قريباً",
                 color = Gray,
                 fontSize = 9.sp
             )

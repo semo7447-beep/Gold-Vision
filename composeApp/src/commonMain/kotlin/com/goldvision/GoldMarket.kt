@@ -8,27 +8,22 @@ import io.ktor.client.call.body
 import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.request.get
-import io.ktor.client.request.header
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
-// جسر الأسعار العالمية الحية: يجلب سعر الذهب والفضة الفعلي (XAU/USD، XAG/USD)
-// من GoldAPI.io ويحوّله لسعر الجرام بالريال السعودي لكل عيار، بدل الأرقام
-// الثابتة السابقة. متاح من commonMain فيعمل بنفس الطريقة على أندرويد و iOS.
+// جسر الأسعار العالمية الحية: يجلب سعر الذهب الفعلي بالجرام لكل عيار من
+// goldprice.dev (مزوّد عام موثّق، بلا حاجة لمفتاح API ولا تسجيل — على عكس
+// المزوّدين السابقين: data-asg.goldprice.org ثبت أنه يرجع فاضي على شبكة
+// المستخدم، وGoldAPI.io يحتاج تسجيل حساب). متاح من commonMain فيعمل بنفس
+// الطريقة على أندرويد و iOS مستقبلاً.
 //
-// لازم تحصل على مفتاح API مجاني (دقيقتين، بلا بطاقة ائتمان) من:
-//   https://www.goldapi.io/dashboard/signup
-// وتحط المفتاح مكان GOLD_API_KEY تحت. بدون مفتاح صحيح ستظل الأسعار المعروضة
-// هي القيم الافتراضية defaultPrices فقط (مش هتتحدث، لكن التطبيق يعمل عادي).
-//
-// السبب في التحول عن مزوّد سابق بلا مفتاح (data-asg.goldprice.org): ثبت في
-// الاستخدام الفعلي أنه غير موثوق (يرجع فاضي على بعض الشبكات). GoldAPI.io
-// مزوّد رسمي موثّق مقابل ذلك.
+// ملاحظة: السعر يوصل بالدولار فقط (الريال غير مدعوم في قائمة عملات هذا
+// المزوّد)، فنحوّله بسعر الصرف الرسمي الثابت. ونسبة/قيمة التغيّر المعروضة
+// هي "منذ آخر تحديث" (محسوبة محلياً بمقارنة آخر سعرين)، وليست تغيّر اليوم،
+// لأن هذا المزوّد لا يرجّع تغيّراً يومياً في هذا المسار.
 internal object GoldMarket {
-
-    private const val GOLD_API_KEY = "YOUR_GOLDAPI_IO_KEY_HERE"
 
     // 1 أونصة تروي (الوحدة العالمية لتسعير المعادن الثمينة) = 31.1034768 جرام
     private const val GRAMS_PER_TROY_OUNCE = 31.1034768
@@ -46,6 +41,8 @@ internal object GoldMarket {
     var prices by mutableStateOf(defaultPrices)
         private set
 
+    // الفضة الحية غير متاحة على الخطة المجانية لهذا المزوّد، فتبقى قيمة
+    // تقديرية ثابتة إلى أن تُربط بمصدر حي مخصص لها
     var silverPricePerGram by mutableStateOf(4.35)
         private set
 
@@ -70,32 +67,24 @@ internal object GoldMarket {
     }
 
     suspend fun refresh() {
-        if (GOLD_API_KEY == "YOUR_GOLDAPI_IO_KEY_HERE") {
-            lastError = "لم يتم ضبط مفتاح GoldAPI.io بعد — راجع تعليق GOLD_API_KEY في GoldMarket.kt"
-            return
-        }
-
         isLoading = true
         try {
-            val gold: GoldApiResponse = client.get("https://www.goldapi.io/api/XAU/USD") {
-                header("x-access-token", GOLD_API_KEY)
-            }.body()
+            val response: CaratResponse =
+                client.get("https://api.goldprice.dev/v1/carat?currency=USD").body()
 
-            val changePerGramSar = (gold.ch / GRAMS_PER_TROY_OUNCE) * USD_TO_SAR
-
+            val previous = prices
             prices = listOf(
-                KaratPrice("24K", gold.priceGram24k * USD_TO_SAR, changePerGramSar, gold.chp),
-                KaratPrice("22K", gold.priceGram22k * USD_TO_SAR, changePerGramSar * (22.0 / 24.0), gold.chp),
-                KaratPrice("21K", gold.priceGram21k * USD_TO_SAR, changePerGramSar * (21.0 / 24.0), gold.chp),
-                KaratPrice("18K", gold.priceGram18k * USD_TO_SAR, changePerGramSar * (18.0 / 24.0), gold.chp)
-            )
-
-            val silver: GoldApiResponse = client.get("https://www.goldapi.io/api/XAG/USD") {
-                header("x-access-token", GOLD_API_KEY)
-            }.body()
-
-            silverPricePerGram = (silver.price / GRAMS_PER_TROY_OUNCE) * USD_TO_SAR
-            silverPercentChange = silver.chp
+                "24K" to response.priceGram24k,
+                "22K" to response.priceGram22k,
+                "21K" to response.priceGram21k,
+                "18K" to response.priceGram18k
+            ).map { (karat, usdPerGramText) ->
+                val sarPerGram = usdPerGramText.toDouble() * USD_TO_SAR
+                val previousPrice = previous.firstOrNull { it.karat == karat }?.price ?: sarPerGram
+                val change = sarPerGram - previousPrice
+                val percent = if (previousPrice != 0.0) (change / previousPrice) * 100.0 else 0.0
+                KaratPrice(karat, sarPerGram, change, percent)
+            }
 
             lastError = null
         } catch (e: Exception) {
@@ -106,16 +95,13 @@ internal object GoldMarket {
     }
 }
 
-// شكل استجابة GoldAPI.io (https://www.goldapi.io/api/XAU/USD وXAG/USD) —
-// price بالدولار للأونصة، وprice_gram_* جاهزة بالدولار للجرام لكل عيار ذهب
-// (غير متاحة لطلب الفضة، فنحسبها يدوياً من price بنفس طريقة الذهب)
+// شكل استجابة GET https://api.goldprice.dev/v1/carat?currency=USD — مزوّد
+// عام بلا حاجة لمفتاح API. الأسعار ترجع كنصوص عشرية (decimal strings)
+// وليست أرقاماً مباشرة، لذلك الحقول هنا String وتُحوَّل يدوياً لاحقاً
 @Serializable
-private data class GoldApiResponse(
-    val price: Double = 0.0,
-    val ch: Double = 0.0,
-    val chp: Double = 0.0,
-    @SerialName("price_gram_24k") val priceGram24k: Double = 0.0,
-    @SerialName("price_gram_22k") val priceGram22k: Double = 0.0,
-    @SerialName("price_gram_21k") val priceGram21k: Double = 0.0,
-    @SerialName("price_gram_18k") val priceGram18k: Double = 0.0
+private data class CaratResponse(
+    @SerialName("price_gram_24k") val priceGram24k: String = "0",
+    @SerialName("price_gram_22k") val priceGram22k: String = "0",
+    @SerialName("price_gram_21k") val priceGram21k: String = "0",
+    @SerialName("price_gram_18k") val priceGram18k: String = "0"
 )
