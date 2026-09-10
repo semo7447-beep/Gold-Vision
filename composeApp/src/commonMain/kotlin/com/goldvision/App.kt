@@ -426,6 +426,7 @@ private fun HomeScreen(
                 modifier = Modifier
                     .weight(1f)
                     .height(315.dp)
+                    .clickable { onNavigateCalculator() }
             ) {
                 GoldCalculator(
                     selectedKarat = selectedKarat,
@@ -451,7 +452,8 @@ private fun HomeScreen(
             ) {
                 PriceChart(
                     selectedPeriod = selectedPeriod,
-                    onPeriodSelected = onPeriodSelected
+                    onPeriodSelected = onPeriodSelected,
+                    selectedKarat = selectedKarat
                 )
             }
         }
@@ -3539,8 +3541,14 @@ private fun CalculatorRow(
 @Composable
 private fun PriceChart(
     selectedPeriod: String,
-    onPeriodSelected: (String) -> Unit
+    onPeriodSelected: (String) -> Unit,
+    selectedKarat: String
 ) {
+    val basePrice = selectedPrice(selectedKarat)
+    val karatPercent = GoldMarket.prices.first { it.karat == selectedKarat }.percent
+    val minPrice = basePrice * 0.94
+    val maxPrice = basePrice * 1.06
+
     AppCard(
         title = "تتبع أسعار الذهب",
         titleIcon = Icons.AutoMirrored.Outlined.ShowChart,
@@ -3576,14 +3584,19 @@ private fun PriceChart(
         }
 
         Spacer(Modifier.height(5.dp))
-        Text("▲ 0.58%", color = Green, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+        Text(
+            "▲ ${fmt(karatPercent, 2)}%",
+            color = Green,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Bold
+        )
 
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f)
         ) {
-            PriceChartCanvas(modifier = Modifier.fillMaxSize())
+            PriceChartCanvas(modifier = Modifier.fillMaxSize(), basePrice = basePrice)
 
             Column(
                 modifier = Modifier
@@ -3593,7 +3606,7 @@ private fun PriceChart(
             ) {
                 Text("أعلى سعر", color = Gray, fontSize = 8.5.sp)
                 Text(
-                    "354.20",
+                    fmt(maxPrice, 2),
                     color = White,
                     fontSize = 10.5.sp,
                     fontWeight = FontWeight.Bold
@@ -3604,7 +3617,7 @@ private fun PriceChart(
 
                 Text("أدنى سعر", color = Gray, fontSize = 8.5.sp)
                 Text(
-                    "350.80",
+                    fmt(minPrice, 2),
                     color = White,
                     fontSize = 10.5.sp,
                     fontWeight = FontWeight.Bold
@@ -3616,8 +3629,10 @@ private fun PriceChart(
 }
 
 @Composable
-private fun PriceChartCanvas(modifier: Modifier) {
+private fun PriceChartCanvas(modifier: Modifier, basePrice: Double) {
     val textMeasurer = rememberTextMeasurer()
+    val minPrice = basePrice * 0.94
+    val maxPrice = basePrice * 1.06
     val points = remember {
         val count = 60
         (0 until count).map { i ->
@@ -3692,7 +3707,7 @@ private fun PriceChartCanvas(modifier: Modifier) {
             style = Stroke(width = 2.4f, cap = StrokeCap.Round)
         )
 
-        val priceLabels = listOf("310", "320", "330", "340", "350", "360")
+        val priceLabels = (0..5).map { i -> fmt(maxPrice - (maxPrice - minPrice) * i / 5, 0) }
         priceLabels.forEachIndexed { index, label ->
             val y = bottom - h * index / 5f
             drawAxisLabel(textMeasurer, label, x = 0f, y = y, centered = false)
