@@ -104,11 +104,13 @@ import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
+import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.daysUntil
+import kotlinx.datetime.minus
 import kotlinx.datetime.toLocalDateTime
 import kotlin.math.roundToInt
 import kotlin.time.Duration.Companion.seconds
@@ -364,6 +366,7 @@ private fun GoldVisionApp() {
                 PriceChartFullScreen(
                     selectedPeriod = selectedPeriod,
                     onPeriodSelected = { selectedPeriod = it },
+                    selectedKarat = selectedKarat,
                     onBack = { showChartFull = false }
                 )
             } else if (showDealEvaluator) {
@@ -1998,8 +2001,11 @@ private val chartPeriods = listOf("24 ساعة", "أسبوع", "شهر", "3 شه
 private fun PriceChartFullScreen(
     selectedPeriod: String,
     onPeriodSelected: (String) -> Unit,
+    selectedKarat: String,
     onBack: () -> Unit
 ) {
+    var showAnalysis by remember { mutableStateOf(false) }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -2018,12 +2024,47 @@ private fun PriceChartFullScreen(
                     .size(22.dp)
                     .clickable { onBack() }
             )
-            Text("تتبع الأسعار", color = Gold, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            Text(
+                if (showAnalysis) "التحليل الفني" else "تتبع الأسعار",
+                color = Gold,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
+
+        Spacer(Modifier.height(10.dp))
+
+        // مفتاح التبديل بين تتبع الأسعار (الوضع الحالي) والتحليل الفني بالذكاء الاصطناعي
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(9.dp))
+                .border(1.dp, Border, RoundedCornerShape(9.dp))
+                .padding(2.dp)
+        ) {
+            listOf(false to "تتبع الأسعار", true to "التحليل الفني").forEach { (analysisMode, label) ->
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(7.dp))
+                        .background(if (showAnalysis == analysisMode) Gold else Color.Transparent)
+                        .clickable { showAnalysis = analysisMode }
+                        .padding(vertical = 8.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        label,
+                        color = if (showAnalysis == analysisMode) Black else Gray,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
         }
 
         Spacer(Modifier.height(12.dp))
 
-        // قائمة الفترات الزمنية
+        // قائمة الفترات الزمنية (مشتركة بين الوضعين)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -2053,19 +2094,361 @@ private fun PriceChartFullScreen(
 
         Spacer(Modifier.height(14.dp))
 
-        val karatSeeds = mapOf("24K" to 1, "22K" to 2, "21K" to 3, "18K" to 4)
-        GoldMarket.prices.forEach { item ->
-            KaratChartCard(
-                karat = item.karat,
-                price = item.price,
-                percent = item.percent,
-                seed = karatSeeds[item.karat] ?: 1,
-                period = selectedPeriod
-            )
-            Spacer(Modifier.height(10.dp))
+        if (showAnalysis) {
+            TechnicalAnalysisContent(period = selectedPeriod, karat = selectedKarat)
+        } else {
+            GoldMarket.prices.forEach { item ->
+                KaratChartCard(
+                    karat = item.karat,
+                    price = item.price,
+                    percent = item.percent,
+                    seed = karatChartSeeds[item.karat] ?: 1,
+                    period = selectedPeriod
+                )
+                Spacer(Modifier.height(10.dp))
+            }
         }
 
         Spacer(Modifier.height(16.dp))
+    }
+}
+
+// ==================== شاشة التحليل الفني بالذكاء الاصطناعي ====================
+// التوصية هنا مبنية على بيانات فعلية من التطبيق نفسه (فجوة الافتتاح/الإغلاق
+// المشتقة من نفس سلسلة الرسم البياني، أهم خبر من قائمة الأخبار، وأقرب موعد
+// فيدرالي فعلي من التقويم) بدل مؤشرات فنية معقدة (متوسطات متحركة/RSI)
+@Composable
+private fun TechnicalAnalysisContent(period: String, karat: String) {
+    val karatPrice = GoldMarket.prices.first { it.karat == karat }
+    val stats = karatPeriodStats(karatPrice.price, karat, period)
+    val stats24 = karatPeriodStats(GoldMarket.prices.first { it.karat == "24K" }.price, "24K", period)
+    val stats21 = karatPeriodStats(GoldMarket.prices.first { it.karat == "21K" }.price, "21K", period)
+
+    val trendUp = stats.closePrice >= stats.openPrice
+    val changePercent = if (stats.openPrice != 0.0)
+        (stats.closePrice - stats.openPrice) / stats.openPrice * 100.0
+    else 0.0
+
+    val topNews = fullNewsList.first()
+    val fedDate = nextFedMeetingDate()
+    val daysUntilFed = fedDate?.let { todayLocalDate().daysUntil(it) }
+
+    Column(modifier = Modifier.fillMaxWidth()) {
+        // ---- بطاقة السعر والرسم البياني ----
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(12.dp))
+                .border(1.dp, Border, RoundedCornerShape(12.dp))
+                .background(CardBlack)
+                .padding(12.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Top
+            ) {
+                Text(
+                    "سعر الذهب (عيار ${karat.removeSuffix("K")})",
+                    color = White,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Column(horizontalAlignment = Alignment.End) {
+                    Text(
+                        fmt(karatPrice.price, 2) + " ريال",
+                        color = White,
+                        fontSize = 17.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        "${if (karatPrice.change >= 0) "+" else ""}${fmt(karatPrice.change, 2)} " +
+                                "(${fmt(karatPrice.percent, 2)}%) ${if (karatPrice.change >= 0) "▲" else "▼"}",
+                        color = if (karatPrice.change >= 0) Green else Red,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(6.dp))
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(130.dp)
+            ) {
+                KaratChartCanvas(
+                    modifier = Modifier.fillMaxSize(),
+                    basePrice = karatPrice.price,
+                    seed = karatChartSeeds[karat] ?: 1,
+                    period = period
+                )
+            }
+
+            Spacer(Modifier.height(10.dp))
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(9.dp))
+                    .border(1.dp, Border, RoundedCornerShape(9.dp))
+                    .padding(horizontal = 10.dp, vertical = 7.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.CalendarMonth,
+                        contentDescription = null,
+                        tint = Gray,
+                        modifier = Modifier.size(12.dp)
+                    )
+                    Text("الفترة", color = Gray, fontSize = 9.sp)
+                }
+                Text(periodRangeText(period), color = White, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+            }
+
+            Spacer(Modifier.height(8.dp))
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                OpenCloseCard(title = "سعر الذهب عيار 24", stats = stats24, modifier = Modifier.weight(1f))
+                OpenCloseCard(title = "سعر الذهب عيار 21", stats = stats21, modifier = Modifier.weight(1f))
+            }
+        }
+
+        Spacer(Modifier.height(10.dp))
+
+        // ---- بطاقة التحليل الفني بالذكاء الاصطناعي ----
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(12.dp))
+                .border(1.dp, Border, RoundedCornerShape(12.dp))
+                .background(CardBlack)
+                .padding(14.dp)
+        ) {
+            Text(
+                "تحليل فني بالذكاء الاصطناعي",
+                color = White,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.fillMaxWidth(),
+                textAlign = TextAlign.End
+            )
+
+            Spacer(Modifier.height(10.dp))
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(9.dp))
+                    .background((if (trendUp) Green else Red).copy(alpha = 0.12f))
+                    .border(1.dp, GoldDark, RoundedCornerShape(9.dp))
+                    .padding(10.dp)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Text(
+                        if (trendUp) "↗" else "↘",
+                        color = if (trendUp) Green else Red,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        "الاتجاه العام: ${if (trendUp) "صاعد" else "هابط"}",
+                        color = Gold,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    "استمرار الزخم ${if (trendUp) "الإيجابي" else "السلبي"} طالما بقي سعر الإغلاق " +
+                            "${if (trendUp) "أعلى" else "أدنى"} من سعر الافتتاح لنفس الفترة.",
+                    color = Gray,
+                    fontSize = 10.sp,
+                    lineHeight = 15.sp,
+                    textAlign = TextAlign.End,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+
+            Spacer(Modifier.height(12.dp))
+            Text(
+                "أهم النقاط (فترة: $period)",
+                color = White,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.fillMaxWidth(),
+                textAlign = TextAlign.End
+            )
+            Spacer(Modifier.height(8.dp))
+
+            AnalysisPoint(
+                "افتتح عند ${fmt(stats.openPrice, 2)} وأغلق عند ${fmt(stats.closePrice, 2)} ريال — " +
+                        "إغلاق ${if (trendUp) "أعلى" else "أدنى"} من الافتتاح بـ " +
+                        "${fmt(kotlin.math.abs(changePercent), 2)}%."
+            )
+            AnalysisPoint("أهم خبر مؤثر الآن: ${topNews.text} (${topNews.time}).")
+            AnalysisPoint(
+                if (daysUntilFed != null)
+                    "اجتماع الفيدرالي القادم بعد $daysUntilFed يوماً (${fedDate!!.toPeriodDisplayText()}) — " +
+                            "قد يزيد التذبذب قرب الإعلان."
+                else
+                    "لا يوجد اجتماع فيدرالي مجدول قريباً ضمن التقويم الحالي."
+            )
+            AnalysisPoint(
+                "أقرب دعم عند ${fmt(stats.periodLow, 2)} ريال، وأقرب مقاومة عند " +
+                        "${fmt(stats.periodHigh, 2)} ريال (أدنى وأعلى سعر خلال الفترة)."
+            )
+
+            Spacer(Modifier.height(6.dp))
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(9.dp))
+                    .background(Gold.copy(alpha = 0.08f))
+                    .border(1.dp, GoldDark, RoundedCornerShape(9.dp))
+                    .padding(10.dp)
+            ) {
+                Text(
+                    "توقعات الذكاء الاصطناعي",
+                    color = Gold,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.fillMaxWidth(),
+                    textAlign = TextAlign.End
+                )
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    buildString {
+                        if (trendUp) {
+                            append(
+                                "في حال استمر الإغلاق فوق الافتتاح ونبرة الأخبار إيجابية، يُتوقع اختبار " +
+                                        "مستوى ${fmt(stats.periodHigh, 2)} ريال خلال الفترة القادمة. "
+                            )
+                        } else {
+                            append(
+                                "في حال استمر الإغلاق دون الافتتاح، فقد يتجه السعر لاختبار مستوى " +
+                                        "${fmt(stats.periodLow, 2)} ريال خلال الفترة القادمة. "
+                            )
+                        }
+                        if (daysUntilFed != null && daysUntilFed <= 14) {
+                            append("مع اقتراب اجتماع الفيدرالي بعد $daysUntilFed يوماً، يُتوقع ارتفاع التذبذب حول الإعلان.")
+                        } else {
+                            append("لا يوجد حدث فيدرالي وشيك يُتوقع أن يزيد التذبذب حالياً.")
+                        }
+                    },
+                    color = Gray,
+                    fontSize = 10.sp,
+                    lineHeight = 16.sp,
+                    textAlign = TextAlign.End,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+
+            Spacer(Modifier.height(10.dp))
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.Top
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Info,
+                    contentDescription = null,
+                    tint = Gold,
+                    modifier = Modifier
+                        .size(13.dp)
+                        .padding(top = 1.dp)
+                )
+                Text(
+                    "ملاحظة: هذا التحليل يعتمد على بيانات الأسعار والأخبار ومواعيد الفيدرالي، وليس توصية استثمارية ملزمة.",
+                    color = Gray,
+                    fontSize = 9.sp,
+                    lineHeight = 14.sp,
+                    textAlign = TextAlign.End,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun OpenCloseCard(title: String, stats: KaratPeriodStats, modifier: Modifier = Modifier) {
+    val changePercent = if (stats.openPrice != 0.0)
+        (stats.closePrice - stats.openPrice) / stats.openPrice * 100.0
+    else 0.0
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(9.dp))
+            .border(1.dp, Border, RoundedCornerShape(9.dp))
+            .padding(9.dp)
+    ) {
+        Text(
+            title,
+            color = Gold,
+            fontSize = 10.sp,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.fillMaxWidth(),
+            textAlign = TextAlign.Center
+        )
+        Spacer(Modifier.height(6.dp))
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text(fmt(stats.openPrice, 2) + " ريال", color = White, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
+            Text("افتتاح", color = Gray, fontSize = 8.5.sp)
+        }
+        Spacer(Modifier.height(3.dp))
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text(fmt(stats.closePrice, 2) + " ريال", color = White, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
+            Text("إغلاق", color = Gray, fontSize = 8.5.sp)
+        }
+        Spacer(Modifier.height(7.dp))
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(6.dp))
+                .background((if (changePercent >= 0) Green else Red).copy(alpha = 0.15f))
+                .padding(vertical = 4.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                "${if (changePercent >= 0) "+" else ""}${fmt(changePercent, 2)}%",
+                color = if (changePercent >= 0) Green else Red,
+                fontSize = 9.5.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
+    }
+}
+
+@Composable
+private fun AnalysisPoint(text: String) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 3.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalAlignment = Alignment.Top
+    ) {
+        Box(
+            modifier = Modifier
+                .size(15.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(Green.copy(alpha = 0.18f)),
+            contentAlignment = Alignment.Center
+        ) {
+            Text("✓", color = Green, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+        }
+        Text(
+            text,
+            color = Gray,
+            fontSize = 10.sp,
+            lineHeight = 15.sp,
+            textAlign = TextAlign.End,
+            modifier = Modifier.weight(1f)
+        )
     }
 }
 
@@ -2103,6 +2486,87 @@ private fun KaratChartCard(
             KaratChartCanvas(modifier = Modifier.fillMaxSize(), basePrice = price, seed = seed, period = period)
         }
     }
+}
+
+// بذرة عشوائية ثابتة لكل عيار حتى يبقى شكل الرسم نفسه بين إعادة الرسم
+// (تُستخدم في شاشتي "تتبع الأسعار" و"التحليل الفني" معاً)
+private val karatChartSeeds = mapOf("24K" to 1, "22K" to 2, "21K" to 3, "18K" to 4)
+
+private fun pointCountFor(period: String): Int = when (period) {
+    "24 ساعة" -> 24
+    "أسبوع" -> 28
+    "شهر" -> 30
+    "3 شهور" -> 45
+    "6 شهور" -> 60
+    "سنة" -> 60
+    "سنتان" -> 60
+    else -> 60
+}
+
+// سلسلة نسب (0..1) مبنية على بذرة عشوائية ثابتة لكل عيار/فترة — تمثيل
+// توضيحي لحركة السعر (لا يوجد مزوّد بيانات تاريخية فعلي حتى الآن)، تُستخدم
+// لرسم الشارت ولاشتقاق الافتتاح/الإغلاق والدعم/المقاومة في شاشة التحليل
+// الفني بشكل متّسق مع بعضها
+private fun generateSeriesRatios(seed: Int, period: String): List<Float> {
+    val pointCount = pointCountFor(period)
+    return (0 until pointCount).map { i ->
+        val t = i / (pointCount - 1).toFloat()
+        val trend = 0.14f + t * 0.72f
+        val ripple = (kotlin.math.sin(t * (10f + seed) + seed) * 0.03f) +
+                (kotlin.math.sin(t * (4f + seed) + seed * 2) * 0.04f)
+        (trend + ripple).coerceIn(0.05f, 0.98f)
+    }
+}
+
+private data class KaratPeriodStats(
+    val openPrice: Double,
+    val closePrice: Double,
+    val periodLow: Double,
+    val periodHigh: Double
+)
+
+private fun karatPeriodStats(basePrice: Double, karat: String, period: String): KaratPeriodStats {
+    val seed = karatChartSeeds[karat] ?: 1
+    val ratios = generateSeriesRatios(seed, period)
+    val minPrice = basePrice * 0.94
+    val maxPrice = basePrice * 1.06
+    fun priceAt(ratio: Float) = minPrice + (maxPrice - minPrice) * ratio
+    return KaratPeriodStats(
+        openPrice = priceAt(ratios.first()),
+        closePrice = priceAt(ratios.last()),
+        periodLow = priceAt(ratios.min()),
+        periodHigh = priceAt(ratios.max())
+    )
+}
+
+private fun LocalDate.toPeriodDisplayText(): String =
+    "$year/${monthNumber.toString().padStart(2, '0')}/${dayOfMonth.toString().padStart(2, '0')}"
+
+private fun periodDaysFor(period: String): Int = when (period) {
+    "24 ساعة" -> 1
+    "أسبوع" -> 7
+    "شهر" -> 30
+    "3 شهور" -> 90
+    "6 شهور" -> 180
+    "سنة" -> 365
+    "سنتان" -> 730
+    else -> 1825
+}
+
+private fun periodRangeText(period: String): String {
+    val end = todayLocalDate()
+    val start = end.minus(periodDaysFor(period), DateTimeUnit.DAY)
+    return "${start.toPeriodDisplayText()} - ${end.toPeriodDisplayText()}"
+}
+
+// أقرب اجتماع قادم للفيدرالي كتاريخ فعلي (وليس نصاً منسّقاً فقط)، يُستخدم
+// لحساب عدد الأيام المتبقية في شاشة التحليل الفني
+private fun nextFedMeetingDate(): LocalDate? {
+    val today = todayLocalDate()
+    return fedMeetingsRaw
+        .map { LocalDate(it.year, it.month, it.day) }
+        .filter { it >= today }
+        .minOrNull()
 }
 
 // تسميات محور الوقت أسفل الرسم، حسب الفترة المختارة (زي فيديو المرجع)
@@ -2189,25 +2653,7 @@ private fun ChartTooltipCard(info: ChartTooltip) {
 private fun KaratChartCanvas(modifier: Modifier, basePrice: Double, seed: Int, period: String) {
     val textMeasurer = rememberTextMeasurer()
     val density = LocalDensity.current
-    val pointCount = when (period) {
-        "24 ساعة" -> 24
-        "أسبوع" -> 28
-        "شهر" -> 30
-        "3 شهور" -> 45
-        "6 شهور" -> 60
-        "سنة" -> 60
-        "سنتان" -> 60
-        else -> 60
-    }
-    val points = remember(basePrice, seed, period) {
-        (0 until pointCount).map { i ->
-            val t = i / (pointCount - 1).toFloat()
-            val trend = 0.14f + t * 0.72f
-            val ripple = (kotlin.math.sin(t * (10f + seed) + seed) * 0.03f) +
-                    (kotlin.math.sin(t * (4f + seed) + seed * 2) * 0.04f)
-            (trend + ripple).coerceIn(0.05f, 0.98f)
-        }
-    }
+    val points = remember(basePrice, seed, period) { generateSeriesRatios(seed, period) }
     val minPrice = basePrice * 0.94
     val maxPrice = basePrice * 1.06
     val lineColor = Color(0xFFEDE6B0)
