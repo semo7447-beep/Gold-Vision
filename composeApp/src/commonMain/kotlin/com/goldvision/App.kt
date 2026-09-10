@@ -4,6 +4,9 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.drag
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
@@ -70,12 +73,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
@@ -84,6 +90,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -94,6 +101,7 @@ import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
+import kotlin.math.roundToInt
 import kotlin.time.Duration.Companion.seconds
 
 private val Black = Color(0xFF050505)
@@ -1515,13 +1523,59 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawAxisLabel(
     drawText(layout, topLeft = Offset(topLeftX, topLeftY))
 }
 
+// بطاقة السعر الصغيرة التي تتحرك مع الإصبع أثناء اللمس/السحب على الرسم
+private data class ChartTooltip(
+    val pointX: Float,
+    val pointY: Float,
+    val boxLeftX: Float,
+    val label: String,
+    val price: Double
+)
+
+private val ChartTooltipWidth = 96.dp
+
+@Composable
+private fun ChartTooltipCard(info: ChartTooltip) {
+    Column(
+        modifier = Modifier
+            .width(ChartTooltipWidth)
+            .clip(RoundedCornerShape(8.dp))
+            .border(1.dp, Border, RoundedCornerShape(8.dp))
+            .background(CardBlack)
+            .padding(horizontal = 8.dp, vertical = 6.dp)
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.CalendarMonth,
+                contentDescription = null,
+                tint = Gray,
+                modifier = Modifier.size(11.dp)
+            )
+            Text(info.label, color = White, fontSize = 10.sp, maxLines = 1)
+        }
+        Spacer(Modifier.height(3.dp))
+        Text(
+            "${fmt(info.price, 2)} ريال",
+            color = Gold,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Bold,
+            maxLines = 1
+        )
+    }
+}
+
 // رسم منحنى لعيار معيّن حول سعره الحالي، بمحور سعري مبني على basePrice
 // وتذبذب مختلف حسب seed لكل عيار وحسب الفترة المختارة — بنفس أسلوب
-// الرسم المرجعي: خط كريمي فاتح، شبكة خطوط كاملة، محور سعري يسار
-// ومحور وقت أسفل يتغيّر حسب الفترة المختارة
+// الرسم المرجعي: خط كريمي فاتح، تعبئة متدرجة تحت الخط، شبكة خطوط كاملة،
+// محور سعري يسار، ومحور وقت أسفل يتغيّر حسب الفترة المختارة. قابل للمس
+// والسحب مباشرة: يظهر خط دليل + مؤشر دائري + بطاقة سعر تتحرك مع الإصبع
 @Composable
 private fun KaratChartCanvas(modifier: Modifier, basePrice: Double, seed: Int, period: String) {
     val textMeasurer = rememberTextMeasurer()
+    val density = LocalDensity.current
     val pointCount = when (period) {
         "24 ساعة" -> 24
         "أسبوع" -> 28
@@ -1546,63 +1600,153 @@ private fun KaratChartCanvas(modifier: Modifier, basePrice: Double, seed: Int, p
     val lineColor = Color(0xFFEDE6B0)
     val xLabels = xAxisLabelsFor(period)
 
-    Canvas(modifier = modifier.padding(top = 4.dp, bottom = 24.dp)) {
-        val left = 52f
-        val right = size.width - 6f
-        val top = 6f
-        val bottom = size.height - 6f
-        val w = right - left
-        val h = bottom - top
+    var tooltip by remember(basePrice, seed, period) { mutableStateOf<ChartTooltip?>(null) }
 
-        // شبكة أفقية + تسميات سعرية (5 مستويات)
-        val priceSteps = 5
-        for (i in 0..priceSteps) {
-            val y = top + h * i / priceSteps
-            drawLine(
-                color = GoldDark.copy(alpha = 0.4f),
-                start = Offset(left, y),
-                end = Offset(right, y),
-                strokeWidth = 1f
+    Box(modifier = modifier) {
+        Canvas(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(top = 4.dp, bottom = 24.dp)
+                .pointerInput(points, xLabels) {
+                    val tooltipWidthPx = with(density) { ChartTooltipWidth.toPx() }
+
+                    fun updateTooltip(touchX: Float) {
+                        val left = 52f
+                        val right = size.width - 6f
+                        val top = 6f
+                        val bottom = size.height - 6f
+                        val w = right - left
+                        val h = bottom - top
+
+                        val clampedX = touchX.coerceIn(left, right)
+                        val index = (((clampedX - left) / w) * (points.size - 1))
+                            .roundToInt()
+                            .coerceIn(0, points.size - 1)
+
+                        val pointX = left + w * index / (points.size - 1)
+                        val pointY = bottom - h * points[index]
+                        val price = minPrice + (maxPrice - minPrice) * points[index]
+
+                        val frac = index / (points.size - 1).toFloat()
+                        val labelIndex = (frac * (xLabels.size - 1))
+                            .roundToInt()
+                            .coerceIn(0, xLabels.size - 1)
+
+                        val boxLeftX = (pointX - tooltipWidthPx / 2f)
+                            .coerceIn(0f, (size.width - tooltipWidthPx).coerceAtLeast(0f))
+
+                        tooltip = ChartTooltip(
+                            pointX = pointX,
+                            pointY = pointY,
+                            boxLeftX = boxLeftX,
+                            label = xLabels[labelIndex],
+                            price = price
+                        )
+                    }
+
+                    awaitEachGesture {
+                        val down = awaitFirstDown(requireUnconsumed = false)
+                        updateTooltip(down.position.x)
+                        drag(down.id) { change ->
+                            updateTooltip(change.position.x)
+                            change.consume()
+                        }
+                    }
+                }
+        ) {
+            val left = 52f
+            val right = size.width - 6f
+            val top = 6f
+            val bottom = size.height - 6f
+            val w = right - left
+            val h = bottom - top
+
+            // شبكة أفقية + تسميات سعرية (5 مستويات)
+            val priceSteps = 5
+            for (i in 0..priceSteps) {
+                val y = top + h * i / priceSteps
+                drawLine(
+                    color = GoldDark.copy(alpha = 0.4f),
+                    start = Offset(left, y),
+                    end = Offset(right, y),
+                    strokeWidth = 1f
+                )
+                val labelValue = maxPrice - (maxPrice - minPrice) * i / priceSteps
+                drawAxisLabel(textMeasurer, fmt(labelValue, 0), x = 0f, y = y, centered = false)
+            }
+
+            // شبكة عمودية بعدد تسميات المحور الأفقي
+            val vLines = (xLabels.size - 1).coerceAtLeast(1)
+            for (i in 0..vLines) {
+                val x = left + w * i / vLines
+                drawLine(
+                    color = GoldDark.copy(alpha = 0.3f),
+                    start = Offset(x, top),
+                    end = Offset(x, bottom),
+                    strokeWidth = 1f
+                )
+            }
+
+            val screenPoints = points.mapIndexed { index, value ->
+                Offset(
+                    x = left + w * index / (points.size - 1),
+                    y = bottom - h * value
+                )
+            }
+
+            val line = Path().apply {
+                moveTo(screenPoints.first().x, screenPoints.first().y)
+                for (i in 0 until screenPoints.size - 1) {
+                    val p0 = screenPoints[i]
+                    val p1 = screenPoints[i + 1]
+                    val midX = (p0.x + p1.x) / 2f
+                    cubicTo(midX, p0.y, midX, p1.y, p1.x, p1.y)
+                }
+            }
+
+            val fill = Path().apply {
+                addPath(line)
+                lineTo(screenPoints.last().x, bottom)
+                lineTo(screenPoints.first().x, bottom)
+                close()
+            }
+            drawPath(
+                path = fill,
+                brush = Brush.verticalGradient(
+                    colors = listOf(lineColor.copy(alpha = 0.35f), lineColor.copy(alpha = 0f)),
+                    startY = top,
+                    endY = bottom
+                )
             )
-            val labelValue = maxPrice - (maxPrice - minPrice) * i / priceSteps
-            drawAxisLabel(textMeasurer, fmt(labelValue, 0), x = 0f, y = y, centered = false)
-        }
 
-        // شبكة عمودية بعدد تسميات المحور الأفقي
-        val vLines = (xLabels.size - 1).coerceAtLeast(1)
-        for (i in 0..vLines) {
-            val x = left + w * i / vLines
-            drawLine(
-                color = GoldDark.copy(alpha = 0.3f),
-                start = Offset(x, top),
-                end = Offset(x, bottom),
-                strokeWidth = 1f
-            )
-        }
+            drawPath(path = line, color = lineColor, style = Stroke(width = 2.2f, cap = StrokeCap.Round))
 
-        val screenPoints = points.mapIndexed { index, value ->
-            Offset(
-                x = left + w * index / (points.size - 1),
-                y = bottom - h * value
-            )
-        }
+            tooltip?.let { info ->
+                drawLine(
+                    color = White.copy(alpha = 0.4f),
+                    start = Offset(info.pointX, top),
+                    end = Offset(info.pointX, bottom),
+                    strokeWidth = 1f
+                )
+                drawCircle(color = White, radius = 4f, center = Offset(info.pointX, info.pointY))
+                drawCircle(color = lineColor, radius = 2.2f, center = Offset(info.pointX, info.pointY))
+            }
 
-        val line = Path().apply {
-            moveTo(screenPoints.first().x, screenPoints.first().y)
-            for (i in 0 until screenPoints.size - 1) {
-                val p0 = screenPoints[i]
-                val p1 = screenPoints[i + 1]
-                val midX = (p0.x + p1.x) / 2f
-                cubicTo(midX, p0.y, midX, p1.y, p1.x, p1.y)
+            // تسميات محور الوقت أسفل الرسم
+            xLabels.forEachIndexed { index, label ->
+                val x = left + w * index / (xLabels.size - 1).coerceAtLeast(1)
+                drawAxisLabel(textMeasurer, label, x = x, y = bottom + 18f, centered = true)
             }
         }
 
-        drawPath(path = line, color = lineColor, style = Stroke(width = 2.2f, cap = StrokeCap.Round))
-
-        // تسميات محور الوقت أسفل الرسم
-        xLabels.forEachIndexed { index, label ->
-            val x = left + w * index / (xLabels.size - 1).coerceAtLeast(1)
-            drawAxisLabel(textMeasurer, label, x = x, y = bottom + 18f, centered = true)
+        tooltip?.let { info ->
+            Box(
+                modifier = Modifier
+                    .padding(top = 4.dp, bottom = 24.dp)
+                    .offset { IntOffset(info.boxLeftX.roundToInt(), 4) }
+            ) {
+                ChartTooltipCard(info)
+            }
         }
     }
 }
