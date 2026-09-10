@@ -51,12 +51,17 @@ import androidx.compose.material.icons.outlined.MoreHoriz
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Store
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -98,6 +103,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
 import kotlinx.datetime.DayOfWeek
+import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
@@ -161,6 +167,16 @@ private data class GoldItem(
     val notes: String
 )
 
+// رموز تشكيلية لتمثيل شكل القطعة بدل صورة فعلية (خاتم/سوار/سلسلة/سبيكة...)
+private val pieceEmojiOptions = listOf(
+    "💍" to "خاتم",
+    "⭕" to "سوار",
+    "📿" to "سلسلة",
+    "🟨" to "سبيكة",
+    "👂" to "حلق",
+    "🪙" to "عملة"
+)
+
 private fun GoldItem.toZakatItem(): ZakatItem = ZakatItem(
     name = name,
     emoji = emoji,
@@ -170,12 +186,18 @@ private fun GoldItem.toZakatItem(): ZakatItem = ZakatItem(
     statusColor = Yellow
 )
 
-private fun todayDateText(): String {
-    val date = todayLocalDate()
-    val day = date.dayOfMonth.toString().padStart(2, '0')
-    val month = date.monthNumber.toString().padStart(2, '0')
-    return "$day / $month / ${date.year}"
+private fun LocalDate.toDisplayText(): String {
+    val day = dayOfMonth.toString().padStart(2, '0')
+    val month = monthNumber.toString().padStart(2, '0')
+    return "$day / $month / $year"
 }
+
+private fun todayDateText(): String = todayLocalDate().toDisplayText()
+
+// DatePicker (Material3) يرجّع ميلي ثانية UTC لمنتصف ليل اليوم المختار،
+// فنحوّلها بتوقيت UTC نفسه تفادياً لخطأ يوم واحد بسبب فرق التوقيت المحلي
+private fun dateTextFromEpochMillis(epochMillis: Long): String =
+    Instant.fromEpochMilliseconds(epochMillis).toLocalDateTime(TimeZone.UTC).date.toDisplayText()
 
 // ==================== مواعيد الفيدرالي ====================
 private data class FedMeetingRaw(val year: Int, val month: Int, val day: Int, val time: String)
@@ -1373,12 +1395,14 @@ private fun NegotiationRow(label: String, price: Double, shopPriceWithTax: Doubl
 }
 
 // ==================== شاشة "إضافة قطعة" (تُحفظ في المحفظة والزكاة معاً) ====================
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun AddGoldItemScreen(
     onBack: () -> Unit,
     onSave: (GoldItem) -> Unit
 ) {
     var name by remember { mutableStateOf("") }
+    var selectedEmoji by remember { mutableStateOf(pieceEmojiOptions.first().first) }
     var karat by remember { mutableStateOf("21K") }
     var weight by remember { mutableDoubleStateOf(5.0) }
     var purchasePrice by remember { mutableDoubleStateOf(3000.0) }
@@ -1386,15 +1410,25 @@ private fun AddGoldItemScreen(
     var manufacturing by remember { mutableDoubleStateOf(35.0) }
     var purchaseDate by remember { mutableStateOf(todayDateText()) }
     var notes by remember { mutableStateOf("") }
+    var showDatePicker by remember { mutableStateOf(false) }
+
+    // الذهب الاستثماري عيار 24 (سبائك/عملات) معفى من ضريبة القيمة المضافة
+    // في السعودية، على عكس المشغولات (22/21/18)، فلا داعي لبلد الصنع أو
+    // خيار "شامل الضريبة" هنا أصلاً
+    val isTaxExempt = karat == "24K"
 
     val karatPrice = GoldMarket.prices.first { it.karat == karat }.price
     val currentBeforeVat = karatPrice * weight
     val currentManufacturing = manufacturing * weight
     val currentSubtotal = currentBeforeVat + currentManufacturing
-    val currentVat = currentSubtotal * 0.15
+    val currentVat = if (isTaxExempt) 0.0 else currentSubtotal * 0.15
     val currentTotal = currentSubtotal + currentVat
 
-    val purchasePriceWithTax = if (includingTax) purchasePrice else purchasePrice * 1.15
+    val purchasePriceWithTax = when {
+        isTaxExempt -> purchasePrice
+        includingTax -> purchasePrice
+        else -> purchasePrice * 1.15
+    }
     val profit = currentTotal - purchasePriceWithTax
     val profitPercent = if (purchasePriceWithTax > 0) (profit / purchasePriceWithTax) * 100.0 else 0.0
 
@@ -1455,6 +1489,39 @@ private fun AddGoldItemScreen(
 
         Spacer(Modifier.height(12.dp))
 
+        Text("شكل القطعة", color = Gray, fontSize = 10.sp)
+        Spacer(Modifier.height(6.dp))
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            pieceEmojiOptions.forEach { (emoji, label) ->
+                val selected = emoji == selectedEmoji
+                Column(
+                    modifier = Modifier
+                        .width(52.dp)
+                        .clip(RoundedCornerShape(9.dp))
+                        .border(
+                            width = if (selected) 1.5.dp else 1.dp,
+                            color = if (selected) Gold else Border,
+                            shape = RoundedCornerShape(9.dp)
+                        )
+                        .background(if (selected) GoldDark.copy(alpha = 0.2f) else Color.Transparent)
+                        .clickable { selectedEmoji = emoji }
+                        .padding(vertical = 8.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(emoji, fontSize = 18.sp)
+                    Spacer(Modifier.height(2.dp))
+                    Text(label, color = if (selected) Gold else Gray, fontSize = 8.sp, maxLines = 1)
+                }
+            }
+        }
+
+        Spacer(Modifier.height(12.dp))
+
         Text("العيار", color = Gray, fontSize = 10.sp)
         Spacer(Modifier.height(6.dp))
         Row(
@@ -1498,6 +1565,32 @@ private fun AddGoldItemScreen(
 
         Spacer(Modifier.height(12.dp))
 
+        // بلد الصنع مرتبط بالمشغولات فقط (22/21/18)؛ ذهب 24 عيار الاستثماري
+        // معفى من الضريبة أصلاً فلا داعي له
+        if (!isTaxExempt) {
+            Text("بلد الصنع", color = Gray, fontSize = 10.sp)
+            Spacer(Modifier.height(6.dp))
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(42.dp)
+                    .clip(RoundedCornerShape(9.dp))
+                    .border(1.dp, Border, RoundedCornerShape(9.dp))
+                    .padding(horizontal = 12.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("السعودية", color = White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                Icon(
+                    imageVector = Icons.Outlined.Language,
+                    contentDescription = null,
+                    tint = Gray,
+                    modifier = Modifier.size(15.dp)
+                )
+            }
+            Spacer(Modifier.height(12.dp))
+        }
+
         Text("سعر الشراء (ريال)", color = Gray, fontSize = 10.sp)
         Spacer(Modifier.height(6.dp))
         NumericInputField(
@@ -1512,23 +1605,28 @@ private fun AddGoldItemScreen(
                 .border(1.dp, Border, RoundedCornerShape(9.dp))
         )
 
-        Spacer(Modifier.height(10.dp))
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Switch(
-                checked = includingTax,
-                onCheckedChange = { includingTax = it },
-                colors = SwitchDefaults.colors(
-                    checkedThumbColor = Black,
-                    checkedTrackColor = Gold,
-                    uncheckedThumbColor = Gray,
-                    uncheckedTrackColor = CardBlack
+        if (!isTaxExempt) {
+            Spacer(Modifier.height(10.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Switch(
+                    checked = includingTax,
+                    onCheckedChange = { includingTax = it },
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = Black,
+                        checkedTrackColor = Gold,
+                        uncheckedThumbColor = Gray,
+                        uncheckedTrackColor = CardBlack
+                    )
                 )
-            )
-            Text("السعر شامل الضريبة؟", color = White, fontSize = 12.sp)
+                Text("السعر شامل الضريبة؟", color = White, fontSize = 12.sp)
+            }
+        } else {
+            Spacer(Modifier.height(6.dp))
+            Text("ذهب استثماري 24 عيار — معفى من الضريبة", color = Gray, fontSize = 9.sp)
         }
 
         Spacer(Modifier.height(12.dp))
@@ -1562,6 +1660,7 @@ private fun AddGoldItemScreen(
                 .height(42.dp)
                 .clip(RoundedCornerShape(9.dp))
                 .border(1.dp, Border, RoundedCornerShape(9.dp))
+                .clickable { showDatePicker = true }
                 .padding(horizontal = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -1572,14 +1671,7 @@ private fun AddGoldItemScreen(
                 modifier = Modifier.size(14.dp)
             )
             Spacer(Modifier.width(6.dp))
-            BasicTextField(
-                value = purchaseDate,
-                onValueChange = { purchaseDate = it },
-                singleLine = true,
-                textStyle = TextStyle(color = White, fontSize = 12.sp),
-                cursorBrush = SolidColor(Gold),
-                modifier = Modifier.weight(1f)
-            )
+            Text(purchaseDate, color = White, fontSize = 12.sp, modifier = Modifier.weight(1f))
         }
 
         Spacer(Modifier.height(12.dp))
@@ -1635,7 +1727,11 @@ private fun AddGoldItemScreen(
             Spacer(Modifier.height(10.dp))
             CalculatorRow("قيمة الذهب (بدون مصنعية)", "${fmt(currentBeforeVat, 2, grouped = true)} ريال")
             CalculatorRow("قيمة المصنعية", "${fmt(currentManufacturing, 2, grouped = true)} ريال")
-            CalculatorRow("ضريبة القيمة المضافة (15%)", "${fmt(currentVat, 2, grouped = true)} ريال")
+            if (isTaxExempt) {
+                CalculatorRow("ضريبة القيمة المضافة", "معفى")
+            } else {
+                CalculatorRow("ضريبة القيمة المضافة (15%)", "${fmt(currentVat, 2, grouped = true)} ريال")
+            }
 
             Spacer(Modifier.height(6.dp))
             Box(
@@ -1705,7 +1801,7 @@ private fun AddGoldItemScreen(
                         onSave(
                             GoldItem(
                                 name = finalName,
-                                emoji = "🔶",
+                                emoji = selectedEmoji,
                                 karat = karat,
                                 weightGrams = weight,
                                 purchasePriceWithTax = purchasePriceWithTax,
@@ -1722,6 +1818,30 @@ private fun AddGoldItemScreen(
         }
 
         Spacer(Modifier.height(16.dp))
+    }
+
+    if (showDatePicker) {
+        val datePickerState = rememberDatePickerState()
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    datePickerState.selectedDateMillis?.let { millis ->
+                        purchaseDate = dateTextFromEpochMillis(millis)
+                    }
+                    showDatePicker = false
+                }) {
+                    Text("موافق")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePicker = false }) {
+                    Text("إلغاء")
+                }
+            }
+        ) {
+            DatePicker(state = datePickerState)
+        }
     }
 }
 
