@@ -148,6 +148,35 @@ private val zakatItems = listOf(
     ZakatItem("سبيكة", "🟨", "24K", 26.00, "متبقي 60 يوماً", Yellow)
 )
 
+// قطعة ذهب أضافها المستخدم بنفسه عبر شاشة "إضافة قطعة" — تظهر في المحفظة
+// وفي الزكاة معاً (نفس الصنف بنفس البيانات)، بسعر يُحسب حياً من GoldMarket
+private data class GoldItem(
+    val name: String,
+    val emoji: String,
+    val karat: String,
+    val weightGrams: Double,
+    val purchasePriceWithTax: Double,
+    val manufacturingPerGram: Double,
+    val purchaseDate: String,
+    val notes: String
+)
+
+private fun GoldItem.toZakatItem(): ZakatItem = ZakatItem(
+    name = name,
+    emoji = emoji,
+    karat = karat,
+    weightGrams = weightGrams,
+    statusLabel = "لم يُحسب بعد",
+    statusColor = Yellow
+)
+
+private fun todayDateText(): String {
+    val date = todayLocalDate()
+    val day = date.dayOfMonth.toString().padStart(2, '0')
+    val month = date.monthNumber.toString().padStart(2, '0')
+    return "$day / $month / ${date.year}"
+}
+
 // ==================== مواعيد الفيدرالي ====================
 private data class FedMeetingRaw(val year: Int, val month: Int, val day: Int, val time: String)
 
@@ -229,7 +258,9 @@ private fun GoldVisionApp() {
     var selectedBottom by remember { mutableIntStateOf(0) }
     var showChartFull by remember { mutableStateOf(false) }
     var showDealEvaluator by remember { mutableStateOf(false) }
+    var showAddGoldItem by remember { mutableStateOf(false) }
     val savedDeals = remember { mutableStateListOf<SavedDeal>() }
+    val savedGoldItems = remember { mutableStateListOf<GoldItem>() }
 
     var liveTimeText by remember { mutableStateOf(currentDateTimeText()) }
     LaunchedEffect(Unit) {
@@ -279,6 +310,14 @@ private fun GoldVisionApp() {
                     onBack = { showDealEvaluator = false },
                     onSaveDeal = { deal -> savedDeals.add(0, deal) }
                 )
+            } else if (showAddGoldItem) {
+                AddGoldItemScreen(
+                    onBack = { showAddGoldItem = false },
+                    onSave = { item ->
+                        savedGoldItems.add(0, item)
+                        showAddGoldItem = false
+                    }
+                )
             } else {
                 when (selectedBottom) {
                     0 -> HomeScreen(
@@ -297,6 +336,7 @@ private fun GoldVisionApp() {
                         vat = vat,
                         total = total,
                         fedRows = fedRows,
+                        savedGoldItems = savedGoldItems,
                         onNavigateCalculator = { selectedBottom = 1 },
                         onNavigateChart = { showChartFull = true },
                         onNavigateNews = { selectedBottom = 2 },
@@ -318,8 +358,14 @@ private fun GoldVisionApp() {
                         savedDeals = savedDeals
                     )
                     2 -> NewsScreen()
-                    3 -> PortfolioScreen()
-                    4 -> ZakatScreen()
+                    3 -> PortfolioScreen(
+                        savedItems = savedGoldItems,
+                        onNavigateAddItem = { showAddGoldItem = true }
+                    )
+                    4 -> ZakatScreen(
+                        savedItems = savedGoldItems,
+                        onNavigateAddItem = { showAddGoldItem = true }
+                    )
                     5 -> MoreScreen()
                 }
             }
@@ -330,6 +376,7 @@ private fun GoldVisionApp() {
             onSelected = { index ->
                 showChartFull = false
                 showDealEvaluator = false
+                showAddGoldItem = false
                 selectedBottom = index
             }
         )
@@ -354,6 +401,7 @@ private fun HomeScreen(
     vat: Double,
     total: Double,
     fedRows: List<Triple<String, String, String>>,
+    savedGoldItems: List<GoldItem>,
     onNavigateCalculator: () -> Unit,
     onNavigateChart: () -> Unit,
     onNavigateNews: () -> Unit,
@@ -435,7 +483,12 @@ private fun HomeScreen(
         Spacer(Modifier.height(4.dp))
 
         Box(modifier = Modifier.clickable { onNavigatePortfolio() }) {
-            PortfolioSummary()
+            val homeTotals = portfolioTotals(savedGoldItems)
+            PortfolioSummary(
+                totalValue = homeTotals.totalValue,
+                itemCount = homeTotals.itemCount,
+                totalWeight = homeTotals.totalWeight
+            )
         }
 
         Spacer(Modifier.height(6.dp))
@@ -1317,6 +1370,359 @@ private fun NegotiationRow(label: String, price: Double, shopPriceWithTax: Doubl
     }
 }
 
+// ==================== شاشة "إضافة قطعة" (تُحفظ في المحفظة والزكاة معاً) ====================
+@Composable
+private fun AddGoldItemScreen(
+    onBack: () -> Unit,
+    onSave: (GoldItem) -> Unit
+) {
+    var name by remember { mutableStateOf("") }
+    var karat by remember { mutableStateOf("21K") }
+    var weight by remember { mutableDoubleStateOf(5.0) }
+    var purchasePrice by remember { mutableDoubleStateOf(3000.0) }
+    var includingTax by remember { mutableStateOf(true) }
+    var manufacturing by remember { mutableDoubleStateOf(35.0) }
+    var purchaseDate by remember { mutableStateOf(todayDateText()) }
+    var notes by remember { mutableStateOf("") }
+
+    val karatPrice = GoldMarket.prices.first { it.karat == karat }.price
+    val currentBeforeVat = karatPrice * weight
+    val currentManufacturing = manufacturing * weight
+    val currentSubtotal = currentBeforeVat + currentManufacturing
+    val currentVat = currentSubtotal * 0.15
+    val currentTotal = currentSubtotal + currentVat
+
+    val purchasePriceWithTax = if (includingTax) purchasePrice else purchasePrice * 1.15
+    val profit = currentTotal - purchasePriceWithTax
+    val profitPercent = if (purchasePriceWithTax > 0) (profit / purchasePriceWithTax) * 100.0 else 0.0
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 14.dp, vertical = 8.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
+                contentDescription = "رجوع",
+                tint = Gold,
+                modifier = Modifier
+                    .size(22.dp)
+                    .clickable { onBack() }
+            )
+            Text(
+                "إضافة قطعة",
+                color = White,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.weight(1f)
+            )
+            Spacer(Modifier.size(22.dp))
+        }
+
+        Spacer(Modifier.height(16.dp))
+
+        Text("اسم القطعة", color = Gray, fontSize = 10.sp)
+        Spacer(Modifier.height(6.dp))
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(42.dp)
+                .clip(RoundedCornerShape(9.dp))
+                .border(1.dp, Border, RoundedCornerShape(9.dp))
+                .padding(horizontal = 12.dp),
+            contentAlignment = Alignment.CenterStart
+        ) {
+            if (name.isEmpty()) {
+                Text("مثال: خاتم - سوار - سبيكة", color = Gray, fontSize = 12.sp)
+            }
+            BasicTextField(
+                value = name,
+                onValueChange = { name = it },
+                singleLine = true,
+                textStyle = TextStyle(color = White, fontSize = 12.sp),
+                cursorBrush = SolidColor(Gold),
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+
+        Spacer(Modifier.height(12.dp))
+
+        Text("العيار", color = Gray, fontSize = 10.sp)
+        Spacer(Modifier.height(6.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            listOf("24K", "22K", "21K", "18K").forEach { k ->
+                ChoiceButton(
+                    text = karatLabel(k),
+                    selected = k == karat,
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(40.dp)
+                ) { karat = k }
+            }
+        }
+
+        Spacer(Modifier.height(12.dp))
+
+        Text("الوزن (جرام)", color = Gray, fontSize = 10.sp)
+        Spacer(Modifier.height(6.dp))
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(42.dp)
+                .clip(RoundedCornerShape(9.dp))
+                .border(1.dp, Border, RoundedCornerShape(9.dp)),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            SmallActionButton("−") { weight = (weight - 1).coerceAtLeast(0.1) }
+            NumericInputField(
+                value = weight,
+                onValueChanged = { weight = it },
+                fontSize = 16.sp,
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+            )
+            SmallActionButton("+") { weight += 1 }
+        }
+
+        Spacer(Modifier.height(12.dp))
+
+        Text("سعر الشراء (ريال)", color = Gray, fontSize = 10.sp)
+        Spacer(Modifier.height(6.dp))
+        NumericInputField(
+            value = purchasePrice,
+            onValueChanged = { purchasePrice = it },
+            fontSize = 18.sp,
+            minValue = 0.0,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(42.dp)
+                .clip(RoundedCornerShape(9.dp))
+                .border(1.dp, Border, RoundedCornerShape(9.dp))
+        )
+
+        Spacer(Modifier.height(10.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Switch(
+                checked = includingTax,
+                onCheckedChange = { includingTax = it },
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = Black,
+                    checkedTrackColor = Gold,
+                    uncheckedThumbColor = Gray,
+                    uncheckedTrackColor = CardBlack
+                )
+            )
+            Text("السعر شامل الضريبة؟", color = White, fontSize = 12.sp)
+        }
+
+        Spacer(Modifier.height(12.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text("المصنعية (للجرام) ريال", color = White, fontSize = 10.sp)
+            NumericInputField(
+                value = manufacturing,
+                onValueChanged = { manufacturing = it.coerceAtMost(500.0) },
+                fontSize = 12.sp,
+                minValue = 0.0,
+                modifier = Modifier
+                    .width(70.dp)
+                    .height(30.dp)
+                    .clip(RoundedCornerShape(6.dp))
+                    .border(1.dp, Border, RoundedCornerShape(6.dp))
+            )
+        }
+
+        Spacer(Modifier.height(12.dp))
+
+        Text("تاريخ الشراء", color = Gray, fontSize = 10.sp)
+        Spacer(Modifier.height(6.dp))
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(42.dp)
+                .clip(RoundedCornerShape(9.dp))
+                .border(1.dp, Border, RoundedCornerShape(9.dp))
+                .padding(horizontal = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.CalendarMonth,
+                contentDescription = null,
+                tint = Gold,
+                modifier = Modifier.size(14.dp)
+            )
+            Spacer(Modifier.width(6.dp))
+            BasicTextField(
+                value = purchaseDate,
+                onValueChange = { purchaseDate = it },
+                singleLine = true,
+                textStyle = TextStyle(color = White, fontSize = 12.sp),
+                cursorBrush = SolidColor(Gold),
+                modifier = Modifier.weight(1f)
+            )
+        }
+
+        Spacer(Modifier.height(12.dp))
+
+        Text("ملاحظات (اختياري)", color = Gray, fontSize = 10.sp)
+        Spacer(Modifier.height(6.dp))
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(42.dp)
+                .clip(RoundedCornerShape(9.dp))
+                .border(1.dp, Border, RoundedCornerShape(9.dp))
+                .padding(horizontal = 12.dp),
+            contentAlignment = Alignment.CenterStart
+        ) {
+            if (notes.isEmpty()) {
+                Text("اكتب ملاحظة...", color = Gray, fontSize = 12.sp)
+            }
+            BasicTextField(
+                value = notes,
+                onValueChange = { notes = it },
+                singleLine = true,
+                textStyle = TextStyle(color = White, fontSize = 12.sp),
+                cursorBrush = SolidColor(Gold),
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+
+        Spacer(Modifier.height(16.dp))
+
+        // ---- بطاقة معاينة القيمة الحالية (محسوبة من السعر العالمي الحي) ----
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(12.dp))
+                .border(1.dp, Border, RoundedCornerShape(12.dp))
+                .background(CardBlack)
+                .padding(14.dp)
+        ) {
+            Text("معاينة القيمة الحالية", color = White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(10.dp))
+
+            Column {
+                Text("سعر جرام الذهب (${karatLabel(karat)})", color = Gray, fontSize = 9.sp)
+                Text(
+                    "${fmt(karatPrice, 2)} ريال",
+                    color = Gold,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+
+            Spacer(Modifier.height(10.dp))
+            CalculatorRow("قيمة الذهب (بدون مصنعية)", "${fmt(currentBeforeVat, 2, grouped = true)} ريال")
+            CalculatorRow("قيمة المصنعية", "${fmt(currentManufacturing, 2, grouped = true)} ريال")
+            CalculatorRow("ضريبة القيمة المضافة (15%)", "${fmt(currentVat, 2, grouped = true)} ريال")
+
+            Spacer(Modifier.height(6.dp))
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(1.dp)
+                    .background(Border)
+            )
+            Spacer(Modifier.height(10.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("القيمة الحالية للقطعة", color = Gold, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                Text(
+                    "${fmt(currentTotal, 2, grouped = true)} ريال",
+                    color = Gold,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+
+            Spacer(Modifier.height(8.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("الربح / الخسارة الحالية", color = Gray, fontSize = 10.sp)
+                Text(
+                    "${if (profit >= 0) "+" else ""}${fmt(profit, 2, grouped = true)} ريال (${fmt(profitPercent, 2)}%)",
+                    color = if (profit >= 0) Green else Red,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+
+        Spacer(Modifier.height(16.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(48.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .border(1.dp, Border, RoundedCornerShape(10.dp))
+                    .clickable { onBack() },
+                contentAlignment = Alignment.Center
+            ) {
+                Text("إلغاء", color = Gray, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+            }
+            Box(
+                modifier = Modifier
+                    .weight(2f)
+                    .height(48.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(Gold)
+                    .clickable {
+                        val finalName = name.trim().ifEmpty { "قطعة ذهب" }
+                        onSave(
+                            GoldItem(
+                                name = finalName,
+                                emoji = "🔶",
+                                karat = karat,
+                                weightGrams = weight,
+                                purchasePriceWithTax = purchasePriceWithTax,
+                                manufacturingPerGram = manufacturing,
+                                purchaseDate = purchaseDate,
+                                notes = notes
+                            )
+                        )
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                Text("حفظ في المحفظة", color = Black, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+            }
+        }
+
+        Spacer(Modifier.height(16.dp))
+    }
+}
+
 // ==================== شاشة الرسم البياني الكاملة ====================
 private val chartPeriods = listOf("24 ساعة", "أسبوع", "شهر", "3 شهور", "6 شهور", "سنة", "سنتان", "5 سنين")
 
@@ -1815,8 +2221,34 @@ private val portfolioItems = listOf(
     PortfolioItem("أقراط ذهب", "21K", 2.0, 706.56)
 )
 
+// يحسب القيمة الحالية لقطعة أضافها المستخدم بسعر السوق الحي (ذهب + مصنعية + ضريبة)
+private fun GoldItem.currentValue(): Double {
+    val pricePerGram = GoldMarket.prices.first { it.karat == karat }.price
+    val beforeVat = pricePerGram * weightGrams
+    val manufacturingValue = manufacturingPerGram * weightGrams
+    val subtotal = beforeVat + manufacturingValue
+    return subtotal + subtotal * 0.15
+}
+
+// إجمالي المحفظة: أصناف العرض التوضيحي الثابتة + كل قطعة أضافها المستخدم
+private data class PortfolioTotals(val totalValue: Double, val itemCount: Int, val totalWeight: Double)
+
+private fun portfolioTotals(savedItems: List<GoldItem>): PortfolioTotals = PortfolioTotals(
+    totalValue = portfolioItems.sumOf { it.valueRiyal } + savedItems.sumOf { it.currentValue() },
+    itemCount = portfolioItems.size + savedItems.size,
+    totalWeight = portfolioItems.sumOf { it.weightGrams } + savedItems.sumOf { it.weightGrams }
+)
+
 @Composable
-private fun PortfolioScreen() {
+private fun PortfolioScreen(
+    savedItems: List<GoldItem>,
+    onNavigateAddItem: () -> Unit
+) {
+    val savedValues = savedItems.map { it to it.currentValue() }
+    val totalValue = portfolioItems.sumOf { it.valueRiyal } + savedValues.sumOf { it.second }
+    val totalWeight = portfolioItems.sumOf { it.weightGrams } + savedItems.sumOf { it.weightGrams }
+    val itemCount = portfolioItems.size + savedItems.size
+
     Column(modifier = Modifier.fillMaxSize()) {
         Text(
             "المحفظة",
@@ -1827,7 +2259,30 @@ private fun PortfolioScreen() {
         )
 
         Box(modifier = Modifier.padding(horizontal = 12.dp)) {
-            PortfolioSummary()
+            PortfolioSummary(totalValue = totalValue, itemCount = itemCount, totalWeight = totalWeight)
+        }
+
+        Spacer(Modifier.height(8.dp))
+
+        Box(modifier = Modifier.padding(horizontal = 12.dp)) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(42.dp)
+                    .clip(RoundedCornerShape(9.dp))
+                    .border(1.dp, Gold, RoundedCornerShape(9.dp))
+                    .clickable { onNavigateAddItem() },
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Text("إضافة قطعة", color = Gold, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    Text("+", color = Gold, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                }
+            }
         }
 
         Spacer(Modifier.height(8.dp))
@@ -1838,6 +2293,44 @@ private fun PortfolioScreen() {
                 .padding(horizontal = 12.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
+            items(savedValues) { (item, value) ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(9.dp))
+                        .border(1.dp, Border, RoundedCornerShape(9.dp))
+                        .background(CardBlack)
+                        .padding(10.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Box(
+                            modifier = Modifier
+                                .size(26.dp)
+                                .clip(RoundedCornerShape(13.dp))
+                                .background(GoldDark.copy(alpha = 0.25f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(item.emoji, fontSize = 12.sp)
+                        }
+                        Column {
+                            Text(item.name, color = White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                            Text(
+                                "${item.karat} • ${fmt(item.weightGrams, 2)} جرام",
+                                color = Gray,
+                                fontSize = 10.sp
+                            )
+                        }
+                    }
+                    Text(
+                        "${fmt(value, 2, grouped = true)} ريال",
+                        color = Gold,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
             items(portfolioItems) { product ->
                 Row(
                     modifier = Modifier
@@ -1872,18 +2365,22 @@ private fun PortfolioScreen() {
 
 // ==================== شاشة الزكاة الكاملة ====================
 @Composable
-private fun ZakatScreen() {
+private fun ZakatScreen(
+    savedItems: List<GoldItem>,
+    onNavigateAddItem: () -> Unit
+) {
     var zakatPercent by remember { mutableDoubleStateOf(2.5) }
     var showAllItems by remember { mutableStateOf(true) }
     var currentZakatDate by remember { mutableStateOf("10 / 05 / 2025") }
     var previousZakatDate by remember { mutableStateOf("15 / 05 / 2024") }
 
-    val displayedItems = if (showAllItems) zakatItems else zakatItems.take(3)
+    val allZakatItems = zakatItems + savedItems.map { it.toZakatItem() }
+    val displayedItems = if (showAllItems) allZakatItems else allZakatItems.take(3)
 
-    val totalGoldValue = zakatItems.sumOf { item ->
+    val totalGoldValue = allZakatItems.sumOf { item ->
         GoldMarket.prices.first { it.karat == item.karat }.price * item.weightGrams
     }
-    val totalWeight = zakatItems.sumOf { it.weightGrams }
+    val totalWeight = allZakatItems.sumOf { it.weightGrams }
     val nisabGrams = 85.0
     val nisabValue = GoldMarket.prices.first { it.karat == "24K" }.price * nisabGrams
     val exceedsNisab = totalWeight >= nisabGrams || totalGoldValue >= nisabValue
@@ -2145,7 +2642,8 @@ private fun ZakatScreen() {
                     .fillMaxWidth()
                     .height(44.dp)
                     .clip(RoundedCornerShape(9.dp))
-                    .border(1.dp, Gold, RoundedCornerShape(9.dp)),
+                    .border(1.dp, Gold, RoundedCornerShape(9.dp))
+                    .clickable { onNavigateAddItem() },
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -3451,7 +3949,7 @@ private fun FedSchedule(rows: List<Triple<String, String, String>>) {
 
 // ==================== شريط ملخص المحفظة ====================
 @Composable
-private fun PortfolioSummary() {
+private fun PortfolioSummary(totalValue: Double, itemCount: Int, totalWeight: Double) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -3463,21 +3961,21 @@ private fun PortfolioSummary() {
     ) {
         SummaryItem(
             title = "قيمة المحفظة",
-            value = "12,450.75 ريال",
-            extra = "▲ 2.35%",
-            valueColor = Green
+            value = "${fmt(totalValue, 2, grouped = true)} ريال",
+            extra = "",
+            valueColor = Gold
         )
         DividerVertical()
         SummaryItem(
             title = "عدد المنتجات",
-            value = "6 منتجات",
+            value = "$itemCount منتجات",
             extra = "",
             valueColor = White
         )
         DividerVertical()
         SummaryItem(
             title = "إجمالي الوزن",
-            value = "35.28 جرام",
+            value = "${fmt(totalWeight, 2)} جرام",
             extra = "",
             valueColor = White
         )
