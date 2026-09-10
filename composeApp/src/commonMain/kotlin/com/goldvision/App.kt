@@ -108,6 +108,7 @@ import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
+import kotlinx.datetime.daysUntil
 import kotlinx.datetime.toLocalDateTime
 import kotlin.math.roundToInt
 import kotlin.time.Duration.Companion.seconds
@@ -145,15 +146,14 @@ private data class ZakatItem(
     val emoji: String,
     val karat: String,
     val weightGrams: Double,
-    val statusLabel: String,
-    val statusColor: Color
+    val purchaseDate: String
 )
 
 private val zakatItems = listOf(
-    ZakatItem("خاتم", "💍", "21K", 5.00, "تم الدفع", Green),
-    ZakatItem("سلسلة", "📿", "21K", 15.30, "تم الدفع", Green),
-    ZakatItem("سوار", "⭕", "22K", 20.00, "متبقي 60 يوماً", Yellow),
-    ZakatItem("سبيكة", "🟨", "24K", 26.00, "متبقي 60 يوماً", Yellow)
+    ZakatItem("خاتم", "💍", "21K", 5.00, "10 / 01 / 2023"),
+    ZakatItem("سلسلة", "📿", "21K", 15.30, "10 / 01 / 2023"),
+    ZakatItem("سوار", "⭕", "22K", 20.00, "05 / 08 / 2025"),
+    ZakatItem("سبيكة", "🟨", "24K", 26.00, "20 / 08 / 2025")
 )
 
 // قطعة ذهب أضافها المستخدم بنفسه عبر شاشة "إضافة قطعة" — تظهر في المحفظة
@@ -184,8 +184,7 @@ private fun GoldItem.toZakatItem(): ZakatItem = ZakatItem(
     emoji = emoji,
     karat = karat,
     weightGrams = weightGrams,
-    statusLabel = "لم يُحسب بعد",
-    statusColor = Yellow
+    purchaseDate = purchaseDate
 )
 
 private fun LocalDate.toDisplayText(): String {
@@ -200,6 +199,46 @@ private fun todayDateText(): String = todayLocalDate().toDisplayText()
 // فنحوّلها بتوقيت UTC نفسه تفادياً لخطأ يوم واحد بسبب فرق التوقيت المحلي
 private fun dateTextFromEpochMillis(epochMillis: Long): String =
     Instant.fromEpochMilliseconds(epochMillis).toLocalDateTime(TimeZone.UTC).date.toDisplayText()
+
+private fun parseDisplayDate(text: String): LocalDate? {
+    val parts = text.split("/").map { it.trim() }
+    if (parts.size != 3) return null
+    val day = parts[0].toIntOrNull() ?: return null
+    val month = parts[1].toIntOrNull() ?: return null
+    val year = parts[2].toIntOrNull() ?: return null
+    return try {
+        LocalDate(year, month, day)
+    } catch (e: IllegalArgumentException) {
+        null
+    }
+}
+
+// الحول الهجري (القمري) الكامل ≈ 354 يوماً، يُستخدم كتقريب عملي لمرور
+// الحول بدل تقويم هجري كامل (غير متوفر في kotlinx-datetime)
+private const val HAWL_DAYS = 354
+
+private fun daysSincePurchase(purchaseDateText: String): Int {
+    val purchaseDate = parseDisplayDate(purchaseDateText) ?: return 0
+    return purchaseDate.daysUntil(todayLocalDate()).coerceAtLeast(0)
+}
+
+private data class ZakatStatus(val label: String, val color: Color, val caption: String)
+
+// حالة كل قطعة تُبنى من شرطين معاً: مرور الحول منذ تاريخ الشراء، وبلوغ
+// إجمالي محفظة الذهب النصاب الشرعي (exceedsNisab يُحسب على مستوى الشاشة
+// كاملة وليس لكل قطعة على حدة، لأن النصاب شرط إجمالي لكل ما يملكه الشخص)
+private fun zakatStatusFor(purchaseDateText: String, exceedsNisab: Boolean): ZakatStatus {
+    val daysElapsed = daysSincePurchase(purchaseDateText)
+    val hawlCompleted = daysElapsed >= HAWL_DAYS
+    return when {
+        hawlCompleted && exceedsNisab ->
+            ZakatStatus("وجب عليه الزكاة", Green, "منذ ${(daysElapsed / 30).coerceAtLeast(1)} شهراً تقريباً")
+        hawlCompleted ->
+            ZakatStatus("وقت الزكاة", Green, "حال عليه الحول")
+        else ->
+            ZakatStatus("متبقي ${HAWL_DAYS - daysElapsed} يوماً", Gray, "لم يكتمل الحول بعد")
+    }
+}
 
 // ==================== مواعيد الفيدرالي ====================
 private data class FedMeetingRaw(val year: Int, val month: Int, val day: Int, val time: String)
@@ -2503,6 +2542,7 @@ private fun PortfolioScreen(
 }
 
 // ==================== شاشة الزكاة الكاملة ====================
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ZakatScreen(
     savedItems: List<GoldItem>,
@@ -2515,17 +2555,35 @@ private fun ZakatScreen(
     var showZakatInfo by remember { mutableStateOf(false) }
 
     // أوزان الذهب المملوكة لكل عيار، تُدخل يدوياً أو تُملأ تلقائياً من
-    // القطع المحفوظة في المحفظة عبر زر "استخدام الأوزان الموجودة في المحفظة"
+    // القطع المحفوظة في المحفظة عبر زر "استخدام الأوزان الموجودة في المحفظة"،
+    // مع تاريخ شراء لكل عيار يُستخدم لحساب مرور الحول
     var weight24 by remember { mutableDoubleStateOf(0.0) }
     var weight22 by remember { mutableDoubleStateOf(0.0) }
     var weight21 by remember { mutableDoubleStateOf(0.0) }
     var weight18 by remember { mutableDoubleStateOf(0.0) }
+    var date24 by remember { mutableStateOf(todayDateText()) }
+    var date22 by remember { mutableStateOf(todayDateText()) }
+    var date21 by remember { mutableStateOf(todayDateText()) }
+    var date18 by remember { mutableStateOf(todayDateText()) }
+    var activeDateKarat by remember { mutableStateOf<String?>(null) }
+
+    fun earliestPurchaseDate(karat: String): String =
+        savedItems
+            .filter { it.karat == karat }
+            .mapNotNull { parseDisplayDate(it.purchaseDate) }
+            .minOrNull()
+            ?.toDisplayText()
+            ?: todayDateText()
 
     fun fillWeightsFromPortfolio() {
         weight24 = savedItems.filter { it.karat == "24K" }.sumOf { it.weightGrams }
         weight22 = savedItems.filter { it.karat == "22K" }.sumOf { it.weightGrams }
         weight21 = savedItems.filter { it.karat == "21K" }.sumOf { it.weightGrams }
         weight18 = savedItems.filter { it.karat == "18K" }.sumOf { it.weightGrams }
+        date24 = earliestPurchaseDate("24K")
+        date22 = earliestPurchaseDate("22K")
+        date21 = earliestPurchaseDate("21K")
+        date18 = earliestPurchaseDate("18K")
     }
 
     val allZakatItems = zakatItems + savedItems.map { it.toZakatItem() }
@@ -2575,6 +2633,50 @@ private fun ZakatScreen(
                     .size(20.dp)
                     .clickable { showZakatInfo = true }
             )
+        }
+
+        Spacer(Modifier.height(10.dp))
+
+        // ---- صندوق النصاب البارز: يتحدث حياً مع سعر الذهب العالمي ----
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(12.dp))
+                .border(1.dp, Border, RoundedCornerShape(12.dp))
+                .background(CardBlack)
+                .clickable { showZakatInfo = true }
+                .padding(vertical = 12.dp, horizontal = 14.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(22.dp)
+                    .clip(RoundedCornerShape(11.dp))
+                    .border(1.dp, Gold, RoundedCornerShape(11.dp)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Info,
+                    contentDescription = "معلومات عن نصاب الزكاة",
+                    tint = Gold,
+                    modifier = Modifier.size(12.dp)
+                )
+            }
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.weight(1f)
+            ) {
+                Text("نصاب الزكاة (85 جم ذهب عيار 24)", color = Gray, fontSize = 10.sp)
+                Text(
+                    "${fmt(nisabValue, 2, grouped = true)} ريال",
+                    color = Gold,
+                    fontSize = 21.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Text("يتحدّث مباشرة مع سعر الذهب العالمي", color = Gray, fontSize = 8.5.sp)
+            }
+            Spacer(Modifier.width(22.dp))
         }
 
         Spacer(Modifier.height(10.dp))
@@ -2681,10 +2783,10 @@ private fun ZakatScreen(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                ZakatKaratWeightInput("24K", weight24) { weight24 = it }
-                ZakatKaratWeightInput("22K", weight22) { weight22 = it }
-                ZakatKaratWeightInput("21K", weight21) { weight21 = it }
-                ZakatKaratWeightInput("18K", weight18) { weight18 = it }
+                ZakatKaratWeightInput("24K", weight24, date24, onDateClick = { activeDateKarat = "24K" }) { weight24 = it }
+                ZakatKaratWeightInput("22K", weight22, date22, onDateClick = { activeDateKarat = "22K" }) { weight22 = it }
+                ZakatKaratWeightInput("21K", weight21, date21, onDateClick = { activeDateKarat = "21K" }) { weight21 = it }
+                ZakatKaratWeightInput("18K", weight18, date18, onDateClick = { activeDateKarat = "18K" }) { weight18 = it }
             }
 
             Spacer(Modifier.height(12.dp))
@@ -2854,7 +2956,7 @@ private fun ZakatScreen(
             )
 
             displayedItems.forEach { item ->
-                ZakatItemRow(item = item, zakatPercent = zakatPercent)
+                ZakatItemRow(item = item, zakatPercent = zakatPercent, exceedsNisab = exceedsNisab)
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -3120,6 +3222,36 @@ private fun ZakatScreen(
             }
         }
     }
+
+    activeDateKarat?.let { karat ->
+        val datePickerState = rememberDatePickerState()
+        DatePickerDialog(
+            onDismissRequest = { activeDateKarat = null },
+            confirmButton = {
+                TextButton(onClick = {
+                    datePickerState.selectedDateMillis?.let { millis ->
+                        val text = dateTextFromEpochMillis(millis)
+                        when (karat) {
+                            "24K" -> date24 = text
+                            "22K" -> date22 = text
+                            "21K" -> date21 = text
+                            "18K" -> date18 = text
+                        }
+                    }
+                    activeDateKarat = null
+                }) {
+                    Text("موافق")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { activeDateKarat = null }) {
+                    Text("إلغاء")
+                }
+            }
+        ) {
+            DatePicker(state = datePickerState)
+        }
+    }
 }
 
 @Composable
@@ -3150,7 +3282,13 @@ private fun ZakatDetailItem(title: String, value: String, unit: String, modifier
 }
 
 @Composable
-private fun ZakatKaratWeightInput(karat: String, value: Double, onValueChanged: (Double) -> Unit) {
+private fun ZakatKaratWeightInput(
+    karat: String,
+    value: Double,
+    dateText: String,
+    onDateClick: () -> Unit,
+    onValueChanged: (Double) -> Unit
+) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(karatLabel(karat).removeSuffix(" عيار"), color = Gray, fontSize = 9.sp)
         Spacer(Modifier.height(4.dp))
@@ -3166,14 +3304,29 @@ private fun ZakatKaratWeightInput(karat: String, value: Double, onValueChanged: 
                 .border(1.dp, Border, RoundedCornerShape(6.dp))
         )
         Text("جم", color = Gray, fontSize = 8.sp)
+        Spacer(Modifier.height(3.dp))
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(2.dp),
+            modifier = Modifier.clickable { onDateClick() }
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.CalendarMonth,
+                contentDescription = "تاريخ الشراء",
+                tint = Gray,
+                modifier = Modifier.size(9.dp)
+            )
+            Text(dateText, color = Gray, fontSize = 6.8.sp, maxLines = 1)
+        }
     }
 }
 
 @Composable
-private fun ZakatItemRow(item: ZakatItem, zakatPercent: Double) {
+private fun ZakatItemRow(item: ZakatItem, zakatPercent: Double, exceedsNisab: Boolean) {
     val pricePerGram = GoldMarket.prices.first { it.karat == item.karat }.price
     val goldValue = pricePerGram * item.weightGrams
     val zakatAmount = goldValue * (zakatPercent / 100.0)
+    val status = zakatStatusFor(item.purchaseDate, exceedsNisab)
 
     Row(
         modifier = Modifier
@@ -3190,21 +3343,25 @@ private fun ZakatItemRow(item: ZakatItem, zakatPercent: Double) {
             textAlign = TextAlign.Center
         )
 
-        Box(modifier = Modifier.weight(1.1f), contentAlignment = Alignment.Center) {
+        Column(
+            modifier = Modifier.weight(1.1f),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
             Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(6.dp))
-                    .background(item.statusColor.copy(alpha = 0.15f))
+                    .background(status.color.copy(alpha = 0.15f))
                     .padding(horizontal = 6.dp, vertical = 3.dp)
             ) {
                 Text(
-                    item.statusLabel,
-                    color = item.statusColor,
+                    status.label,
+                    color = status.color,
                     fontSize = 8.sp,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1
                 )
             }
+            Text(status.caption, color = Gray, fontSize = 6.2.sp, maxLines = 1)
         }
 
         Text(
