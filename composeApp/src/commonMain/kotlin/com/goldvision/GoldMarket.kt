@@ -62,19 +62,26 @@ internal object GoldMarket {
                 client.get("https://api.goldprice.dev/v1/carat?currency=USD").body()
 
             val previous = prices
-            prices = listOf(
+            val updated = listOf(
                 "24K" to response.priceGram24k,
                 "22K" to response.priceGram22k,
                 "21K" to response.priceGram21k,
                 "18K" to response.priceGram18k
             ).map { (karat, usdPerGramText) ->
-                val sarPerGram = usdPerGramText.toDouble() * USD_TO_SAR
+                // قيمة غير رقمية أو صفرية/سالبة تعني استجابة غير سليمة
+                // (شكل مختلف، صيانة، تحديد معدّل...) — نرفضها بدل قبولها
+                // كسعر حقيقي، حتى لا تُصفَّر الأسعار المعروضة صامتة
+                val usdPerGram = usdPerGramText.toDoubleOrNull()
+                    ?.takeIf { it > 0.0 }
+                    ?: error("سعر غير صالح لعيار $karat: \"$usdPerGramText\"")
+                val sarPerGram = usdPerGram * USD_TO_SAR
                 val previousPrice = previous.firstOrNull { it.karat == karat }?.price ?: sarPerGram
                 val change = sarPerGram - previousPrice
                 val percent = if (previousPrice != 0.0) (change / previousPrice) * 100.0 else 0.0
                 KaratPrice(karat, sarPerGram, change, percent)
             }
 
+            prices = updated
             lastError = null
         } catch (e: Exception) {
             lastError = "تعذر تحديث الأسعار العالمية، يتم عرض آخر سعر متوفر"
@@ -86,11 +93,14 @@ internal object GoldMarket {
 
 // شكل استجابة GET https://api.goldprice.dev/v1/carat?currency=USD — مزوّد
 // عام بلا حاجة لمفتاح API. الأسعار ترجع كنصوص عشرية (decimal strings)
-// وليست أرقاماً مباشرة، لذلك الحقول هنا String وتُحوَّل يدوياً لاحقاً
+// وليست أرقاماً مباشرة، لذلك الحقول هنا String وتُحوَّل يدوياً لاحقاً.
+// عمداً بلا قيمة افتراضية: لو تغيّر شكل الاستجابة واختفى أحد الحقول
+// نريد فشل التحليل (Exception) صراحة بدل الحصول على "0" بصمت — الفشل
+// الصريح يُمسَك في catch أعلاه ويُبقي آخر سعر ناجح بدل تصفيره
 @Serializable
 private data class CaratResponse(
-    @SerialName("price_gram_24k") val priceGram24k: String = "0",
-    @SerialName("price_gram_22k") val priceGram22k: String = "0",
-    @SerialName("price_gram_21k") val priceGram21k: String = "0",
-    @SerialName("price_gram_18k") val priceGram18k: String = "0"
+    @SerialName("price_gram_24k") val priceGram24k: String,
+    @SerialName("price_gram_22k") val priceGram22k: String,
+    @SerialName("price_gram_21k") val priceGram21k: String,
+    @SerialName("price_gram_18k") val priceGram18k: String
 )

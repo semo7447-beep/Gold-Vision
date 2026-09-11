@@ -88,10 +88,12 @@ internal object GoldHistory {
 
         return barsArray.mapNotNull { element ->
             val bar = element as? JsonObject ?: return@mapNotNull null
-            val open = bar["open"]?.jsonPrimitive?.doubleOrNull ?: return@mapNotNull null
-            val close = bar["close"]?.jsonPrimitive?.doubleOrNull ?: return@mapNotNull null
-            val high = bar["high"]?.jsonPrimitive?.doubleOrNull ?: maxOf(open, close)
-            val low = bar["low"]?.jsonPrimitive?.doubleOrNull ?: minOf(open, close)
+            // قيمة صفرية/سالبة تعني شمعة غير سليمة (شكل استجابة مختلف عن
+            // المتوقع) — نستبعدها بدل قبولها كسعر حقيقي بصفر
+            val open = bar["open"]?.jsonPrimitive?.doubleOrNull?.takeIf { it > 0.0 } ?: return@mapNotNull null
+            val close = bar["close"]?.jsonPrimitive?.doubleOrNull?.takeIf { it > 0.0 } ?: return@mapNotNull null
+            val high = bar["high"]?.jsonPrimitive?.doubleOrNull?.takeIf { it > 0.0 } ?: maxOf(open, close)
+            val low = bar["low"]?.jsonPrimitive?.doubleOrNull?.takeIf { it > 0.0 } ?: minOf(open, close)
             val dateText = dateKeys.firstNotNullOfOrNull { key -> bar[key]?.jsonPrimitive?.contentOrNull }
                 ?: return@mapNotNull null
             val date = parseLooseIsoDate(dateText) ?: return@mapNotNull null
