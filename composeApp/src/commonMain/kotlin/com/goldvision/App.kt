@@ -112,6 +112,9 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.daysUntil
 import kotlinx.datetime.minus
 import kotlinx.datetime.toLocalDateTime
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import kotlin.math.roundToInt
 import kotlin.time.Duration.Companion.seconds
 
@@ -160,6 +163,7 @@ private val zakatItems = listOf(
 
 // قطعة ذهب أضافها المستخدم بنفسه عبر شاشة "إضافة قطعة" — تظهر في المحفظة
 // وفي الزكاة معاً (نفس الصنف بنفس البيانات)، بسعر يُحسب حياً من GoldMarket
+@Serializable
 private data class GoldItem(
     val name: String,
     val emoji: String,
@@ -326,7 +330,7 @@ private fun GoldVisionApp() {
     var showAddGoldItem by remember { mutableStateOf(false) }
     var editingGoldItemIndex by remember { mutableStateOf<Int?>(null) }
     val savedDeals = remember { mutableStateListOf<SavedDeal>() }
-    val savedGoldItems = remember { mutableStateListOf<GoldItem>().apply { addAll(defaultGoldItems) } }
+    val savedGoldItems = remember { mutableStateListOf<GoldItem>().apply { addAll(loadSavedGoldItems()) } }
 
     var liveTimeText by remember { mutableStateOf(currentDateTimeText()) }
     LaunchedEffect(Unit) {
@@ -400,6 +404,7 @@ private fun GoldVisionApp() {
                         } else {
                             savedGoldItems.add(0, item)
                         }
+                        persistGoldItems(savedGoldItems)
                         showAddGoldItem = false
                         editingGoldItemIndex = null
                     },
@@ -408,6 +413,7 @@ private fun GoldVisionApp() {
                             if (editingIndex in savedGoldItems.indices) {
                                 savedGoldItems.removeAt(editingIndex)
                             }
+                            persistGoldItems(savedGoldItems)
                             showAddGoldItem = false
                             editingGoldItemIndex = null
                         }
@@ -2990,6 +2996,27 @@ private val defaultGoldItems = listOf(
     GoldItem("عملة ذهبية", "🪙", "24K", 4.0, 1615.00, 0.0, "01 / 01 / 2025", ""),
     GoldItem("أقراط ذهب", "👂", "21K", 2.0, 706.56, 0.0, "01 / 01 / 2025", "")
 )
+
+// ==================== حفظ محلي دائم لقطع المحفظة ====================
+// يُخزَّن ملف JSON بسيط على جهاز المستخدم فقط عبر AppStorage (لا سحابة
+// ولا خادم)، حتى تبقى قطع المحفظة والزكاة محفوظة بين جلسات التطبيق
+// بدل أن تُفقد عند إغلاقه كما كان سابقاً
+private const val goldItemsStorageFile = "gold_items.json"
+
+private fun loadSavedGoldItems(): List<GoldItem> {
+    val text = AppStorage.readText(goldItemsStorageFile) ?: return defaultGoldItems
+    return try {
+        Json.decodeFromString<List<GoldItem>>(text)
+    } catch (e: Exception) {
+        // ملف تالف أو من نسخة قديمة غير متوافقة — نرجع للبيانات الافتراضية
+        // بدل تعطّل التطبيق عند بدء التشغيل
+        defaultGoldItems
+    }
+}
+
+private fun persistGoldItems(items: List<GoldItem>) {
+    AppStorage.writeText(goldItemsStorageFile, Json.encodeToString(items))
+}
 
 // يحسب القيمة الحالية لقطعة بسعر السوق الحي (ذهب + مصنعية + ضريبة، معفى لعيار 24)
 private fun GoldItem.currentValue(): Double {
