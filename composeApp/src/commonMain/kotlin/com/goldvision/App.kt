@@ -344,6 +344,15 @@ private fun GoldVisionApp() {
             delay(60.seconds)
         }
     }
+
+    // يجلب شموع الأسعار اليومية الحقيقية لآخر 30 يوماً (GoldHistory.kt)
+    // — لا تحتاج تحديثاً بنفس تكرار السعر اللحظي، كل 5 دقائق كافٍ
+    LaunchedEffect(Unit) {
+        while (true) {
+            GoldHistory.refresh(todayLocalDate())
+            delay(300.seconds)
+        }
+    }
     val marketScope = rememberCoroutineScope()
 
     val fedRows = remember { upcomingFedMeetings().take(4) }
@@ -2181,7 +2190,8 @@ private fun TechnicalAnalysisContent(period: String, karat: String) {
                     modifier = Modifier.fillMaxSize(),
                     basePrice = karatPrice.price,
                     seed = karatChartSeeds[karat] ?: 1,
-                    period = period
+                    period = period,
+                    realPoints = realChartPointsFor(karat, period)
                 )
             }
 
@@ -2210,7 +2220,21 @@ private fun TechnicalAnalysisContent(period: String, karat: String) {
                 Text(periodRangeText(period), color = White, fontSize = 10.sp, fontWeight = FontWeight.Bold)
             }
 
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(6.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    if (stats.isReal) "⚡ بيانات تاريخية حقيقية (goldprice.dev)" else "≈ تقدير مبني على زخم آخر 30 يوماً الحقيقية",
+                    color = if (stats.isReal) Green else Yellow,
+                    fontSize = 8.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+
+            Spacer(Modifier.height(6.dp))
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 OpenCloseCard(title = "سعر الذهب عيار 24", stats = stats24, modifier = Modifier.weight(1f))
                 OpenCloseCard(title = "سعر الذهب عيار 21", stats = stats21, modifier = Modifier.weight(1f))
@@ -2483,7 +2507,13 @@ private fun KaratChartCard(
         }
         Spacer(Modifier.height(6.dp))
         Box(modifier = Modifier.fillMaxWidth().weight(1f)) {
-            KaratChartCanvas(modifier = Modifier.fillMaxSize(), basePrice = price, seed = seed, period = period)
+            KaratChartCanvas(
+                modifier = Modifier.fillMaxSize(),
+                basePrice = price,
+                seed = seed,
+                period = period,
+                realPoints = realChartPointsFor(karat, period)
+            )
         }
     }
 }
@@ -2518,24 +2548,89 @@ private fun generateSeriesRatios(seed: Int, period: String): List<Float> {
     }
 }
 
+// تحويل سعر الأونصة بالدولار (كما يرجعه /v1/bars) لسعر الجرام بالريال
+// السعودي لعيار معيّن — نفس معادلة GoldMarket.kt (نسبة النقاء × سعر
+// الصرف الثابت 3.75)، لكنها هنا محلية لأن الشموع التاريخية بالأونصة
+// بينما GoldMarket.kt يستقبل السعر بالجرام جاهزاً من مزوّد آخر
+private const val TROY_OUNCE_GRAMS = 31.1034768
+private const val HISTORY_USD_TO_SAR = 3.75
+private val karatPurity = mapOf("24K" to 1.0, "22K" to 22.0 / 24.0, "21K" to 21.0 / 24.0, "18K" to 18.0 / 24.0)
+
+private fun usdPerOunceToSarPerGram(usdPerOunce: Double, karat: String): Double {
+    val purity = karatPurity[karat] ?: 1.0
+    return (usdPerOunce / TROY_OUNCE_GRAMS) * purity * HISTORY_USD_TO_SAR
+}
+
+// الشموع الحقيقية (GoldHistory) التي تقع ضمن الفترة المطلوبة، أو null إن
+// لم تتوفر (الفترة أطول من سقف الخطة المجانية 30 يوماً، أو لم يجلب
+// التطبيق بيانات بعد)
+private fun realBarsFor(period: String): List<HistoryBar>? {
+    if (periodDaysFor(period) > 30) return null
+    val bars = GoldHistory.dailyBarsUsdPerOunce
+    if (bars.isEmpty()) return null
+    val cutoff = todayLocalDate().minus((periodDaysFor(period) - 1).coerceAtLeast(0), DateTimeUnit.DAY)
+    val relevant = bars.filter { it.date >= cutoff }
+    return relevant.ifEmpty { null }
+}
+
+// نقاط رسم حقيقية (تسمية تاريخ قصيرة، سعر الجرام بالريال) لعيار وفترة
+// معيّنة — تُستخدم مباشرة في KaratChartCanvas بدل السلسلة التوضيحية
+// عندما تتوفر بيانات حقيقية لنفس الفترة
+private fun realChartPointsFor(karat: String, period: String): List<Pair<String, Double>>? {
+    val bars = realBarsFor(period) ?: return null
+    return bars.map { bar ->
+        val label = "${bar.date.dayOfMonth.toString().padStart(2, '0')}/" +
+                bar.date.monthNumber.toString().padStart(2, '0')
+        label to usdPerOunceToSarPerGram(bar.close, karat)
+    }
+}
+
 private data class KaratPeriodStats(
     val openPrice: Double,
     val closePrice: Double,
     val periodLow: Double,
-    val periodHigh: Double
+    val periodHigh: Double,
+    // true = مبنية على بيانات تاريخية حقيقية من goldprice.dev، false = تقدير
+    // ذكي مبني على زخم آخر 30 يوماً الحقيقية (للفترات الأطول من شهر، التي
+    // تحتاج اشتراكاً مدفوعاً عند نفس المزوّد للحصول على بيانات حقيقية لها)
+    val isReal: Boolean
 )
 
 private fun karatPeriodStats(basePrice: Double, karat: String, period: String): KaratPeriodStats {
-    val seed = karatChartSeeds[karat] ?: 1
-    val ratios = generateSeriesRatios(seed, period)
-    val minPrice = basePrice * 0.94
-    val maxPrice = basePrice * 1.06
-    fun priceAt(ratio: Float) = minPrice + (maxPrice - minPrice) * ratio
+    val realBars = realBarsFor(period)
+    if (realBars != null) {
+        val openSar = usdPerOunceToSarPerGram(realBars.first().open, karat)
+        val closeSar = usdPerOunceToSarPerGram(realBars.last().close, karat)
+        val lowSar = usdPerOunceToSarPerGram(realBars.minOf { it.low }, karat)
+        val highSar = usdPerOunceToSarPerGram(realBars.maxOf { it.high }, karat)
+        return KaratPeriodStats(openSar, closeSar, lowSar, highSar, isReal = true)
+    }
+    return estimatedPeriodStats(basePrice, karat, period)
+}
+
+// تقدير للفترات الأطول من 30 يوماً (لا بيانات حقيقية مجانية لها): بدل
+// رسم عشوائي غير مرتبط بالواقع، نمدّد زخم آخر 30 يوماً الحقيقية (نسبة
+// التغيّر الفعلية) مع إخماده كلما طالت الفترة، حتى يبقى التقدير مرتبطاً
+// بحركة السوق الأخيرة الحقيقية بدل رقم عشوائي بحت
+private fun estimatedPeriodStats(basePrice: Double, karat: String, period: String): KaratPeriodStats {
+    val realBars = GoldHistory.dailyBarsUsdPerOunce
+    val recentTrendPercent = if (realBars.size >= 2) {
+        val firstOpen = realBars.first().open
+        val lastClose = realBars.last().close
+        if (firstOpen != 0.0) (lastClose - firstOpen) / firstOpen else 0.0
+    } else 0.0
+
+    val days = periodDaysFor(period)
+    val damped = recentTrendPercent * kotlin.math.sqrt(days / 30.0).coerceAtMost(3.0)
+    val openEstimate = basePrice / (1.0 + damped)
+    val periodLow = minOf(openEstimate, basePrice) * 0.985
+    val periodHigh = maxOf(openEstimate, basePrice) * 1.015
     return KaratPeriodStats(
-        openPrice = priceAt(ratios.first()),
-        closePrice = priceAt(ratios.last()),
-        periodLow = priceAt(ratios.min()),
-        periodHigh = priceAt(ratios.max())
+        openPrice = openEstimate,
+        closePrice = basePrice,
+        periodLow = periodLow,
+        periodHigh = periodHigh,
+        isReal = false
     )
 }
 
@@ -2650,16 +2745,42 @@ private fun ChartTooltipCard(info: ChartTooltip) {
 // محور سعري يسار، ومحور وقت أسفل يتغيّر حسب الفترة المختارة. قابل للمس
 // والسحب مباشرة: يظهر خط دليل + مؤشر دائري + بطاقة سعر تتحرك مع الإصبع
 @Composable
-private fun KaratChartCanvas(modifier: Modifier, basePrice: Double, seed: Int, period: String) {
+private fun KaratChartCanvas(
+    modifier: Modifier,
+    basePrice: Double,
+    seed: Int,
+    period: String,
+    // نقاط حقيقية (تسمية تاريخ، سعر الجرام بالريال) — عند توفرها تُرسم
+    // بدل السلسلة التوضيحية، بنفس أسلوب الرسم وتجربة اللمس/السحب تماماً
+    realPoints: List<Pair<String, Double>>? = null
+) {
     val textMeasurer = rememberTextMeasurer()
     val density = LocalDensity.current
-    val points = remember(basePrice, seed, period) { generateSeriesRatios(seed, period) }
-    val minPrice = basePrice * 0.94
-    val maxPrice = basePrice * 1.06
-    val lineColor = Color(0xFFEDE6B0)
-    val xLabels = xAxisLabelsFor(period)
+    val useReal = realPoints != null && realPoints.isNotEmpty()
+    val realPrices = if (useReal) realPoints!!.map { it.second } else null
 
-    var tooltip by remember(basePrice, seed, period) { mutableStateOf<ChartTooltip?>(null) }
+    val minPrice = realPrices?.min() ?: (basePrice * 0.94)
+    val maxPriceRaw = realPrices?.max() ?: (basePrice * 1.06)
+    val maxPrice = if (maxPriceRaw <= minPrice) minPrice * 1.001 else maxPriceRaw
+
+    val points = remember(basePrice, seed, period, realPoints) {
+        if (useReal) {
+            realPrices!!.map { price -> ((price - minPrice) / (maxPrice - minPrice)).toFloat().coerceIn(0f, 1f) }
+        } else {
+            generateSeriesRatios(seed, period)
+        }
+    }
+    val lineColor = Color(0xFFEDE6B0)
+    val xLabels = if (useReal) {
+        val allLabels = realPoints!!.map { it.first }
+        val labelCount = 6.coerceAtMost(allLabels.size)
+        if (labelCount <= 1) allLabels
+        else (0 until labelCount).map { i -> allLabels[i * (allLabels.size - 1) / (labelCount - 1)] }
+    } else {
+        xAxisLabelsFor(period)
+    }
+
+    var tooltip by remember(basePrice, seed, period, realPoints) { mutableStateOf<ChartTooltip?>(null) }
 
     Box(modifier = modifier) {
         Canvas(
