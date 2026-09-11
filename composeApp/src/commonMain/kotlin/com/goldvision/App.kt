@@ -341,11 +341,14 @@ private fun GoldVisionApp() {
     }
 
     // يجلب أسعار الذهب العالمية الحقيقية عند فتح التطبيق ثم يحدّثها
-    // تلقائياً كل دقيقة (GoldMarket.kt)
+    // تلقائياً كل دقيقتين (GoldMarket.kt) — كانت كل دقيقة، لكن الطلبات
+    // المتكررة (مع طلبات GoldHistory الإضافية على نفس المزوّد) بدت تسبب
+    // رفض بعض الطلبات (تحديد معدّل). التحديث الفوري عبر زر ↻ يبقى متاحاً
+    // دائماً بغض النظر عن هذه الفترة
     LaunchedEffect(Unit) {
         while (true) {
             GoldMarket.refresh()
-            delay(60.seconds)
+            delay(120.seconds)
         }
     }
 
@@ -4100,6 +4103,23 @@ private fun MoreScreen() {
                 label = "تسجيل الخروج",
                 tint = Red
             )
+        }
+
+        Spacer(Modifier.height(16.dp))
+
+        // زر مؤقت للتأكد من ربط Sentry فعلياً — يُحذف بعد التأكيد
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(9.dp))
+                .border(1.dp, Border, RoundedCornerShape(9.dp))
+                .clickable { sendTestCrashReport() }
+                .padding(horizontal = 12.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Icon(imageVector = Icons.Outlined.Bolt, contentDescription = null, tint = Gold, modifier = Modifier.size(18.dp))
+            Text("اختبار تتبّع الأعطال (مؤقت)", color = White, fontSize = 12.sp)
         }
 
         Spacer(Modifier.height(16.dp))
