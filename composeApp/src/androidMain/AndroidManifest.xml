@@ -9,6 +9,17 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.GoldVision">
 
+        <!-- تتبّع الأعطال (Sentry) — لا يُرسل أي بيانات شخصية افتراضياً -->
+        <meta-data
+            android:name="io.sentry.dsn"
+            android:value="https://4594ee5e4118aec9258a13123e25ae88@o4512068460150784.ingest.de.sentry.io/4512068560879696" />
+        <meta-data
+            android:name="io.sentry.send-default-pii"
+            android:value="false" />
+        <meta-data
+            android:name="io.sentry.traces.sample-rate"
+            android:value="0.0" />
+
         <activity
             android:name=".MainActivity"
             android:exported="true"

@@ -35,6 +35,11 @@ kotlin {
             implementation(libs.androidx.activity.compose)
             implementation(libs.androidx.core.ktx)
             implementation(libs.ktor.client.okhttp)
+            // تتبّع الأعطال (Sentry) — يُهيَّأ تلقائياً من AndroidManifest.xml
+            // (وسم io.sentry.dsn)، بلا حاجة لأي كود تهيئة إضافي. لا يُرسل أي
+            // بيانات شخصية افتراضياً (sendDefaultPii = false)، متّسق مع سياسة
+            // الخصوصية المحلية للتطبيق
+            implementation("io.sentry:sentry-android:8.56.0")
         }
         commonMain.dependencies {
             implementation(compose.runtime)
