@@ -48,6 +48,8 @@ import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.KeyboardArrowDown
+import androidx.compose.material.icons.outlined.KeyboardArrowUp
 import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.MoreHoriz
@@ -94,11 +96,14 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDirection
@@ -172,13 +177,6 @@ private data class ZakatItem(
     val karat: String,
     val weightGrams: Double,
     val purchaseDate: String
-)
-
-private val zakatItems = listOf(
-    ZakatItem("خاتم", "💍", "21K", 5.00, "10 / 01 / 2023"),
-    ZakatItem("سلسلة", "📿", "21K", 15.30, "10 / 01 / 2023"),
-    ZakatItem("سوار", "⭕", "22K", 20.00, "05 / 08 / 2025"),
-    ZakatItem("سبيكة", "🟨", "24K", 26.00, "20 / 08 / 2025")
 )
 
 // قطعة ذهب أضافها المستخدم بنفسه عبر شاشة "إضافة قطعة" — تظهر في المحفظة
@@ -1553,34 +1551,12 @@ private fun SaveDealDialog(
             Text("اسم المحل", color = Gray, fontSize = 10.sp)
             Spacer(Modifier.height(6.dp))
 
-            val shopNameFocus = remember { FocusRequester() }
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(42.dp)
-                    .clip(RoundedCornerShape(9.dp))
-                    .border(1.dp, Border, RoundedCornerShape(9.dp))
-                    .clickable(
-                        indication = null,
-                        interactionSource = remember { MutableInteractionSource() }
-                    ) { shopNameFocus.requestFocus() }
-                    .padding(horizontal = 12.dp),
-                contentAlignment = Alignment.CenterStart
-            ) {
-                if (shopName.isEmpty()) {
-                    Text("مثال: مجوهرات الأصيل", color = Gray, fontSize = 12.sp)
-                }
-                BasicTextField(
-                    value = shopName,
-                    onValueChange = { shopName = it },
-                    singleLine = true,
-                    textStyle = TextStyle(color = White, fontSize = 12.sp, textDirection = TextDirection.Content),
-                    cursorBrush = SolidColor(Gold),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .focusRequester(shopNameFocus)
-                )
-            }
+            SelectableTextField(
+                value = shopName,
+                onValueChange = { shopName = it },
+                placeholder = "مثال: مجوهرات الأصيل",
+                modifier = Modifier.fillMaxWidth().height(42.dp)
+            )
 
             Spacer(Modifier.height(16.dp))
 
@@ -1802,34 +1778,12 @@ private fun AddGoldItemScreen(
 
         Text("اسم القطعة", color = Gray, fontSize = 10.sp)
         Spacer(Modifier.height(6.dp))
-        val nameFocus = remember { FocusRequester() }
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(42.dp)
-                .clip(RoundedCornerShape(9.dp))
-                .border(1.dp, Border, RoundedCornerShape(9.dp))
-                .clickable(
-                    indication = null,
-                    interactionSource = remember { MutableInteractionSource() }
-                ) { nameFocus.requestFocus() }
-                .padding(horizontal = 12.dp),
-            contentAlignment = Alignment.CenterStart
-        ) {
-            if (name.isEmpty()) {
-                Text("مثال: خاتم - سوار - سبيكة", color = Gray, fontSize = 12.sp)
-            }
-            BasicTextField(
-                value = name,
-                onValueChange = { name = it },
-                singleLine = true,
-                textStyle = TextStyle(color = White, fontSize = 12.sp, textDirection = TextDirection.Content),
-                cursorBrush = SolidColor(Gold),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .focusRequester(nameFocus)
-            )
-        }
+        SelectableTextField(
+            value = name,
+            onValueChange = { name = it },
+            placeholder = "مثال: خاتم - سوار - سبيكة",
+            modifier = Modifier.fillMaxWidth().height(42.dp)
+        )
 
         Spacer(Modifier.height(12.dp))
 
@@ -2045,34 +1999,12 @@ private fun AddGoldItemScreen(
 
         Text("ملاحظات (اختياري)", color = Gray, fontSize = 10.sp)
         Spacer(Modifier.height(6.dp))
-        val notesFocus = remember { FocusRequester() }
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(42.dp)
-                .clip(RoundedCornerShape(9.dp))
-                .border(1.dp, Border, RoundedCornerShape(9.dp))
-                .clickable(
-                    indication = null,
-                    interactionSource = remember { MutableInteractionSource() }
-                ) { notesFocus.requestFocus() }
-                .padding(horizontal = 12.dp),
-            contentAlignment = Alignment.CenterStart
-        ) {
-            if (notes.isEmpty()) {
-                Text("اكتب ملاحظة...", color = Gray, fontSize = 12.sp)
-            }
-            BasicTextField(
-                value = notes,
-                onValueChange = { notes = it },
-                singleLine = true,
-                textStyle = TextStyle(color = White, fontSize = 12.sp, textDirection = TextDirection.Content),
-                cursorBrush = SolidColor(Gold),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .focusRequester(notesFocus)
-            )
-        }
+        SelectableTextField(
+            value = notes,
+            onValueChange = { notes = it },
+            placeholder = "اكتب ملاحظة...",
+            modifier = Modifier.fillMaxWidth().height(42.dp)
+        )
 
         Spacer(Modifier.height(16.dp))
 
@@ -3502,6 +3434,7 @@ private fun ZakatScreen(
     var currentZakatDate by remember { mutableStateOf("10 / 05 / 2025") }
     var previousZakatDate by remember { mutableStateOf("15 / 05 / 2024") }
     var showZakatInfo by remember { mutableStateOf(false) }
+    var settingsExpanded by remember { mutableStateOf(false) }
 
     // أوزان الذهب المملوكة لكل عيار، تُدخل يدوياً أو تُملأ تلقائياً من
     // القطع المحفوظة في المحفظة عبر زر "استخدام الأوزان الموجودة في المحفظة"،
@@ -3538,7 +3471,9 @@ private fun ZakatScreen(
         date18 = earliestPurchaseDate("18K")
     }
 
-    val allZakatItems = zakatItems + ownedItems.map { it.toZakatItem() }
+    // قائمة الأصناف في الزكاة مطابقة تماماً لقطع المحفظة المملوكة (غير المباعة):
+    // أي حذف أو إضافة في المحفظة ينعكس هنا فوراً، وتكون فارغة إذا كانت المحفظة فارغة
+    val allZakatItems = ownedItems.map { it.toZakatItem() }
     val displayedItems = if (showAllItems) allZakatItems else allZakatItems.take(3)
 
     val karatWeights = listOf("24K" to weight24, "22K" to weight22, "21K" to weight21, "18K" to weight18)
@@ -3729,21 +3664,21 @@ private fun ZakatScreen(
             Text(
                 "تفاصيل الزكاة",
                 color = White,
-                fontSize = 13.sp,
+                fontSize = 15.sp,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.fillMaxWidth(),
                 textAlign = TextAlign.End
             )
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(14.dp))
 
             Text(
                 "أوزان الذهب المملوكة (جرام)",
                 color = Gray,
-                fontSize = 9.sp,
+                fontSize = 10.sp,
                 modifier = Modifier.fillMaxWidth(),
                 textAlign = TextAlign.End
             )
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(10.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
@@ -3905,12 +3840,12 @@ private fun ZakatScreen(
                     .fillMaxWidth()
                     .padding(vertical = 4.dp)
             ) {
-                Text("مبلغ الزكاة", color = Gray, fontSize = 8.5.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
-                Text("الحالة", color = Gray, fontSize = 8.5.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1.1f), textAlign = TextAlign.Center)
-                Text("قيمة الذهب", color = Gray, fontSize = 8.5.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
-                Text("الوزن (جم)", color = Gray, fontSize = 8.5.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(0.8f), textAlign = TextAlign.Center)
-                Text("عيار", color = Gray, fontSize = 8.5.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(0.6f), textAlign = TextAlign.Center)
-                Text("الصنف", color = Gray, fontSize = 8.5.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1.2f), textAlign = TextAlign.Center)
+                Text("مبلغ الزكاة", color = White, fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
+                Text("الحالة", color = White, fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1.1f), textAlign = TextAlign.Center)
+                Text("قيمة الذهب", color = White, fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
+                Text("الوزن (جم)", color = White, fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(0.8f), textAlign = TextAlign.Center)
+                Text("عيار", color = White, fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(0.6f), textAlign = TextAlign.Center)
+                Text("الصنف", color = White, fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1.2f), textAlign = TextAlign.Center)
             }
 
             Box(
@@ -3954,23 +3889,37 @@ private fun ZakatScreen(
 
         Spacer(Modifier.height(10.dp))
 
-        // ---- بطاقة إعدادات حساب الزكاة ----
+        // ---- بطاقة إعدادات حساب الزكاة: مطوية افتراضياً حتى لا تأخذ حيزاً كبيراً ----
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(12.dp))
                 .border(1.dp, Border, RoundedCornerShape(12.dp))
                 .background(CardBlack)
-                .padding(14.dp)
+                .padding(horizontal = 14.dp, vertical = if (settingsExpanded) 14.dp else 10.dp)
         ) {
-            Text(
-                "إعدادات حساب الزكاة",
-                color = White,
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.fillMaxWidth(),
-                textAlign = TextAlign.End
-            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { settingsExpanded = !settingsExpanded },
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = if (settingsExpanded) Icons.Outlined.KeyboardArrowUp else Icons.Outlined.KeyboardArrowDown,
+                    contentDescription = if (settingsExpanded) "طي الإعدادات" else "عرض الإعدادات",
+                    tint = Gold,
+                    modifier = Modifier.size(18.dp)
+                )
+                Text(
+                    "إعدادات حساب الزكاة",
+                    color = White,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+
+            if (!settingsExpanded) return@Column
             Spacer(Modifier.height(12.dp))
 
             Row(
@@ -4228,21 +4177,21 @@ private fun ZakatDetailItem(title: String, value: String, unit: String, modifier
         Text(
             title,
             color = Gray,
-            fontSize = 8.5.sp,
+            fontSize = 9.5.sp,
             textAlign = TextAlign.Center,
             maxLines = 2,
-            lineHeight = 10.sp
+            lineHeight = 11.sp
         )
         Spacer(Modifier.height(6.dp))
         Text(
             value,
             color = Gold,
-            fontSize = 13.sp,
+            fontSize = 14.sp,
             fontWeight = FontWeight.Bold,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )
-        Text(unit, color = Gray, fontSize = 8.sp, maxLines = 1)
+        Text(unit, color = Gray, fontSize = 8.5.sp, maxLines = 1)
     }
 }
 
@@ -4255,33 +4204,37 @@ private fun ZakatKaratWeightInput(
     onValueChanged: (Double) -> Unit
 ) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(karatLabel(karat).removeSuffix(" عيار"), color = Gray, fontSize = 9.sp)
-        Spacer(Modifier.height(4.dp))
+        Text(
+            karatLabel(karat).removeSuffix(" عيار"),
+            color = Gold,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Bold
+        )
+        Spacer(Modifier.height(6.dp))
         NumericInputField(
             value = value,
             onValueChanged = onValueChanged,
-            fontSize = 11.sp,
+            fontSize = 15.sp,
             minValue = 0.0,
             modifier = Modifier
-                .width(58.dp)
-                .height(30.dp)
-                .clip(RoundedCornerShape(6.dp))
-                .border(1.dp, Border, RoundedCornerShape(6.dp))
+                .width(66.dp)
+                .height(36.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .border(1.dp, Border, RoundedCornerShape(8.dp))
         )
-        Text("جم", color = Gray, fontSize = 8.sp)
-        Spacer(Modifier.height(3.dp))
+        Spacer(Modifier.height(6.dp))
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(2.dp),
+            horizontalArrangement = Arrangement.spacedBy(3.dp),
             modifier = Modifier.clickable { onDateClick() }
         ) {
             Icon(
                 imageVector = Icons.Outlined.CalendarMonth,
                 contentDescription = "تاريخ الشراء",
                 tint = Gray,
-                modifier = Modifier.size(9.dp)
+                modifier = Modifier.size(11.dp)
             )
-            Text(dateText, color = Gray, fontSize = 6.8.sp, maxLines = 1)
+            Text(dateText, color = Gray, fontSize = 9.sp, maxLines = 1)
         }
     }
 }
@@ -4302,7 +4255,7 @@ private fun ZakatItemRow(item: ZakatItem, zakatPercent: Double, exceedsNisab: Bo
         Text(
             fmt(zakatAmount, 2, grouped = true),
             color = White,
-            fontSize = 10.sp,
+            fontSize = 11.sp,
             fontWeight = FontWeight.Bold,
             modifier = Modifier.weight(1f),
             textAlign = TextAlign.Center
@@ -4316,23 +4269,24 @@ private fun ZakatItemRow(item: ZakatItem, zakatPercent: Double, exceedsNisab: Bo
                 modifier = Modifier
                     .clip(RoundedCornerShape(6.dp))
                     .background(status.color.copy(alpha = 0.15f))
-                    .padding(horizontal = 6.dp, vertical = 3.dp)
+                    .padding(horizontal = 7.dp, vertical = 4.dp)
             ) {
                 Text(
                     status.label,
                     color = status.color,
-                    fontSize = 8.sp,
+                    fontSize = 9.5.sp,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1
                 )
             }
-            Text(status.caption, color = Gray, fontSize = 6.2.sp, maxLines = 1)
+            Spacer(Modifier.height(2.dp))
+            Text(status.caption, color = Gray, fontSize = 7.5.sp, maxLines = 1)
         }
 
         Text(
             fmt(goldValue, 2, grouped = true),
             color = Gold,
-            fontSize = 10.sp,
+            fontSize = 11.sp,
             fontWeight = FontWeight.Bold,
             modifier = Modifier.weight(1f),
             textAlign = TextAlign.Center
@@ -4341,7 +4295,7 @@ private fun ZakatItemRow(item: ZakatItem, zakatPercent: Double, exceedsNisab: Bo
         Text(
             fmt(item.weightGrams, 2),
             color = White,
-            fontSize = 10.sp,
+            fontSize = 11.sp,
             modifier = Modifier.weight(0.8f),
             textAlign = TextAlign.Center
         )
@@ -4349,7 +4303,7 @@ private fun ZakatItemRow(item: ZakatItem, zakatPercent: Double, exceedsNisab: Bo
         Text(
             karatLabel(item.karat).removeSuffix(" عيار"),
             color = White,
-            fontSize = 10.sp,
+            fontSize = 11.sp,
             modifier = Modifier.weight(0.6f),
             textAlign = TextAlign.Center
         )
@@ -4372,7 +4326,7 @@ private fun ZakatItemRow(item: ZakatItem, zakatPercent: Double, exceedsNisab: Bo
             Text(
                 item.name,
                 color = White,
-                fontSize = 10.sp,
+                fontSize = 11.sp,
                 fontWeight = FontWeight.Bold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
@@ -4636,34 +4590,12 @@ private fun ProfileScreen(
 
         Text("الاسم", color = Gray, fontSize = 10.sp)
         Spacer(Modifier.height(6.dp))
-        val nameFocus = remember { FocusRequester() }
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(42.dp)
-                .clip(RoundedCornerShape(9.dp))
-                .border(1.dp, Border, RoundedCornerShape(9.dp))
-                .clickable(
-                    indication = null,
-                    interactionSource = remember { MutableInteractionSource() }
-                ) { nameFocus.requestFocus() }
-                .padding(horizontal = 12.dp),
-            contentAlignment = Alignment.CenterStart
-        ) {
-            if (name.isEmpty()) {
-                Text("مثال: محمد العتيبي", color = Gray, fontSize = 12.sp)
-            }
-            BasicTextField(
-                value = name,
-                onValueChange = { name = it },
-                singleLine = true,
-                textStyle = TextStyle(color = White, fontSize = 12.sp, textDirection = TextDirection.Content),
-                cursorBrush = SolidColor(Gold),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .focusRequester(nameFocus)
-            )
-        }
+        SelectableTextField(
+            value = name,
+            onValueChange = { name = it },
+            placeholder = "مثال: محمد العتيبي",
+            modifier = Modifier.fillMaxWidth().height(42.dp)
+        )
 
         Spacer(Modifier.height(16.dp))
 
@@ -4797,102 +4729,39 @@ private fun AuthScreen(onBack: () -> Unit, onAuthSuccess: () -> Unit) {
 
         Text("البريد الإلكتروني", color = Gray, fontSize = 10.sp)
         Spacer(Modifier.height(6.dp))
-        val emailFocus = remember { FocusRequester() }
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(42.dp)
-                .clip(RoundedCornerShape(9.dp))
-                .border(1.dp, Border, RoundedCornerShape(9.dp))
-                .clickable(
-                    indication = null,
-                    interactionSource = remember { MutableInteractionSource() }
-                ) { emailFocus.requestFocus() }
-                .padding(horizontal = 12.dp),
-            contentAlignment = Alignment.CenterStart
-        ) {
-            if (email.isEmpty()) {
-                Text("example@email.com", color = Gray, fontSize = 12.sp)
-            }
-            BasicTextField(
-                value = email,
-                onValueChange = { email = it },
-                singleLine = true,
-                textStyle = TextStyle(color = White, fontSize = 12.sp, textDirection = TextDirection.Content),
-                cursorBrush = SolidColor(Gold),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .focusRequester(emailFocus)
-            )
-        }
+        SelectableTextField(
+            value = email,
+            onValueChange = { email = it },
+            placeholder = "example@email.com",
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+            modifier = Modifier.fillMaxWidth().height(42.dp)
+        )
 
         Spacer(Modifier.height(12.dp))
 
         Text("كلمة المرور", color = Gray, fontSize = 10.sp)
         Spacer(Modifier.height(6.dp))
-        val passwordFocus = remember { FocusRequester() }
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(42.dp)
-                .clip(RoundedCornerShape(9.dp))
-                .border(1.dp, Border, RoundedCornerShape(9.dp))
-                .clickable(
-                    indication = null,
-                    interactionSource = remember { MutableInteractionSource() }
-                ) { passwordFocus.requestFocus() }
-                .padding(horizontal = 12.dp),
-            contentAlignment = Alignment.CenterStart
-        ) {
-            if (password.isEmpty()) {
-                Text("6 أحرف على الأقل", color = Gray, fontSize = 12.sp)
-            }
-            BasicTextField(
-                value = password,
-                onValueChange = { password = it },
-                singleLine = true,
-                textStyle = TextStyle(color = White, fontSize = 12.sp, textDirection = TextDirection.Content),
-                cursorBrush = SolidColor(Gold),
-                visualTransformation = PasswordVisualTransformation(),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .focusRequester(passwordFocus)
-            )
-        }
+        SelectableTextField(
+            value = password,
+            onValueChange = { password = it },
+            placeholder = "6 أحرف على الأقل",
+            visualTransformation = PasswordVisualTransformation(),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+            modifier = Modifier.fillMaxWidth().height(42.dp)
+        )
 
         if (isSignUpMode) {
             Spacer(Modifier.height(12.dp))
             Text("تأكيد كلمة المرور", color = Gray, fontSize = 10.sp)
             Spacer(Modifier.height(6.dp))
-            val confirmFocus = remember { FocusRequester() }
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(42.dp)
-                    .clip(RoundedCornerShape(9.dp))
-                    .border(1.dp, Border, RoundedCornerShape(9.dp))
-                    .clickable(
-                        indication = null,
-                        interactionSource = remember { MutableInteractionSource() }
-                    ) { confirmFocus.requestFocus() }
-                    .padding(horizontal = 12.dp),
-                contentAlignment = Alignment.CenterStart
-            ) {
-                BasicTextField(
-                    value = confirmPassword,
-                    onValueChange = { confirmPassword = it },
-                    singleLine = true,
-                    textStyle = TextStyle(color = White, fontSize = 12.sp, textDirection = TextDirection.Content),
-                    cursorBrush = SolidColor(Gold),
-                    visualTransformation = PasswordVisualTransformation(),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .focusRequester(confirmFocus)
-                )
-            }
+            SelectableTextField(
+                value = confirmPassword,
+                onValueChange = { confirmPassword = it },
+                placeholder = "",
+                visualTransformation = PasswordVisualTransformation(),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                modifier = Modifier.fillMaxWidth().height(42.dp)
+            )
         } else {
             Spacer(Modifier.height(8.dp))
             Text(
@@ -5741,6 +5610,15 @@ private fun SmallActionButton(text: String, onClick: () -> Unit) {
     }
 }
 
+// يوسّع أي تحديد جزئي (نتج مثلاً عن نقر مزدوج يحدّد كلمة واحدة فقط) ليشمل
+// النص كامل، حتى يسهل استبدال محتوى الحقل بالكامل بضغطة واحدة بدل تحديد
+// كل كلمة على حدة — يُستخدم في كل حقول الإدخال النصية والرقمية بالتطبيق
+private fun widenSelectionToFullText(new: TextFieldValue): TextFieldValue {
+    val isPartialSelection = new.selection.length > 0 &&
+        !(new.selection.start == 0 && new.selection.end == new.text.length)
+    return if (isPartialSelection) new.copy(selection = TextRange(0, new.text.length)) else new
+}
+
 // حقل رقمي عام قابل للكتابة المباشرة من الكيبورد (مستخدم للوزن والمصنعية)
 @Composable
 private fun NumericInputField(
@@ -5750,21 +5628,22 @@ private fun NumericInputField(
     fontSize: androidx.compose.ui.unit.TextUnit = 12.sp,
     minValue: Double = 0.1
 ) {
-    var text by remember { mutableStateOf(fmt(value, 2)) }
+    var fieldValue by remember { mutableStateOf(TextFieldValue(fmt(value, 2))) }
 
     LaunchedEffect(value) {
-        val parsed = text.toDoubleOrNull()
+        val parsed = fieldValue.text.toDoubleOrNull()
         if (parsed == null || kotlin.math.abs(parsed - value) > 0.001) {
-            text = fmt(value, 2)
+            val newText = fmt(value, 2)
+            fieldValue = TextFieldValue(newText, selection = TextRange(newText.length))
         }
     }
 
     BasicTextField(
-        value = text,
-        onValueChange = { newValue ->
-            if (newValue.isEmpty() || newValue.matches(Regex("^\\d*\\.?\\d*$"))) {
-                text = newValue
-                newValue.toDoubleOrNull()?.let { parsedValue ->
+        value = fieldValue,
+        onValueChange = { new ->
+            if (new.text.isEmpty() || new.text.matches(Regex("^\\d*\\.?\\d*$"))) {
+                fieldValue = widenSelectionToFullText(new)
+                new.text.toDoubleOrNull()?.let { parsedValue ->
                     if (parsedValue >= minValue) {
                         onValueChanged(parsedValue)
                     }
@@ -5784,6 +5663,62 @@ private fun NumericInputField(
         Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
             innerTextField()
         }
+    }
+}
+
+// حقل نصي عام: الضغط بأي مكان بالحقل يفتح الكيبورد (حتى لو الحقل أعلى من
+// النص)، وأي تحديد (نقر مزدوج على كلمة أو سحب) يتوسّع تلقائياً ليشمل
+// النص كامل — يُستخدم لكل حقول النص الحر بالتطبيق (الاسم، الإيميل،
+// كلمة المرور، الملاحظات، إلخ)
+@Composable
+private fun SelectableTextField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    placeholder: String,
+    modifier: Modifier = Modifier,
+    fontSize: androidx.compose.ui.unit.TextUnit = 12.sp,
+    keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
+    visualTransformation: VisualTransformation = VisualTransformation.None
+) {
+    val focusRequester = remember { FocusRequester() }
+    var fieldValue by remember { mutableStateOf(TextFieldValue(value)) }
+
+    LaunchedEffect(value) {
+        if (fieldValue.text != value) {
+            fieldValue = TextFieldValue(value, selection = TextRange(value.length))
+        }
+    }
+
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(9.dp))
+            .border(1.dp, Border, RoundedCornerShape(9.dp))
+            .clickable(
+                indication = null,
+                interactionSource = remember { MutableInteractionSource() }
+            ) { focusRequester.requestFocus() }
+            .padding(horizontal = 12.dp),
+        contentAlignment = Alignment.CenterStart
+    ) {
+        if (value.isEmpty()) {
+            Text(placeholder, color = Gray, fontSize = fontSize)
+        }
+        BasicTextField(
+            value = fieldValue,
+            onValueChange = { new ->
+                val adjusted = widenSelectionToFullText(new)
+                fieldValue = adjusted
+                if (adjusted.text != value) onValueChange(adjusted.text)
+            },
+            singleLine = true,
+            textStyle = TextStyle(color = White, fontSize = fontSize, textDirection = TextDirection.Content),
+            cursorBrush = SolidColor(Gold),
+            keyboardOptions = keyboardOptions,
+            visualTransformation = visualTransformation,
+            modifier = Modifier
+                .fillMaxWidth()
+                .focusRequester(focusRequester)
+        )
     }
 }
 
