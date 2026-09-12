@@ -2443,7 +2443,7 @@ private fun TechnicalAnalysisContent(period: String, karat: String) {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    if (stats.isReal) "⚡ بيانات تاريخية حقيقية (goldprice.dev)" else "≈ تقدير مبني على زخم آخر 30 يوماً الحقيقية",
+                    if (stats.isReal) "⚡ بيانات تاريخية حقيقية" else "≈ تقدير مبني على زخم آخر 30 يوماً الحقيقية",
                     color = if (stats.isReal) Green else Yellow,
                     fontSize = 8.sp,
                     fontWeight = FontWeight.Bold
@@ -2806,14 +2806,28 @@ private data class KaratPeriodStats(
     val closePrice: Double,
     val periodLow: Double,
     val periodHigh: Double,
-    // true = مبنية على بيانات تاريخية حقيقية من goldprice.dev، false = تقدير
+    // true = مبنية على بيانات تاريخية حقيقية من مزوّد الأسعار، false = تقدير
     // ذكي مبني على زخم آخر 30 يوماً الحقيقية (للفترات الأطول من شهر، التي
     // تحتاج اشتراكاً مدفوعاً عند نفس المزوّد للحصول على بيانات حقيقية لها)
     val isReal: Boolean
 )
 
+// شمعة/شموع الافتتاح والإغلاق فقط لفترة "24 ساعة": نستخدم أمس (آخر يوم
+// تداول مكتمل فعلياً) بدل اليوم نفسه، لأن شمعة اليوم غالباً غير مكتملة
+// بعد عند مزوّد البيانات فتكون فارغة أو غير دقيقة — هذا يخص حساب
+// الافتتاح/الإغلاق فقط، ولا يغيّر الرسم البياني أو تسميات الفترة نفسها
+private fun openCloseBarsFor(period: String): List<HistoryBar>? {
+    if (period != "24 ساعة") return realBarsFor(period)
+    val bars = GoldHistory.dailyBarsUsdPerOunce
+    if (bars.isEmpty()) return null
+    val today = todayLocalDate()
+    val lastCompleteBar = bars.filter { it.date < today }.maxByOrNull { it.date }
+        ?: bars.maxByOrNull { it.date }
+    return lastCompleteBar?.let { listOf(it) }
+}
+
 private fun karatPeriodStats(basePrice: Double, karat: String, period: String): KaratPeriodStats {
-    val realBars = realBarsFor(period)
+    val realBars = openCloseBarsFor(period)
     if (realBars != null) {
         val openSar = usdPerOunceToSarPerGram(realBars.first().open, karat)
         val closeSar = usdPerOunceToSarPerGram(realBars.last().close, karat)
