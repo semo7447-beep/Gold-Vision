@@ -9,23 +9,42 @@ import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsText
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.jsonPrimitive
 
-// جسر الأسعار العالمية الحية: يجلب سعر الذهب الفعلي بالجرام لكل عيار من
-// goldprice.dev (مزوّد عام موثّق، بلا حاجة لمفتاح API ولا تسجيل — على عكس
-// المزوّدين السابقين: data-asg.goldprice.org ثبت أنه يرجع فاضي على شبكة
-// المستخدم، وGoldAPI.io يحتاج تسجيل حساب). متاح من commonMain فيعمل بنفس
-// الطريقة على أندرويد و iOS مستقبلاً.
+// جسر الأسعار العالمية الحية: يجلب سعر أونصة الذهب الفعلي بالدولار من
+// xaus.com — مزوّد مخصص لبيانات XAU/USD تحديداً، بلا حاجة لمفتاح API
+// ولا تسجيل، ومُصمَّم أصلاً للاستطلاع المتكرر (مصدره محدَّث باستمرار
+// ومخزَّن مؤقتاً 30 ثانية عند الحافة، بلا حد أقصى شهري صارم).
 //
-// ملاحظة: السعر يوصل بالدولار فقط (الريال غير مدعوم في قائمة عملات هذا
-// المزوّد)، فنحوّله بسعر الصرف الرسمي الثابت. ونسبة/قيمة التغيّر المعروضة
-// هي "منذ آخر تحديث" (محسوبة محلياً بمقارنة آخر سعرين)، وليست تغيّر اليوم،
-// لأن هذا المزوّد لا يرجّع تغيّراً يومياً في هذا المسار.
+// تاريخ المزوّدين المجرَّبين: data-asg.goldprice.org رجع فاضياً على شبكة
+// المستخدم، وapi.goldprice.dev (v1/carat) عنده حصة شهرية 1000 طلب فقط
+// اكتُشفت بالتجربة الفعلية (رسالة quota_exceeded حقيقية من المزوّد عبر
+// Sentry) — تنفد خلال أيام من الاستخدام العادي وتجعله غير مناسب لتحديث
+// شبه لحظي. متاح من commonMain فيعمل بنفس الطريقة على أندرويد و iOS
+// مستقبلاً
+//
+// ⚠️ لم يُختبر هذا المزوّد فعلياً من هذه الجلسة (الشبكة هنا مقيّدة عن
+// نطاقه)، وشكل استجابته غير موثّق بدقة كافية — لذلك التحليل أدناه دفاعي
+// (يجرّب عدة مسارات محتملة)، ويُلتقط نص الاستجابة الخام في Sentry عند
+// الفشل لتشخيصه فوراً لو احتاج تعديلاً
+//
+// ملاحظة: السعر يوصل بالدولار فقط، فنحوّله بسعر الصرف الرسمي الثابت.
+// ونسبة/قيمة التغيّر المعروضة هي "منذ آخر تحديث" (محسوبة محلياً بمقارنة
+// آخر سعرين)، وليست تغيّر اليوم
+// الأونصة = 31.1034768 جرام — يُستخدم هنا وفي extractUsdPerGram24k أدناه
+private const val TROY_OUNCE_GRAMS = 31.1034768
+
 internal object GoldMarket {
 
     // الريال السعودي مربوط رسمياً بسعر ثابت للدولار الأمريكي منذ 1986
     private const val USD_TO_SAR = 3.75
+    private val karatPurity = listOf(
+        "24K" to 1.0,
+        "22K" to 22.0 / 24.0,
+        "21K" to 21.0 / 24.0,
+        "18K" to 18.0 / 24.0
+    )
 
     private val defaultPrices = listOf(
         KaratPrice("24K", 403.75, 0.65, 0.16),
@@ -55,24 +74,14 @@ internal object GoldMarket {
         isLoading = true
         var rawBody = ""
         try {
-            rawBody = client.get("https://api.goldprice.dev/v1/carat?currency=USD").bodyAsText()
-            val fields = extractCaratFields(rawBody)
+            rawBody = client.get("https://xaus.com/api/v1/spot?currency=USD&unit=gram").bodyAsText()
+            val usdPerGram24k = extractUsdPerGram24k(rawBody)
+                ?.takeIf { it > 0.0 }
                 ?: error("شكل استجابة غير متوقع من مزوّد الأسعار")
 
             val previous = prices
-            val updated = listOf(
-                "24K" to fields.priceGram24k,
-                "22K" to fields.priceGram22k,
-                "21K" to fields.priceGram21k,
-                "18K" to fields.priceGram18k
-            ).map { (karat, usdPerGramText) ->
-                // قيمة غير رقمية أو صفرية/سالبة تعني استجابة غير سليمة
-                // (شكل مختلف، صيانة، تحديد معدّل...) — نرفضها بدل قبولها
-                // كسعر حقيقي، حتى لا تُصفَّر الأسعار المعروضة صامتة
-                val usdPerGram = usdPerGramText.toDoubleOrNull()
-                    ?.takeIf { it > 0.0 }
-                    ?: error("سعر غير صالح لعيار $karat: \"$usdPerGramText\"")
-                val sarPerGram = usdPerGram * USD_TO_SAR
+            val updated = karatPurity.map { (karat, purity) ->
+                val sarPerGram = usdPerGram24k * purity * USD_TO_SAR
                 val previousPrice = previous.firstOrNull { it.karat == karat }?.price ?: sarPerGram
                 val change = sarPerGram - previousPrice
                 val percent = if (previousPrice != 0.0) (change / previousPrice) * 100.0 else 0.0
@@ -96,42 +105,27 @@ internal object GoldMarket {
     }
 }
 
-// شكل استجابة GET https://api.goldprice.dev/v1/carat?currency=USD — مزوّد
-// عام بلا حاجة لمفتاح API. الأسعار ترجع كنصوص عشرية (decimal strings)
-// وليست أرقاماً مباشرة
-private data class CaratFields(
-    val priceGram24k: String,
-    val priceGram22k: String,
-    val priceGram21k: String,
-    val priceGram18k: String
-)
-
-// تحليل دفاعي: نبحث عن الحقول الأربعة في جذر الاستجابة مباشرة، وإن لم
-// نجدها هناك نبحث داخل أغلفة شائعة (data/result/prices) بدل الفشل فوراً
-// — هذا يتحمّل تغيّر شكل الاستجابة (تغليفها بكائن إضافي مثلاً) دون
-// الحاجة لتحديث الكود في كل مرة
-private fun extractCaratFields(bodyText: String): CaratFields? {
+// تحليل دفاعي: نجرّب عدة مسارات محتملة لسعر جرام الذهب الخالص (عيار 24)
+// بالدولار من استجابة GET https://xaus.com/api/v1/spot?currency=USD&unit=gram،
+// لأن شكل الاستجابة غير موثّق بدقة كافية ولم يمكن اختباره فعلياً من هذه
+// البيئة. إن فشلت كل المسارات نرجع null بدل قيمة خاطئة، ويُلتقط نص
+// الاستجابة الخام في catch أعلاه للتشخيص عن بُعد
+private fun extractUsdPerGram24k(bodyText: String): Double? {
     val root = try {
         Json.parseToJsonElement(bodyText) as? JsonObject
     } catch (e: Exception) {
         null
     } ?: return null
 
-    val candidateObjects = listOfNotNull(
-        root,
-        root["data"] as? JsonObject,
-        root["result"] as? JsonObject,
-        root["prices"] as? JsonObject
-    )
+    // 1) حقل مباشر لسعر الجرام بالدولار (إن وُجد بهذا الاسم)
+    root["per_gram_usd"]?.jsonPrimitive?.doubleOrNull?.let { return it }
 
-    for (obj in candidateObjects) {
-        val g24 = obj["price_gram_24k"]?.jsonPrimitive?.contentOrNull
-        val g22 = obj["price_gram_22k"]?.jsonPrimitive?.contentOrNull
-        val g21 = obj["price_gram_21k"]?.jsonPrimitive?.contentOrNull
-        val g18 = obj["price_gram_18k"]?.jsonPrimitive?.contentOrNull
-        if (g24 != null && g22 != null && g21 != null && g18 != null) {
-            return CaratFields(g24, g22, g21, g18)
-        }
-    }
+    // 2) كائن xau متداخل بحقل price (متوقَّع عند طلب unit=gram)
+    (root["xau"] as? JsonObject)?.get("price")?.jsonPrimitive?.doubleOrNull?.let { return it }
+
+    // 3) سعر الأونصة بالدولار (يُفترض أنه يرجع دائماً بغض النظر عن unit)،
+    // نحوّله يدوياً لسعر الجرام إذا لم نجد سعر الجرام مباشرة
+    root["spot_usd_oz"]?.jsonPrimitive?.doubleOrNull?.let { return it / TROY_OUNCE_GRAMS }
+
     return null
 }

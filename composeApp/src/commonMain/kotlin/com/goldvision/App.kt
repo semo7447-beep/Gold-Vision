@@ -345,31 +345,31 @@ private fun GoldVisionApp() {
     }
 
     // يجلب أسعار الذهب العالمية الحقيقية عند فتح التطبيق ثم يحدّثها
-    // تلقائياً كل 45 ثانية عند النجاح — لكن عند الفشل المتكرر (مؤشر
-    // تحديد معدّل من المزوّد المجاني) نبطّئ تدريجياً بدل الإصرار على
-    // نفس الوتيرة ومفاقمة الرفض، ونرجع لـ45 ثانية تلقائياً بمجرد نجاح
-    // أي محاولة
+    // تلقائياً كل 30 ثانية (GoldMarket.kt أصبح يستخدم xaus.com، مزوّد
+    // مصمَّم للاستطلاع المتكرر بلا حصة شهرية صارمة — على عكس
+    // api.goldprice.dev السابق اللي كان سبب التوقف الحقيقي: حصة شهرية
+    // 1000 طلب فقط نفدت خلال يوم الاختبار). 30 ثانية تطابق مدة التخزين
+    // المؤقت المعلَنة عند المزوّد نفسه، فتحديث أسرع لن يعطي فائدة فعلية
     LaunchedEffect(Unit) {
-        var backoffSeconds = 45L
+        var backoffSeconds = 30L
         while (true) {
             GoldMarket.refresh()
             if (GoldMarket.lastError == null) {
-                backoffSeconds = 45L
+                backoffSeconds = 30L
             } else {
-                backoffSeconds = (backoffSeconds * 2).coerceAtMost(300L)
+                backoffSeconds = (backoffSeconds * 2).coerceAtMost(600L)
             }
             delay(backoffSeconds.seconds)
         }
     }
 
     // يجلب شموع الأسعار اليومية الحقيقية لآخر 30 يوماً (GoldHistory.kt)
-    // — بيانات يومية لا تتغيّر كثيراً خلال اليوم، فكل 30 دقيقة كافٍ
-    // تماماً وتقلّل الحمل الكلي على نفس المزوّد المجاني (نفس النطاق
-    // المستخدم لأسعار /v1/carat أعلاه)
+    // — شموع يومية لا تتغيّر إلا مرة كل يوم تقريباً، فكل ساعتين كافٍ
+    // جداً ويوفّر أغلب الحصة الشهرية المشتركة مع أسعار /v1/carat أعلاه
     LaunchedEffect(Unit) {
         while (true) {
             GoldHistory.refresh(todayLocalDate())
-            delay(1800.seconds)
+            delay(7200.seconds)
         }
     }
     val marketScope = rememberCoroutineScope()
