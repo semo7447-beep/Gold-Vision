@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -85,6 +86,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -453,6 +455,7 @@ private fun GoldVisionApp() {
             .fillMaxSize()
             .background(Black)
             .statusBarsPadding()
+            .navigationBarsPadding()
     ) {
         Header(
             onRefresh = { marketScope.launch { GoldMarket.refresh() } },
@@ -5768,7 +5771,17 @@ private fun NumericInputField(
         ),
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
         cursorBrush = SolidColor(Gold),
-        modifier = modifier
+        modifier = modifier.onFocusChanged { focusState ->
+            // إذا ترك المستخدم الحقل فارغاً أو برقم غير صالح عند الخروج منه،
+            // يرجع تلقائياً لآخر قيمة معتمدة (صفر افتراضياً) بدل أن يبقى فارغاً
+            if (!focusState.isFocused) {
+                val parsed = fieldValue.text.toDoubleOrNull()
+                if (parsed == null || parsed < minValue) {
+                    val newText = fmt(value, 2)
+                    fieldValue = TextFieldValue(newText, selection = TextRange(newText.length))
+                }
+            }
+        }
     ) { innerTextField ->
         Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
             innerTextField()
