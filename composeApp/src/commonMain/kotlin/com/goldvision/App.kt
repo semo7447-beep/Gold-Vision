@@ -1102,7 +1102,37 @@ private fun CalculatorFullScreen(
             Spacer(Modifier.height(10.dp))
 
             CalculatorRow("سعر الذهب", "${fmt(beforeVat, 2, grouped = true)} ريال")
-            CalculatorRow("المصنعية", "${fmt(if (buyMode) manufacturing * weight else 0.0, 2, grouped = true)} ريال")
+            if (buyMode) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 2.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("المصنعية (للجرام) ✎", color = White, fontSize = 10.sp)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        NumericInputField(
+                            value = manufacturing,
+                            onValueChanged = { onManufacturingChanged(it.coerceAtMost(500.0)) },
+                            fontSize = 10.sp,
+                            minValue = 0.0,
+                            modifier = Modifier
+                                .width(50.dp)
+                                .height(18.dp)
+                                .clip(RoundedCornerShape(5.dp))
+                                .border(1.dp, Border, RoundedCornerShape(5.dp))
+                        )
+                        Text("ريال", color = Gray, fontSize = 9.sp)
+                    }
+                }
+                CalculatorRow("إجمالي المصنعية", "${fmt(manufacturing * weight, 2, grouped = true)} ريال")
+            } else {
+                CalculatorRow("المصنعية", "0.00 ريال")
+            }
             CalculatorRow(
                 if (isTaxExempt) "ضريبة القيمة المضافة (معفى)" else "ضريبة القيمة المضافة (${fmt(taxPercent, 0)}%)",
                 "${fmt(vat, 2, grouped = true)} ريال"
