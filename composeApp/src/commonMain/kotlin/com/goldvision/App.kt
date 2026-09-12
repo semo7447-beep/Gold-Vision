@@ -4392,8 +4392,6 @@ private fun MoreScreen(
         ) {
             SettingsRow(icon = Icons.Outlined.Notifications, label = "الإشعارات")
             SettingsDivider()
-            SettingsRow(icon = Icons.Outlined.Language, label = "اللغة")
-            SettingsDivider()
             SettingsRow(icon = Icons.Outlined.AttachMoney, label = "العملة")
             SettingsDivider()
             SettingsRow(icon = Icons.Outlined.Info, label = "عن التطبيق")
@@ -4678,7 +4676,7 @@ private fun Header(onRefresh: () -> Unit) {
                 horizontalArrangement = Arrangement.spacedBy(5.dp)
             ) {
                 CircleButton(Icons.Outlined.Refresh, onClick = onRefresh)
-                SmallGoldButton("SAR  ˅")
+                SmallGoldButton("SAR")
                 CircleButton(Icons.Outlined.Bolt)
             }
         }
