@@ -1,5 +1,6 @@
 package com.goldvision
 
+import kotlinx.datetime.daysUntil
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -9,7 +10,10 @@ import kotlinx.serialization.json.Json
 // بنفسه من شاشة "الإشعارات" في "المزيد" — لا نطلب صلاحية الإشعارات من
 // النظام قبل أن يطلبها هو بنفسه
 @Serializable
-internal data class NotificationSettings(val dailyPriceEnabled: Boolean = false)
+internal data class NotificationSettings(
+    val dailyPriceEnabled: Boolean = false,
+    val fedMeetingAlertsEnabled: Boolean = false
+)
 
 private const val notificationSettingsStorageFile = "notification_settings.json"
 
@@ -31,6 +35,25 @@ internal fun persistNotificationSettings(settings: NotificationSettings) {
 // الفعلي مختلف لكل منصة (WorkManager على أندرويد؛ لا تأثير على iOS بعد)
 internal expect object PriceNotificationScheduler {
     fun setEnabled(enabled: Boolean)
+}
+
+// يجدول أو يلغي فحصاً يومياً لأقرب اجتماع فيدرالي: إن كان اليوم أو غداً،
+// يُصدر إشعار تذكير بالتاريخ والوقت المتوقع للإعلان. التطبيق الفعلي
+// مختلف لكل منصة (WorkManager على أندرويد؛ لا تأثير على iOS بعد)
+internal expect object FedMeetingNotificationScheduler {
+    fun setEnabled(enabled: Boolean)
+}
+
+// نص إشعار تذكير اجتماع الفيدرالي (عنوان + محتوى)، أو null إن لم يكن
+// الاجتماع القادم اليوم أو غداً (لا داعي لإشعار في هذه الحالة)
+internal fun buildFedMeetingNotificationText(): Pair<String, String>? {
+    val date = nextFedMeetingDate() ?: return null
+    val daysLeft = todayLocalDate().daysUntil(date)
+    if (daysLeft != 0 && daysLeft != 1) return null
+    val whenText = if (daysLeft == 0) "اليوم" else "غداً"
+    val title = "اجتماع الفيدرالي $whenText"
+    val body = "قرار الفائدة الأمريكية يُعلن عادة الساعة 9:00 مساءً بتوقيت مكة المكرمة"
+    return title to body
 }
 
 // نص الإشعار (عنوان + محتوى) يعرض سعري الافتتاح والإغلاق الفعليين

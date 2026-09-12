@@ -273,12 +273,20 @@ private fun zakatStatusFor(purchaseDateText: String, exceedsNisab: Boolean): Zak
 // ==================== مواعيد الفيدرالي ====================
 private data class FedMeetingRaw(val year: Int, val month: Int, val day: Int, val time: String)
 
+// القرار يُعلن عادة الساعة 9:00 مساءً بتوقيت مكة المكرمة (2:00 ظهراً بتوقيت
+// واشنطن) — يجب تحديث هذه القائمة يدوياً كل عام عند إعلان التقويم الرسمي
+// الجديد على federalreserve.gov، لا يوجد مصدر بيانات مجاني حي لهذه المواعيد
 private val fedMeetingsRaw = listOf(
-    FedMeetingRaw(2026, 9, 16, "08:00 ص"),
-    FedMeetingRaw(2026, 10, 28, "08:00 ص"),
-    FedMeetingRaw(2026, 12, 9, "08:00 ص"),
-    FedMeetingRaw(2027, 1, 27, "08:00 ص"),
-    FedMeetingRaw(2027, 3, 17, "08:00 ص")
+    FedMeetingRaw(2026, 1, 28, "09:00 م"),
+    FedMeetingRaw(2026, 3, 18, "09:00 م"),
+    FedMeetingRaw(2026, 4, 29, "09:00 م"),
+    FedMeetingRaw(2026, 6, 17, "09:00 م"),
+    FedMeetingRaw(2026, 7, 29, "09:00 م"),
+    FedMeetingRaw(2026, 9, 16, "09:00 م"),
+    FedMeetingRaw(2026, 10, 28, "09:00 م"),
+    FedMeetingRaw(2026, 12, 9, "09:00 م"),
+    FedMeetingRaw(2027, 1, 27, "09:00 م"),
+    FedMeetingRaw(2027, 3, 17, "09:00 م")
 )
 
 // مبني على kotlinx-datetime بدل java.util.Calendar/SimpleDateFormat
@@ -296,17 +304,20 @@ private val arabicDayNames = mapOf(
 internal fun todayLocalDate(): LocalDate =
     Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
 
-private fun upcomingFedMeetings(): List<Triple<String, String, String>> {
+private data class FedMeetingRow(val day: String, val date: String, val time: String, val daysLeft: Int)
+
+private fun upcomingFedMeetings(): List<FedMeetingRow> {
     val today = todayLocalDate()
     return fedMeetingsRaw
         .map { it to LocalDate(it.year, it.month, it.day) }
         .filter { (_, date) -> date >= today }
         .sortedBy { (_, date) -> date }
         .map { (raw, date) ->
-            Triple(
-                arabicDayNames[date.dayOfWeek] ?: "",
-                "${raw.year}/${raw.month}/${raw.day}",
-                raw.time
+            FedMeetingRow(
+                day = arabicDayNames[date.dayOfWeek] ?: "",
+                date = "${raw.year}/${raw.month}/${raw.day}",
+                time = raw.time,
+                daysLeft = today.daysUntil(date)
             )
         }
 }
@@ -569,6 +580,11 @@ private fun GoldVisionApp() {
                         notificationSettings = notificationSettings.copy(dailyPriceEnabled = enabled)
                         persistNotificationSettings(notificationSettings)
                         PriceNotificationScheduler.setEnabled(enabled)
+                    },
+                    onToggleFedMeetingAlerts = { enabled ->
+                        notificationSettings = notificationSettings.copy(fedMeetingAlertsEnabled = enabled)
+                        persistNotificationSettings(notificationSettings)
+                        FedMeetingNotificationScheduler.setEnabled(enabled)
                     }
                 )
             } else {
@@ -677,7 +693,7 @@ private fun HomeScreen(
     beforeVat: Double,
     vat: Double,
     total: Double,
-    fedRows: List<Triple<String, String, String>>,
+    fedRows: List<FedMeetingRow>,
     savedGoldItems: List<GoldItem>,
     onNavigateCalculator: () -> Unit,
     onNavigateChart: () -> Unit,
@@ -2899,8 +2915,9 @@ private fun periodRangeText(period: String): String {
 }
 
 // أقرب اجتماع قادم للفيدرالي كتاريخ فعلي (وليس نصاً منسّقاً فقط)، يُستخدم
-// لحساب عدد الأيام المتبقية في شاشة التحليل الفني
-private fun nextFedMeetingDate(): LocalDate? {
+// لحساب عدد الأيام المتبقية في شاشة التحليل الفني، وفي إشعار تذكير
+// اجتماع الفيدرالي (PriceNotifications.kt)
+internal fun nextFedMeetingDate(): LocalDate? {
     val today = todayLocalDate()
     return fedMeetingsRaw
         .map { LocalDate(it.year, it.month, it.day) }
@@ -5018,7 +5035,8 @@ private fun PrivacyPolicyScreen(onBack: () -> Unit) {
 private fun NotificationSettingsScreen(
     settings: NotificationSettings,
     onBack: () -> Unit,
-    onToggleDailyPrice: (Boolean) -> Unit
+    onToggleDailyPrice: (Boolean) -> Unit,
+    onToggleFedMeetingAlerts: (Boolean) -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -5074,6 +5092,40 @@ private fun NotificationSettingsScreen(
             Switch(
                 checked = settings.dailyPriceEnabled,
                 onCheckedChange = onToggleDailyPrice,
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = Black,
+                    checkedTrackColor = Gold,
+                    uncheckedThumbColor = Gray,
+                    uncheckedTrackColor = CardBlack
+                )
+            )
+        }
+
+        Spacer(Modifier.height(12.dp))
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(10.dp))
+                .border(1.dp, Border, RoundedCornerShape(10.dp))
+                .background(CardBlack)
+                .padding(12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text("مواعيد اجتماعات الفيدرالي", color = White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    "تذكير يوم الاجتماع وقبله بيوم واحد، مع موعد إعلان القرار (9:00 مساءً بتوقيت مكة)",
+                    color = Gray,
+                    fontSize = 10.sp,
+                    lineHeight = 15.sp
+                )
+            }
+            Switch(
+                checked = settings.fedMeetingAlertsEnabled,
+                onCheckedChange = onToggleFedMeetingAlerts,
                 colors = SwitchDefaults.colors(
                     checkedThumbColor = Black,
                     checkedTrackColor = Gold,
@@ -6111,7 +6163,7 @@ private fun NewsRow(dot: Color, text: String, time: String) {
 
 // ==================== جدول الفيدرالي ====================
 @Composable
-private fun FedSchedule(rows: List<Triple<String, String, String>>) {
+private fun FedSchedule(rows: List<FedMeetingRow>) {
     AppCard(
         title = "مواعيد اجتماعات الفيدرالي",
         titleIcon = Icons.Outlined.CalendarMonth,
@@ -6128,7 +6180,7 @@ private fun FedSchedule(rows: List<Triple<String, String, String>>) {
                 color = Gray,
                 fontSize = 9.sp,
                 fontWeight = FontWeight.Bold,
-                modifier = Modifier.weight(0.9f),
+                modifier = Modifier.weight(0.8f),
                 textAlign = TextAlign.Center,
                 maxLines = 1
             )
@@ -6138,7 +6190,7 @@ private fun FedSchedule(rows: List<Triple<String, String, String>>) {
                 color = Gray,
                 fontSize = 9.sp,
                 fontWeight = FontWeight.Bold,
-                modifier = Modifier.weight(1.1f),
+                modifier = Modifier.weight(1f),
                 textAlign = TextAlign.Center,
                 maxLines = 1
             )
@@ -6148,7 +6200,17 @@ private fun FedSchedule(rows: List<Triple<String, String, String>>) {
                 color = Gray,
                 fontSize = 9.sp,
                 fontWeight = FontWeight.Bold,
-                modifier = Modifier.weight(1.1f),
+                modifier = Modifier.weight(0.9f),
+                textAlign = TextAlign.Center,
+                maxLines = 1
+            )
+
+            Text(
+                text = "العدّ التنازلي",
+                color = Gray,
+                fontSize = 9.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.weight(1f),
                 textAlign = TextAlign.Center,
                 maxLines = 1
             )
@@ -6162,7 +6224,7 @@ private fun FedSchedule(rows: List<Triple<String, String, String>>) {
                 .background(Border)
         )
 
-        rows.forEach { (day, date, time) ->
+        rows.forEach { row ->
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -6170,7 +6232,25 @@ private fun FedSchedule(rows: List<Triple<String, String, String>>) {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = day,
+                    text = row.day,
+                    color = White,
+                    fontSize = 9.sp,
+                    modifier = Modifier.weight(0.8f),
+                    textAlign = TextAlign.Center,
+                    maxLines = 1
+                )
+
+                Text(
+                    text = row.date,
+                    color = White,
+                    fontSize = 9.sp,
+                    modifier = Modifier.weight(1f),
+                    textAlign = TextAlign.Center,
+                    maxLines = 1
+                )
+
+                Text(
+                    text = row.time,
                     color = White,
                     fontSize = 9.sp,
                     modifier = Modifier.weight(0.9f),
@@ -6178,23 +6258,25 @@ private fun FedSchedule(rows: List<Triple<String, String, String>>) {
                     maxLines = 1
                 )
 
-                Text(
-                    text = date,
-                    color = White,
-                    fontSize = 9.sp,
-                    modifier = Modifier.weight(1.1f),
-                    textAlign = TextAlign.Center,
-                    maxLines = 1
-                )
-
-                Text(
-                    text = time,
-                    color = White,
-                    fontSize = 9.sp,
-                    modifier = Modifier.weight(1.1f),
-                    textAlign = TextAlign.Center,
-                    maxLines = 1
-                )
+                Box(
+                    modifier = Modifier.weight(1f),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(6.dp))
+                            .background((if (row.daysLeft <= 3) Red else Gold).copy(alpha = 0.15f))
+                            .padding(horizontal = 6.dp, vertical = 3.dp)
+                    ) {
+                        Text(
+                            text = if (row.daysLeft == 0) "اليوم" else "بعد ${row.daysLeft} يوم",
+                            color = if (row.daysLeft <= 3) Red else Gold,
+                            fontSize = 8.5.sp,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1
+                        )
+                    }
+                }
             }
         }
 
