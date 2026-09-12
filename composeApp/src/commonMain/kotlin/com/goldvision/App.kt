@@ -345,22 +345,31 @@ private fun GoldVisionApp() {
     }
 
     // يجلب أسعار الذهب العالمية الحقيقية عند فتح التطبيق ثم يحدّثها
-    // تلقائياً كل 45 ثانية (GoldMarket.kt). التحديث كل 20 ثانية كان
-    // عدوانياً جداً على مزوّد مجاني ويبدو أنه تسبب برفض كل الطلبات
-    // (تحديد معدّل) — 45 ثانية توازن بين السرعة وتجنّب هذا الرفض
+    // تلقائياً كل 45 ثانية عند النجاح — لكن عند الفشل المتكرر (مؤشر
+    // تحديد معدّل من المزوّد المجاني) نبطّئ تدريجياً بدل الإصرار على
+    // نفس الوتيرة ومفاقمة الرفض، ونرجع لـ45 ثانية تلقائياً بمجرد نجاح
+    // أي محاولة
     LaunchedEffect(Unit) {
+        var backoffSeconds = 45L
         while (true) {
             GoldMarket.refresh()
-            delay(45.seconds)
+            if (GoldMarket.lastError == null) {
+                backoffSeconds = 45L
+            } else {
+                backoffSeconds = (backoffSeconds * 2).coerceAtMost(300L)
+            }
+            delay(backoffSeconds.seconds)
         }
     }
 
     // يجلب شموع الأسعار اليومية الحقيقية لآخر 30 يوماً (GoldHistory.kt)
-    // — لا تحتاج تحديثاً بنفس تكرار السعر اللحظي، كل 5 دقائق كافٍ
+    // — بيانات يومية لا تتغيّر كثيراً خلال اليوم، فكل 30 دقيقة كافٍ
+    // تماماً وتقلّل الحمل الكلي على نفس المزوّد المجاني (نفس النطاق
+    // المستخدم لأسعار /v1/carat أعلاه)
     LaunchedEffect(Unit) {
         while (true) {
             GoldHistory.refresh(todayLocalDate())
-            delay(300.seconds)
+            delay(1800.seconds)
         }
     }
     val marketScope = rememberCoroutineScope()
