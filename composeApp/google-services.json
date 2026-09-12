@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "921587730734",
+    "project_id": "gold-vision-37f96",
+    "storage_bucket": "gold-vision-37f96.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:921587730734:android:c41197a4e525bdfb7592bf",
+        "android_client_info": {
+          "package_name": "com.goldvision"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAH16N6yz_JZGrINmyXLkVTvGpU88xFLoo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -7,6 +7,7 @@ plugins {
     alias(libs.plugins.kotlinSerialization)
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
+    alias(libs.plugins.googleServices)
 }
 
 kotlin {
@@ -46,6 +47,11 @@ kotlin {
             // جدولة إشعار سعر الذهب اليومي (افتتاح/إغلاق) حتى عند إغلاق
             // التطبيق — PriceNotificationWorker.android.kt
             implementation("androidx.work:work-runtime-ktx:2.9.1")
+            // تسجيل الدخول بالإيميل (Firebase Authentication) — مجاني بالكامل
+            // على خطة Spark بلا حد أقصى لعدد المستخدمين. BoM يضبط كل إصدارات
+            // مكتبات Firebase معاً حتى تبقى متوافقة
+            implementation(platform(libs.firebase.bom))
+            implementation("com.google.firebase:firebase-auth")
         }
         commonMain.dependencies {
             implementation(compose.runtime)
