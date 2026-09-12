@@ -5141,8 +5141,9 @@ private fun NotificationBell(count: Int) {
     }
 }
 
-// ماسة (سداسية) بحدّ متدرّج ذهبي، وحرف "G" في المنتصف — شعار التطبيق
-// المستخدَم في الشريط العلوي وفي كل مكان يظهر فيه اسم "GOLD VISION"
+// ماسة (سداسية) حدّها الذهبي نفسه يشكّل حرف "G": فجوة صغيرة في الضلع
+// السفلي الأيمن مع زائدة أفقية تمتد للداخل من أعلى الفجوة — تماماً مثل
+// أي حرف G مبني من دائرة/شكل مقطوع بزائدة، بدل حرف منفصل داخل الماسة
 private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawGoldLogoShape(w: Float, h: Float) {
     val cx = w / 2f
 
@@ -5154,48 +5155,41 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawGoldLogoShape(w
     val topLeftX = w * 0.28f
     val topRightX = w * 0.72f
 
-    val diamond = Path().apply {
-        moveTo(topLeftX, topY)
-        lineTo(topRightX, topY)
-        lineTo(rightX, shoulderY)
-        lineTo(cx, bottomY)
-        lineTo(leftX, shoulderY)
-        close()
+    val topLeft = Offset(topLeftX, topY)
+    val topRight = Offset(topRightX, topY)
+    val rightShoulder = Offset(rightX, shoulderY)
+    val bottom = Offset(cx, bottomY)
+    val leftShoulder = Offset(leftX, shoulderY)
+
+    // نقطتا الفجوة على الضلع الواصل بين الكتف الأيمن وأسفل الماسة
+    fun along(from: Offset, to: Offset, f: Float) =
+        Offset(from.x + (to.x - from.x) * f, from.y + (to.y - from.y) * f)
+
+    val gapNearShoulder = along(rightShoulder, bottom, 0.22f)
+    val gapNearBottom = along(rightShoulder, bottom, 0.40f)
+
+    // الزائدة الأفقية تبدأ من أعلى الفجوة وتمتد للداخل، بنفس ارتفاعها
+    val spurTip = Offset(w * 0.42f, gapNearShoulder.y)
+
+    val logoPath = Path().apply {
+        moveTo(gapNearBottom.x, gapNearBottom.y)
+        lineTo(bottom.x, bottom.y)
+        lineTo(leftShoulder.x, leftShoulder.y)
+        lineTo(topLeft.x, topLeft.y)
+        lineTo(topRight.x, topRight.y)
+        lineTo(rightShoulder.x, rightShoulder.y)
+        lineTo(gapNearShoulder.x, gapNearShoulder.y)
+        lineTo(spurTip.x, spurTip.y)
     }
+
     drawPath(
-        path = diamond,
+        path = logoPath,
         brush = Brush.linearGradient(
             colors = listOf(Color(0xFFFFE9A8), Gold, GoldDark),
             start = Offset(0f, 0f),
             end = Offset(w, h)
         ),
-        style = Stroke(width = h * 0.1f)
-    )
-
-    // حرف "G" ملتصق بالحدّ الأيسر للماسة، حتى يظهر معها كقطعة واحدة
-    // متّصلة بدل شكلين منفصلين
-    val gCx = w * 0.32f
-    val gCy = h * 0.40f
-    val s = h * 0.17f
-    val t = h * 0.075f
-
-    val bracket = Path().apply {
-        moveTo(gCx - s, gCy - s)
-        lineTo(gCx + s, gCy - s)
-        lineTo(gCx + s, gCy - s + t)
-        lineTo(gCx - s + t, gCy - s + t)
-        lineTo(gCx - s + t, gCy + s - t)
-        lineTo(gCx + s, gCy + s - t)
-        lineTo(gCx + s, gCy + s)
-        lineTo(gCx - s, gCy + s)
-        close()
-    }
-    drawPath(path = bracket, color = Gold)
-
-    drawRect(
-        color = Gold,
-        topLeft = Offset(gCx, gCy - t / 2f),
-        size = androidx.compose.ui.geometry.Size(s - t, t)
+        style = Stroke(width = h * 0.1f, cap = StrokeCap.Round)
     )
 }
 
