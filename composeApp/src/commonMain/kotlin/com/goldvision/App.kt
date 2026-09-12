@@ -433,7 +433,10 @@ private fun GoldVisionApp() {
                 prefillGoldItem = null
             }
             showProfileScreen -> showProfileScreen = false
-            showAuthScreen -> showAuthScreen = false
+            showAuthScreen -> {
+                showAuthScreen = false
+                showProfileScreen = true
+            }
             showPrivacyPolicy -> showPrivacyPolicy = false
             showNotificationSettings -> showNotificationSettings = false
             selectedBottom != 0 -> selectedBottom = 0
@@ -526,7 +529,10 @@ private fun GoldVisionApp() {
                 ProfileScreen(
                     profile = userProfile,
                     signedInEmail = signedInEmail,
-                    onNavigateAuth = { showAuthScreen = true },
+                    onNavigateAuth = {
+                        showProfileScreen = false
+                        showAuthScreen = true
+                    },
                     onSignOut = {
                         AuthService.signOut()
                         signedInEmail = AuthService.currentUserEmail
@@ -540,10 +546,14 @@ private fun GoldVisionApp() {
                 )
             } else if (showAuthScreen) {
                 AuthScreen(
-                    onBack = { showAuthScreen = false },
+                    onBack = {
+                        showAuthScreen = false
+                        showProfileScreen = true
+                    },
                     onAuthSuccess = {
                         signedInEmail = AuthService.currentUserEmail
                         showAuthScreen = false
+                        showProfileScreen = true
                     }
                 )
             } else if (showPrivacyPolicy) {

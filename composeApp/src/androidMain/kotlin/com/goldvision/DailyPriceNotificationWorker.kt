@@ -5,7 +5,6 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
 import android.content.pm.PackageManager
-import android.graphics.BitmapFactory
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
@@ -60,20 +59,14 @@ internal class DailyPriceNotificationWorker(
             return
         }
 
-        // أيقونة كبيرة بشعار التطبيق الفعلي (نفس صورة أيقونة التطبيق)، وأيقونة
-        // صغيرة بسيطة بلا ألوان (يفرضها أندرويد كصورة ظلّية بيضاء في شريط الحالة)
-        val largeIcon = try {
-            BitmapFactory.decodeResource(context.resources, R.mipmap.ic_launcher_foreground)
-        } catch (e: Exception) {
-            null
-        }
-
+        // أيقونة واحدة فقط (بلا أيقونة كبيرة منفصلة) حتى لا يظهر شعاران في
+        // الإشعار — أندرويد يفرض عرضها كصورة ظلّية بسيطة داخل شارة ملوّنة
+        // بدل الألوان الأصلية، وهذا سلوك ثابت من النظام لا يمكن تجاوزه
         val notification = NotificationCompat.Builder(context, DAILY_PRICE_CHANNEL_ID)
             .setContentTitle(title)
             .setContentText(body)
             .setStyle(NotificationCompat.BigTextStyle().bigText(body))
             .setSmallIcon(R.drawable.ic_notification)
-            .apply { largeIcon?.let { setLargeIcon(it) } }
             .setAutoCancel(true)
             .build()
 
