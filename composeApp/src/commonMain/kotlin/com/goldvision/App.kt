@@ -44,6 +44,7 @@ import androidx.compose.material.icons.outlined.Balance
 import androidx.compose.material.icons.outlined.Bolt
 import androidx.compose.material.icons.outlined.Calculate
 import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Home
@@ -328,6 +329,8 @@ private fun GoldVisionApp() {
     var buyMode by remember { mutableStateOf(true) }
     var weight by remember { mutableDoubleStateOf(10.0) }
     var manufacturing by remember { mutableDoubleStateOf(35.0) }
+    var selectedCountryTax by remember { mutableStateOf(countryTaxOptions.first()) }
+    var taxPercent by remember { mutableDoubleStateOf(countryTaxOptions.first().vatPercent) }
     var selectedBottom by remember { mutableIntStateOf(0) }
     var showChartFull by remember { mutableStateOf(false) }
     var showDealEvaluator by remember { mutableStateOf(false) }
@@ -335,6 +338,7 @@ private fun GoldVisionApp() {
     var editingGoldItemIndex by remember { mutableStateOf<Int?>(null) }
     val savedDeals = remember { mutableStateListOf<SavedDeal>() }
     val savedGoldItems = remember { mutableStateListOf<GoldItem>().apply { addAll(loadSavedGoldItems()) } }
+    val savedCalculations = remember { mutableStateListOf<SavedCalculation>().apply { addAll(loadSavedCalculations()) } }
 
     var liveTimeText by remember { mutableStateOf(currentDateTimeText()) }
     LaunchedEffect(Unit) {
@@ -378,7 +382,8 @@ private fun GoldVisionApp() {
 
     val selectedPrice = GoldMarket.prices.first { it.karat == selectedKarat }.price
     val beforeVat = selectedPrice * weight
-    val vat = (beforeVat + manufacturing * weight) * 0.15
+    val isCalculatorTaxExempt = selectedKarat == "24K"
+    val vat = if (isCalculatorTaxExempt) 0.0 else (beforeVat + manufacturing * weight) * (taxPercent / 100.0)
     val total = beforeVat + manufacturing * weight + vat
 
     Column(
@@ -466,12 +471,22 @@ private fun GoldVisionApp() {
                         beforeVat = beforeVat,
                         vat = vat,
                         total = total,
+                        selectedCountryTax = selectedCountryTax,
+                        onCountrySelected = { selectedCountryTax = it },
+                        taxPercent = taxPercent,
+                        onTaxPercentChanged = { taxPercent = it },
+                        isTaxExempt = isCalculatorTaxExempt,
                         onBuyModeChanged = { buyMode = it },
                         onKaratChanged = { selectedKarat = it },
                         onWeightChanged = { weight = it },
                         onManufacturingChanged = { manufacturing = it },
                         onNavigateDealEvaluator = { showDealEvaluator = true },
                         savedDeals = savedDeals,
+                        savedCalculations = savedCalculations,
+                        onSaveCalculation = { calc ->
+                            savedCalculations.add(calc)
+                            persistSavedCalculations(savedCalculations)
+                        },
                         onBack = { selectedBottom = 0 }
                     )
                     2 -> NewsScreen(onBack = { selectedBottom = 0 })
@@ -633,12 +648,19 @@ private fun CalculatorFullScreen(
     beforeVat: Double,
     vat: Double,
     total: Double,
+    selectedCountryTax: CountryTaxOption,
+    onCountrySelected: (CountryTaxOption) -> Unit,
+    taxPercent: Double,
+    onTaxPercentChanged: (Double) -> Unit,
+    isTaxExempt: Boolean,
     onBuyModeChanged: (Boolean) -> Unit,
     onKaratChanged: (String) -> Unit,
     onWeightChanged: (Double) -> Unit,
     onManufacturingChanged: (Double) -> Unit,
     onNavigateDealEvaluator: () -> Unit,
     savedDeals: List<SavedDeal>,
+    savedCalculations: List<SavedCalculation>,
+    onSaveCalculation: (SavedCalculation) -> Unit,
     onBack: () -> Unit
 ) {
     val selectedPrice = GoldMarket.prices.first { it.karat == selectedKarat }
@@ -806,6 +828,16 @@ private fun CalculatorFullScreen(
 
         Spacer(Modifier.height(14.dp))
 
+        CountryTaxSelector(
+            selectedCountry = selectedCountryTax,
+            onCountrySelected = onCountrySelected,
+            taxPercent = taxPercent,
+            onTaxPercentChanged = onTaxPercentChanged,
+            isTaxExempt = isTaxExempt
+        )
+
+        Spacer(Modifier.height(14.dp))
+
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -866,7 +898,11 @@ private fun CalculatorFullScreen(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    Text("معفى من الضريبة", color = Gray, fontSize = 9.sp)
+                    Text(
+                        if (isTaxExempt) "معفى من الضريبة" else "${selectedCountryTax.name} · ${fmt(taxPercent, 0)}%",
+                        color = Gray,
+                        fontSize = 9.sp
+                    )
                     Icon(
                         imageVector = Icons.Outlined.Info,
                         contentDescription = null,
@@ -887,9 +923,22 @@ private fun CalculatorFullScreen(
 
             CalculatorRow("سعر الذهب", "${fmt(beforeVat, 2, grouped = true)} ريال")
             CalculatorRow("المصنعية", "${fmt(manufacturing * weight, 2, grouped = true)} ريال")
-            CalculatorRow("ضريبة القيمة المضافة (15%)", "${fmt(vat, 2, grouped = true)} ريال")
+            CalculatorRow(
+                if (isTaxExempt) "ضريبة القيمة المضافة (معفى)" else "ضريبة القيمة المضافة (${fmt(taxPercent, 0)}%)",
+                "${fmt(vat, 2, grouped = true)} ريال"
+            )
             CalculatorRow("سعر الجرام النهائي", "${fmt(finalGramPrice, 2, grouped = true)} ريال")
         }
+
+        Spacer(Modifier.height(14.dp))
+
+        SaveCalculationBox(
+            karat = selectedKarat,
+            weight = weight,
+            buyMode = buyMode,
+            total = total,
+            onSave = onSaveCalculation
+        )
 
         Spacer(Modifier.height(14.dp))
 
@@ -971,6 +1020,65 @@ private fun CalculatorFullScreen(
             }
         }
 
+        if (savedCalculations.isNotEmpty()) {
+            Spacer(Modifier.height(14.dp))
+            Text("حساباتي المحفوظة", color = Gray, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(6.dp))
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(10.dp))
+                    .border(1.dp, Border, RoundedCornerShape(10.dp))
+                    .background(CardBlack)
+            ) {
+                savedCalculations.forEachIndexed { index, calc ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp, vertical = 10.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.Calculate,
+                                contentDescription = null,
+                                tint = Gold,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Column {
+                                Text(
+                                    "${karatLabel(calc.karat)} · ${fmt(calc.weight, 2)} جم",
+                                    color = White,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(if (calc.buyMode) "شراء" else "بيع", color = Gray, fontSize = 9.sp)
+                            }
+                        }
+                        Text(
+                            "${fmt(calc.total, 2, grouped = true)} ريال",
+                            color = Gold,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                    if (index != savedCalculations.lastIndex) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 12.dp)
+                                .height(1.dp)
+                                .background(Border)
+                        )
+                    }
+                }
+            }
+        }
+
         Spacer(Modifier.height(16.dp))
     }
 }
@@ -990,15 +1098,18 @@ private fun DealEvaluatorScreen(
     var includingTax by remember { mutableStateOf(true) }
     var showMore by remember { mutableStateOf(false) }
     var showSaveDialog by remember { mutableStateOf(false) }
+    var dealCountryTax by remember { mutableStateOf(countryTaxOptions.first()) }
+    var dealTaxPercent by remember { mutableDoubleStateOf(countryTaxOptions.first().vatPercent) }
+    val isDealTaxExempt = karat == "24K"
 
     val karatPrice = GoldMarket.prices.first { it.karat == karat }.price
     val fairBeforeVat = karatPrice * weight
     val fairManufacturing = manufacturing * weight
     val fairSubtotal = fairBeforeVat + fairManufacturing
-    val fairVat = fairSubtotal * 0.15
+    val fairVat = if (isDealTaxExempt) 0.0 else fairSubtotal * (dealTaxPercent / 100.0)
     val fairTotal = fairSubtotal + fairVat
 
-    val shopPriceWithTax = if (includingTax) shopPrice else shopPrice * 1.15
+    val shopPriceWithTax = if (isDealTaxExempt || includingTax) shopPrice else shopPrice * (1 + dealTaxPercent / 100.0)
     val savings = fairTotal - shopPriceWithTax
     val ratio = if (fairTotal > 0) (shopPriceWithTax / fairTotal).toFloat() else 1f
 
@@ -1093,23 +1204,21 @@ private fun DealEvaluatorScreen(
 
             Spacer(Modifier.height(12.dp))
 
-            Column(modifier = Modifier.clickable { showMore = !showMore }) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text("السعودية", color = White, fontSize = 12.sp)
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(3.dp)
-                    ) {
-                        Text("إظهار المزيد", color = Gray, fontSize = 10.sp)
-                        Text(if (showMore) "^" else "˅", color = Gray, fontSize = 10.sp)
-                    }
-                }
-                Text("بلد صنع الحلية", color = Gray, fontSize = 9.sp)
-            }
+            CountryTaxSelector(
+                selectedCountry = dealCountryTax,
+                onCountrySelected = { dealCountryTax = it },
+                taxPercent = dealTaxPercent,
+                onTaxPercentChanged = { dealTaxPercent = it },
+                isTaxExempt = isDealTaxExempt
+            )
+
+            Spacer(Modifier.height(6.dp))
+            Text(
+                "إظهار المزيد",
+                color = Gray,
+                fontSize = 10.sp,
+                modifier = Modifier.clickable { showMore = !showMore }
+            )
 
             if (showMore) {
                 Spacer(Modifier.height(6.dp))
@@ -1234,7 +1343,10 @@ private fun DealEvaluatorScreen(
                     "ريع المحل",
                     "${fmt(shopMargin, 2, grouped = true)} ريال (${fmt(shopMarginPerGram, 2)} /جم)"
                 )
-                CalculatorRow("ضريبة القيمة المضافة (15%)", "${fmt(fairVat, 2, grouped = true)} ريال")
+                CalculatorRow(
+                    if (isDealTaxExempt) "ضريبة القيمة المضافة (معفى)" else "ضريبة القيمة المضافة (${fmt(dealTaxPercent, 0)}%)",
+                    "${fmt(fairVat, 2, grouped = true)} ريال"
+                )
             }
 
             Spacer(Modifier.height(14.dp))
@@ -3082,6 +3194,32 @@ private fun persistGoldItems(items: List<GoldItem>) {
     AppStorage.writeText(goldItemsStorageFile, Json.encodeToString(items))
 }
 
+// ==================== حفظ حسابات الآلة الحاسبة ====================
+// لقطة من نتيجة الحاسبة (عيار/وزن/بيع أو شراء/الإجمالي) يحفظها المستخدم
+// يدوياً من شاشة الحاسبة، منفصلة عن "الأسعار المحفوظة" الخاصة بعروض المحلات
+@Serializable
+internal data class SavedCalculation(
+    val karat: String,
+    val buyMode: Boolean,
+    val weight: Double,
+    val total: Double
+)
+
+private const val savedCalculationsStorageFile = "saved_calculations.json"
+
+private fun loadSavedCalculations(): List<SavedCalculation> {
+    val text = AppStorage.readText(savedCalculationsStorageFile) ?: return emptyList()
+    return try {
+        Json.decodeFromString<List<SavedCalculation>>(text)
+    } catch (e: Exception) {
+        emptyList()
+    }
+}
+
+private fun persistSavedCalculations(items: List<SavedCalculation>) {
+    AppStorage.writeText(savedCalculationsStorageFile, Json.encodeToString(items))
+}
+
 // يحسب القيمة الحالية لقطعة بسعر السوق الحي (ذهب + مصنعية + ضريبة، معفى لعيار 24)
 private fun GoldItem.currentValue(): Double {
     val pricePerGram = GoldMarket.prices.first { it.karat == karat }.price
@@ -4727,6 +4865,204 @@ private fun ChoiceButton(
             fontSize = 11.sp,
             fontWeight = FontWeight.Bold
         )
+    }
+}
+
+// ==================== الدولة ونسبة الضريبة (حاسبة الذهب / المحل أعطاك سعراً) ====================
+private data class CountryTaxOption(val flag: String, val name: String, val vatPercent: Double)
+
+private val countryTaxOptions = listOf(
+    CountryTaxOption("🇸🇦", "السعودية", 15.0),
+    CountryTaxOption("🇦🇪", "الإمارات", 5.0),
+    CountryTaxOption("🇧🇭", "البحرين", 10.0),
+    CountryTaxOption("🇴🇲", "عُمان", 5.0),
+    CountryTaxOption("🇶🇦", "قطر", 0.0),
+    CountryTaxOption("🇰🇼", "الكويت", 0.0),
+    CountryTaxOption("🇪🇬", "مصر", 14.0),
+    CountryTaxOption("🌍", "دولة أخرى", 0.0)
+)
+
+// صندوق اختيار الدولة (بعلمها) مع نسبة الضريبة — تُملأ تلقائياً حسب
+// الدولة المختارة، ويمكن تعديلها يدوياً بعد ذلك بشكل مستقل. عند إعفاء
+// عيار 24 من الضريبة (isTaxExempt) يظهر ذلك بدل حقل النسبة
+@Composable
+private fun CountryTaxSelector(
+    selectedCountry: CountryTaxOption,
+    onCountrySelected: (CountryTaxOption) -> Unit,
+    taxPercent: Double,
+    onTaxPercentChanged: (Double) -> Unit,
+    isTaxExempt: Boolean
+) {
+    var showPicker by remember { mutableStateOf(false) }
+
+    Text("الدولة ونسبة الضريبة", color = Gray, fontSize = 10.sp)
+    Spacer(Modifier.height(6.dp))
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .weight(1.4f)
+                .height(42.dp)
+                .clip(RoundedCornerShape(9.dp))
+                .border(1.dp, Border, RoundedCornerShape(9.dp))
+                .clickable { showPicker = true }
+                .padding(horizontal = 12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(selectedCountry.flag, fontSize = 15.sp)
+                Text(selectedCountry.name, color = White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            }
+            Text("˅", color = Gold, fontSize = 11.sp)
+        }
+
+        if (isTaxExempt) {
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(42.dp)
+                    .clip(RoundedCornerShape(9.dp))
+                    .border(1.dp, Border, RoundedCornerShape(9.dp)),
+                contentAlignment = Alignment.Center
+            ) {
+                Text("معفى", color = Gray, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+            }
+        } else {
+            Row(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(42.dp)
+                    .clip(RoundedCornerShape(9.dp))
+                    .border(1.dp, Border, RoundedCornerShape(9.dp)),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                NumericInputField(
+                    value = taxPercent,
+                    onValueChanged = onTaxPercentChanged,
+                    fontSize = 12.sp,
+                    minValue = 0.0,
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                )
+                Text("%", color = Gray, fontSize = 11.sp, modifier = Modifier.padding(end = 10.dp))
+            }
+        }
+    }
+
+    if (showPicker) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.65f))
+                .clickable(
+                    indication = null,
+                    interactionSource = remember { MutableInteractionSource() }
+                ) { showPicker = false },
+            contentAlignment = Alignment.Center
+        ) {
+            Column(
+                modifier = Modifier
+                    .padding(horizontal = 28.dp)
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(14.dp))
+                    .border(1.dp, Border, RoundedCornerShape(14.dp))
+                    .background(CardBlack)
+                    .clickable(
+                        indication = null,
+                        interactionSource = remember { MutableInteractionSource() }
+                    ) { }
+                    .padding(vertical = 8.dp)
+            ) {
+                Text(
+                    "اختر الدولة",
+                    color = White,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 14.dp, vertical = 8.dp),
+                    textAlign = TextAlign.End
+                )
+                countryTaxOptions.forEach { option ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                onCountrySelected(option)
+                                onTaxPercentChanged(option.vatPercent)
+                                showPicker = false
+                            }
+                            .padding(horizontal = 14.dp, vertical = 10.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(option.flag, fontSize = 15.sp)
+                        Text(option.name, color = White, fontSize = 12.sp, modifier = Modifier.weight(1f))
+                        Text(
+                            if (option.vatPercent == 0.0) "بدون ضريبة" else "${fmt(option.vatPercent, 0)}%",
+                            color = Gray,
+                            fontSize = 10.sp
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+// صندوق حفظ نتيجة الحاسبة الحالية (عيار/وزن/بيع أو شراء/إجمالي)، يظهر
+// قبل زر "المحل أعطاك سعراً؟" في شاشة الحاسبة. لمسة واحدة تحفظ فوراً
+// (بلا حوار إدخال اسم، بعكس حفظ عروض المحلات) مع تأكيد بصري مؤقت
+@Composable
+private fun SaveCalculationBox(
+    karat: String,
+    buyMode: Boolean,
+    weight: Double,
+    total: Double,
+    onSave: (SavedCalculation) -> Unit
+) {
+    var justSaved by remember { mutableStateOf(false) }
+    LaunchedEffect(justSaved) {
+        if (justSaved) {
+            delay(1800)
+            justSaved = false
+        }
+    }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(44.dp)
+            .clip(RoundedCornerShape(10.dp))
+            .border(1.dp, if (justSaved) Green else Border, RoundedCornerShape(10.dp))
+            .clickable {
+                onSave(SavedCalculation(karat = karat, buyMode = buyMode, weight = weight, total = total))
+                justSaved = true
+            },
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Icon(
+                imageVector = if (justSaved) Icons.Outlined.Check else Icons.Outlined.Calculate,
+                contentDescription = null,
+                tint = if (justSaved) Green else Gray,
+                modifier = Modifier.size(15.dp)
+            )
+            Text(
+                if (justSaved) "تم حفظ الحساب" else "حفظ هذا الحساب",
+                color = if (justSaved) Green else White,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
     }
 }
 
