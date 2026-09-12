@@ -96,6 +96,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDirection
@@ -356,6 +357,8 @@ private fun GoldVisionApp() {
     var showPrivacyPolicy by remember { mutableStateOf(false) }
     var notificationSettings by remember { mutableStateOf(loadNotificationSettings()) }
     var showNotificationSettings by remember { mutableStateOf(false) }
+    var signedInEmail by remember { mutableStateOf(AuthService.currentUserEmail) }
+    var showAuthScreen by remember { mutableStateOf(false) }
 
     var liveTimeText by remember { mutableStateOf(currentDateTimeText()) }
     LaunchedEffect(Unit) {
@@ -473,11 +476,25 @@ private fun GoldVisionApp() {
             } else if (showProfileScreen) {
                 ProfileScreen(
                     profile = userProfile,
+                    signedInEmail = signedInEmail,
+                    onNavigateAuth = { showAuthScreen = true },
+                    onSignOut = {
+                        AuthService.signOut()
+                        signedInEmail = AuthService.currentUserEmail
+                    },
                     onBack = { showProfileScreen = false },
                     onSave = { profile ->
                         userProfile = profile
                         persistUserProfile(profile)
                         showProfileScreen = false
+                    }
+                )
+            } else if (showAuthScreen) {
+                AuthScreen(
+                    onBack = { showAuthScreen = false },
+                    onAuthSuccess = {
+                        signedInEmail = AuthService.currentUserEmail
+                        showAuthScreen = false
                     }
                 )
             } else if (showPrivacyPolicy) {
@@ -558,6 +575,7 @@ private fun GoldVisionApp() {
                     )
                     5 -> MoreScreen(
                         profile = userProfile,
+                        signedInEmail = signedInEmail,
                         onNavigateProfile = { showProfileScreen = true },
                         onNavigatePrivacyPolicy = { showPrivacyPolicy = true },
                         onNavigateNotifications = { showNotificationSettings = true },
@@ -4331,6 +4349,7 @@ private fun PlaceholderScreen(title: String) {
 @Composable
 private fun MoreScreen(
     profile: UserProfile,
+    signedInEmail: String?,
     onNavigateProfile: () -> Unit,
     onNavigatePrivacyPolicy: () -> Unit,
     onNavigateNotifications: () -> Unit,
@@ -4395,7 +4414,11 @@ private fun MoreScreen(
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Bold
                     )
-                    Text("تعديل الملف الشخصي", color = Gray, fontSize = 10.sp)
+                    Text(
+                        signedInEmail ?: "تعديل الملف الشخصي - سجّل دخولك",
+                        color = Gray,
+                        fontSize = 10.sp
+                    )
                 }
             }
             Icon(
@@ -4476,9 +4499,16 @@ private fun SettingsDivider() {
     )
 }
 
-// ==================== شاشة الملف الشخصي (محلي، بلا تسجيل دخول) ====================
+// ==================== شاشة الملف الشخصي (اسم/صورة محليان + حساب اختياري بالإيميل) ====================
 @Composable
-private fun ProfileScreen(profile: UserProfile, onBack: () -> Unit, onSave: (UserProfile) -> Unit) {
+private fun ProfileScreen(
+    profile: UserProfile,
+    signedInEmail: String?,
+    onNavigateAuth: () -> Unit,
+    onSignOut: () -> Unit,
+    onBack: () -> Unit,
+    onSave: (UserProfile) -> Unit
+) {
     var name by remember { mutableStateOf(profile.name) }
     var selectedAvatar by remember { mutableStateOf(profile.avatar) }
 
@@ -4512,8 +4542,45 @@ private fun ProfileScreen(profile: UserProfile, onBack: () -> Unit, onSave: (Use
         }
 
         Spacer(Modifier.height(16.dp))
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(10.dp))
+                .border(1.dp, Border, RoundedCornerShape(10.dp))
+                .background(CardBlack)
+                .padding(12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text("الحساب", color = White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    signedInEmail ?: "لم تسجّل الدخول بعد — تسجيل الدخول اختياري",
+                    color = Gray,
+                    fontSize = 10.sp
+                )
+            }
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .border(1.dp, if (signedInEmail != null) Red else Gold, RoundedCornerShape(8.dp))
+                    .clickable { if (signedInEmail != null) onSignOut() else onNavigateAuth() }
+                    .padding(horizontal = 12.dp, vertical = 8.dp)
+            ) {
+                Text(
+                    if (signedInEmail != null) "تسجيل الخروج" else "تسجيل الدخول",
+                    color = if (signedInEmail != null) Red else Gold,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+
+        Spacer(Modifier.height(16.dp))
         Text(
-            "بياناتك محفوظة على جهازك فقط، ولا تُرسل لأي خادم — لا يوجد تسجيل دخول أو حساب فعلي في التطبيق",
+            "الاسم والصورة الرمزية أدناه محليان على جهازك فقط، بغض النظر عن تسجيل الدخول",
             color = Gray,
             fontSize = 10.sp
         )
@@ -4599,12 +4666,264 @@ private fun ProfileScreen(profile: UserProfile, onBack: () -> Unit, onSave: (Use
     }
 }
 
+// ==================== شاشة تسجيل الدخول / إنشاء حساب بالإيميل ====================
+@Composable
+private fun AuthScreen(onBack: () -> Unit, onAuthSuccess: () -> Unit) {
+    var isSignUpMode by remember { mutableStateOf(false) }
+    var email by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+    var confirmPassword by remember { mutableStateOf("") }
+    var errorText by remember { mutableStateOf<String?>(null) }
+    var infoText by remember { mutableStateOf<String?>(null) }
+    var isLoading by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+
+    fun submit() {
+        errorText = null
+        infoText = null
+        val trimmedEmail = email.trim()
+        if (!isValidEmail(trimmedEmail)) {
+            errorText = "الرجاء إدخال بريد إلكتروني صحيح"
+            return
+        }
+        if (password.length < 6) {
+            errorText = "كلمة المرور 6 أحرف على الأقل"
+            return
+        }
+        if (isSignUpMode && password != confirmPassword) {
+            errorText = "كلمتا المرور غير متطابقتين"
+            return
+        }
+        isLoading = true
+        scope.launch {
+            val error = if (isSignUpMode) {
+                AuthService.signUp(trimmedEmail, password)
+            } else {
+                AuthService.signIn(trimmedEmail, password)
+            }
+            isLoading = false
+            if (error != null) {
+                errorText = error
+            } else {
+                onAuthSuccess()
+            }
+        }
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 14.dp, vertical = 8.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
+                contentDescription = "رجوع",
+                tint = Gold,
+                modifier = Modifier
+                    .size(22.dp)
+                    .clickable { onBack() }
+            )
+            Text(
+                if (isSignUpMode) "حساب جديد" else "تسجيل الدخول",
+                color = White,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.weight(1f)
+            )
+            Spacer(Modifier.size(22.dp))
+        }
+
+        Spacer(Modifier.height(16.dp))
+        Text(
+            "اختياري تماماً — التطبيق يعمل بكامل ميزاته بلا تسجيل دخول",
+            color = Gray,
+            fontSize = 10.sp
+        )
+
+        Spacer(Modifier.height(20.dp))
+
+        Text("البريد الإلكتروني", color = Gray, fontSize = 10.sp)
+        Spacer(Modifier.height(6.dp))
+        val emailFocus = remember { FocusRequester() }
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(42.dp)
+                .clip(RoundedCornerShape(9.dp))
+                .border(1.dp, Border, RoundedCornerShape(9.dp))
+                .clickable(
+                    indication = null,
+                    interactionSource = remember { MutableInteractionSource() }
+                ) { emailFocus.requestFocus() }
+                .padding(horizontal = 12.dp),
+            contentAlignment = Alignment.CenterStart
+        ) {
+            if (email.isEmpty()) {
+                Text("example@email.com", color = Gray, fontSize = 12.sp)
+            }
+            BasicTextField(
+                value = email,
+                onValueChange = { email = it },
+                singleLine = true,
+                textStyle = TextStyle(color = White, fontSize = 12.sp, textDirection = TextDirection.Content),
+                cursorBrush = SolidColor(Gold),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .focusRequester(emailFocus)
+            )
+        }
+
+        Spacer(Modifier.height(12.dp))
+
+        Text("كلمة المرور", color = Gray, fontSize = 10.sp)
+        Spacer(Modifier.height(6.dp))
+        val passwordFocus = remember { FocusRequester() }
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(42.dp)
+                .clip(RoundedCornerShape(9.dp))
+                .border(1.dp, Border, RoundedCornerShape(9.dp))
+                .clickable(
+                    indication = null,
+                    interactionSource = remember { MutableInteractionSource() }
+                ) { passwordFocus.requestFocus() }
+                .padding(horizontal = 12.dp),
+            contentAlignment = Alignment.CenterStart
+        ) {
+            if (password.isEmpty()) {
+                Text("6 أحرف على الأقل", color = Gray, fontSize = 12.sp)
+            }
+            BasicTextField(
+                value = password,
+                onValueChange = { password = it },
+                singleLine = true,
+                textStyle = TextStyle(color = White, fontSize = 12.sp, textDirection = TextDirection.Content),
+                cursorBrush = SolidColor(Gold),
+                visualTransformation = PasswordVisualTransformation(),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .focusRequester(passwordFocus)
+            )
+        }
+
+        if (isSignUpMode) {
+            Spacer(Modifier.height(12.dp))
+            Text("تأكيد كلمة المرور", color = Gray, fontSize = 10.sp)
+            Spacer(Modifier.height(6.dp))
+            val confirmFocus = remember { FocusRequester() }
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(42.dp)
+                    .clip(RoundedCornerShape(9.dp))
+                    .border(1.dp, Border, RoundedCornerShape(9.dp))
+                    .clickable(
+                        indication = null,
+                        interactionSource = remember { MutableInteractionSource() }
+                    ) { confirmFocus.requestFocus() }
+                    .padding(horizontal = 12.dp),
+                contentAlignment = Alignment.CenterStart
+            ) {
+                BasicTextField(
+                    value = confirmPassword,
+                    onValueChange = { confirmPassword = it },
+                    singleLine = true,
+                    textStyle = TextStyle(color = White, fontSize = 12.sp, textDirection = TextDirection.Content),
+                    cursorBrush = SolidColor(Gold),
+                    visualTransformation = PasswordVisualTransformation(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .focusRequester(confirmFocus)
+                )
+            }
+        } else {
+            Spacer(Modifier.height(8.dp))
+            Text(
+                "نسيت كلمة المرور؟",
+                color = Gold,
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.clickable {
+                    val trimmedEmail = email.trim()
+                    if (!isValidEmail(trimmedEmail)) {
+                        errorText = "أدخل بريدك الإلكتروني أول لاستعادة كلمة المرور"
+                        return@clickable
+                    }
+                    errorText = null
+                    scope.launch {
+                        val error = AuthService.sendPasswordReset(trimmedEmail)
+                        infoText = if (error == null) "أُرسل رابط استعادة كلمة المرور إلى بريدك" else null
+                        errorText = error
+                    }
+                }
+            )
+        }
+
+        errorText?.let {
+            Spacer(Modifier.height(10.dp))
+            Text(it, color = Red, fontSize = 10.sp)
+        }
+        infoText?.let {
+            Spacer(Modifier.height(10.dp))
+            Text(it, color = Green, fontSize = 10.sp)
+        }
+
+        Spacer(Modifier.height(20.dp))
+
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(48.dp)
+                .clip(RoundedCornerShape(10.dp))
+                .background(Gold)
+                .clickable(enabled = !isLoading) { submit() },
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                if (isLoading) "جارٍ..." else if (isSignUpMode) "إنشاء الحساب" else "تسجيل الدخول",
+                color = Black,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
+
+        Spacer(Modifier.height(14.dp))
+
+        Text(
+            if (isSignUpMode) "عندك حساب؟ سجّل الدخول" else "ماعندك حساب؟ أنشئ واحداً جديداً",
+            color = Gray,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable {
+                    isSignUpMode = !isSignUpMode
+                    errorText = null
+                    infoText = null
+                },
+            textAlign = TextAlign.Center
+        )
+
+        Spacer(Modifier.height(16.dp))
+    }
+}
+
 // ==================== شاشة سياسة الخصوصية (داخل التطبيق) ====================
 private val privacyPolicySections = listOf(
     "البيانات المحفوظة على جهازك فقط" to
-        "قطع المحفظة، بيانات الزكاة، والملف الشخصي تُحفظ كملفات محلية على جهازك فقط عبر مساحة تخزين التطبيق الخاصة. لا يوجد خادم أو حساب سحابي يستقبل هذه البيانات، ولا تُشارك مع أي طرف ثالث.",
-    "لا تسجيل دخول ولا حساب" to
-        "التطبيق لا يطلب بريداً إلكترونياً ولا رقم هاتف ولا كلمة مرور، ولا ينشئ حساباً على أي خادم. الملف الشخصي (الاسم والصورة الرمزية) اختياري ومحفوظ على جهازك فقط.",
+        "قطع المحفظة، بيانات الزكاة، والملف الشخصي (الاسم والصورة الرمزية) تُحفظ كملفات محلية على جهازك فقط عبر مساحة تخزين التطبيق الخاصة — لا تصل لأي خادم ولا تُشارك مع أي طرف ثالث. الاستثناء الوحيد هو تسجيل الدخول الاختياري بالإيميل، الموضّح في القسم التالي.",
+    "تسجيل الدخول (اختياري)" to
+        "يمكنك استخدام التطبيق بكامل ميزاته بلا أي تسجيل دخول. إن اخترت إنشاء حساب بالبريد الإلكتروني، يُحفظ بريدك وكلمة مرورك (مشفَّرة) لدى خدمة Firebase Authentication التابعة لجوجل، فقط للتعرّف عليك عند الدخول — بلا مشاركة مع أي طرف ثالث آخر. الملف الشخصي (الاسم والصورة الرمزية) منفصل ومحفوظ على جهازك فقط بغض النظر عن تسجيل الدخول.",
     "أسعار الذهب" to
         "تُجلب الأسعار الحية والتاريخية من مزوّد بيانات خارجي متخصص بأسعار الذهب (XAU/USD)، دون إرسال أي معلومة تعرّف بك أو ببياناتك المحفوظة.",
     "تتبع الأعطال (Sentry)" to
