@@ -414,6 +414,15 @@ private fun GoldVisionApp() {
             delay(7200.seconds)
         }
     }
+
+    // يجلب أخبار الذهب الحقيقية (GoldNews.kt) عند فتح التطبيق، ثم كل
+    // 30 دقيقة — أخبار مالية لا تحتاج تحديثاً شبه لحظي كالأسعار
+    LaunchedEffect(Unit) {
+        while (true) {
+            GoldNews.refresh()
+            delay(1800.seconds)
+        }
+    }
     val marketScope = rememberCoroutineScope()
 
     val fedRows = remember { upcomingFedMeetings().take(4) }
@@ -481,6 +490,7 @@ private fun GoldVisionApp() {
                 marketScope.launch {
                     GoldMarket.refresh()
                     GoldHistory.refresh(todayLocalDate())
+                    GoldNews.refresh()
                     isRefreshing = false
                 }
             },
@@ -2384,7 +2394,7 @@ private fun TechnicalAnalysisContent(period: String, karat: String) {
         (stats.closePrice - stats.openPrice) / stats.openPrice * 100.0
     else 0.0
 
-    val topNews = fullNewsList.first()
+    val topNews = fullNewsList.firstOrNull()
     val fedDate = nextFedMeetingDate()
     val daysUntilFed = fedDate?.let { todayLocalDate().daysUntil(it) }
 
@@ -2561,7 +2571,9 @@ private fun TechnicalAnalysisContent(period: String, karat: String) {
                         "إغلاق ${if (trendUp) "أعلى" else "أدنى"} من الافتتاح بـ " +
                         "${fmt(kotlin.math.abs(changePercent), 2)}%."
             )
-            AnalysisPoint("أهم خبر مؤثر الآن: ${topNews.text} (${topNews.time}).")
+            if (topNews != null) {
+                AnalysisPoint("أهم خبر مؤثر الآن: ${topNews.text} (${topNews.time}).")
+            }
             AnalysisPoint(
                 if (daysUntilFed != null)
                     "اجتماع الفيدرالي القادم بعد $daysUntilFed يوماً (${fedDate!!.toPeriodDisplayText()}) — " +
@@ -3193,21 +3205,18 @@ private fun KaratChartCanvas(
 }
 
 // ==================== شاشة الأخبار الكاملة ====================
+// أخبار حقيقية عن الذهب (GoldNews.kt) بدل قائمة وهمية ثابتة — بلا مؤشر
+// إيجابي/سلبي حقيقي (لا تحليل مشاعر فعلي)، فتُعرض كلها بنقطة ذهبية محايدة
 private data class NewsItem(val dot: Color, val text: String, val time: String)
 
-private val fullNewsList = listOf(
-    NewsItem(Red, "مجلس الاحتياطي الفيدرالي يشير إلى تأجيل خفض أسعار الفائدة", "منذ 36 دقيقة"),
-    NewsItem(Yellow, "ارتفاع مؤشر الدولار لأعلى مستوى في شهر", "منذ ساعتين"),
-    NewsItem(Green, "ضعف بيانات التضخم في أمريكا", "منذ 3 ساعات"),
-    NewsItem(Red, "ارتفاع الطلب على الذهب في الأسواق الآسيوية", "منذ 5 ساعات"),
-    NewsItem(Yellow, "تراجع أسعار النفط يؤثر على معنويات المستثمرين", "منذ 8 ساعات"),
-    NewsItem(Green, "البنوك المركزية تواصل شراء الذهب كاحتياطي", "أمس"),
-    NewsItem(Red, "توترات جيوسياسية تدفع المستثمرين نحو الذهب", "أمس"),
-    NewsItem(Yellow, "تحليل: أين تتجه أسعار الذهب خلال الربع القادم؟", "قبل يومين")
-)
+private val fullNewsList: List<NewsItem>
+    get() = GoldNews.articles.map { NewsItem(Gold, it.title, it.publishedAt) }
 
 @Composable
 private fun NewsScreen(onBack: () -> Unit) {
+    val newsList = fullNewsList
+    val isLoading = GoldNews.isLoading
+    val error = GoldNews.lastError
     Column(modifier = Modifier.fillMaxSize()) {
         Row(
             modifier = Modifier
@@ -3231,13 +3240,23 @@ private fun NewsScreen(onBack: () -> Unit) {
                 fontWeight = FontWeight.Bold
             )
         }
+        if (newsList.isEmpty()) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text(
+                    if (isLoading) "جارٍ تحميل الأخبار..." else (error ?: "لا توجد أخبار متوفرة حالياً"),
+                    color = Gray,
+                    fontSize = 12.sp
+                )
+            }
+            return
+        }
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(horizontal = 12.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            items(fullNewsList) { news ->
+            items(newsList) { news ->
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -6100,22 +6119,19 @@ private fun PriceChartCanvas(modifier: Modifier, basePrice: Double) {
 // ==================== أهم الأخبار ====================
 @Composable
 private fun ImportantNews() {
+    val topThree = GoldNews.articles.take(3)
     AppCard(title = "أهم الأخبار المؤثرة", modifier = Modifier.fillMaxSize()) {
-        NewsRow(
-            dot = Red,
-            text = "مجلس الاحتياطي الفيدرالي يشير إلى تأجيل خفض أسعار الفائدة",
-            time = "منذ 36 دقيقة"
-        )
-        NewsRow(
-            dot = Yellow,
-            text = "ارتفاع مؤشر الدولار لأعلى مستوى في شهر",
-            time = "منذ ساعتين"
-        )
-        NewsRow(
-            dot = Green,
-            text = "ضعف بيانات التضخم في أمريكا",
-            time = "منذ 3 ساعات"
-        )
+        if (topThree.isEmpty()) {
+            Text(
+                if (GoldNews.isLoading) "جارٍ تحميل الأخبار..." else "لا توجد أخبار متوفرة حالياً",
+                color = Gray,
+                fontSize = 10.sp
+            )
+        } else {
+            topThree.forEach { article ->
+                NewsRow(dot = Gold, text = article.title, time = article.publishedAt)
+            }
+        }
         Spacer(Modifier.weight(1f))
         Text(
             "عرض المزيد",
