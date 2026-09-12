@@ -103,6 +103,7 @@ import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
@@ -5140,53 +5141,50 @@ private fun NotificationBell(count: Int) {
     }
 }
 
+// ماسة (سداسية) بحدّ متدرّج ذهبي، وحرف "G" في المنتصف — شعار التطبيق
+// المستخدَم في الشريط العلوي وفي كل مكان يظهر فيه اسم "GOLD VISION"
 @Composable
-private fun GoldLogo() {
-    Canvas(modifier = Modifier.size(30.dp)) {
-        val w = size.width
-        val h = size.height
-        val cx = w / 2f
+private fun GoldLogo(size: Dp = 30.dp) {
+    Box(
+        modifier = Modifier.size(size),
+        contentAlignment = Alignment.Center
+    ) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val w = this.size.width
+            val h = this.size.height
+            val cx = w / 2f
 
-        val topY = h * 0.14f
-        val bottomY = h * 0.97f
-        val shoulderY = h * 0.34f
-        val leftX = w * 0.04f
-        val rightX = w * 0.96f
-        val topLeftX = w * 0.22f
-        val topRightX = w * 0.78f
+            val topY = h * 0.05f
+            val bottomY = h * 0.96f
+            val shoulderY = h * 0.32f
+            val leftX = w * 0.03f
+            val rightX = w * 0.97f
+            val topLeftX = w * 0.28f
+            val topRightX = w * 0.72f
 
-        val diamond = Path().apply {
-            moveTo(topLeftX, topY)
-            lineTo(topRightX, topY)
-            lineTo(rightX, shoulderY)
-            lineTo(cx, bottomY)
-            lineTo(leftX, shoulderY)
-            close()
+            val diamond = Path().apply {
+                moveTo(topLeftX, topY)
+                lineTo(topRightX, topY)
+                lineTo(rightX, shoulderY)
+                lineTo(cx, bottomY)
+                lineTo(leftX, shoulderY)
+                close()
+            }
+            drawPath(
+                path = diamond,
+                brush = Brush.linearGradient(
+                    colors = listOf(Color(0xFFFFE9A8), Gold, GoldDark),
+                    start = Offset(0f, 0f),
+                    end = Offset(w, h)
+                ),
+                style = Stroke(width = h * 0.1f)
+            )
         }
-        drawPath(path = diamond, color = Gold)
-
-        val gColor = Color(0xFF171717)
-        val gCy = shoulderY + h * 0.08f
-        val s = h * 0.21f
-        val t = h * 0.09f
-
-        val bracket = Path().apply {
-            moveTo(cx - s, gCy - s)
-            lineTo(cx + s, gCy - s)
-            lineTo(cx + s, gCy - s + t)
-            lineTo(cx - s + t, gCy - s + t)
-            lineTo(cx - s + t, gCy + s - t)
-            lineTo(cx + s, gCy + s - t)
-            lineTo(cx + s, gCy + s)
-            lineTo(cx - s, gCy + s)
-            close()
-        }
-        drawPath(path = bracket, color = gColor)
-
-        drawRect(
-            color = gColor,
-            topLeft = Offset(cx, gCy - t / 2f),
-            size = androidx.compose.ui.geometry.Size(s - t, t)
+        Text(
+            "G",
+            color = Gold,
+            fontSize = (size.value * 0.42f).sp,
+            fontWeight = FontWeight.Black
         )
     }
 }
