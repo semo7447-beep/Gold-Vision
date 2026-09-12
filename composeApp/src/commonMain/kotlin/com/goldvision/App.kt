@@ -377,6 +377,7 @@ private fun GoldVisionApp() {
     var showNotificationSettings by remember { mutableStateOf(false) }
     var signedInEmail by remember { mutableStateOf(AuthService.currentUserEmail) }
     var showAuthScreen by remember { mutableStateOf(false) }
+    var showFedSchedule by remember { mutableStateOf(false) }
 
     var liveTimeText by remember { mutableStateOf(currentDateTimeText()) }
     LaunchedEffect(Unit) {
@@ -444,7 +445,7 @@ private fun GoldVisionApp() {
     // الإيماءة تترك للنظام (يخرج من التطبيق كالمعتاد)
     val hasOverlayScreen = showChartFull || showDealEvaluator || showAddGoldItem ||
         showProfileScreen || showAuthScreen || showPrivacyPolicy || showNotificationSettings ||
-        selectedBottom != 0
+        showFedSchedule || selectedBottom != 0
     BackHandler(enabled = hasOverlayScreen) {
         when {
             showChartFull -> showChartFull = false
@@ -461,6 +462,7 @@ private fun GoldVisionApp() {
             }
             showPrivacyPolicy -> showPrivacyPolicy = false
             showNotificationSettings -> showNotificationSettings = false
+            showFedSchedule -> showFedSchedule = false
             selectedBottom != 0 -> selectedBottom = 0
         }
     }
@@ -597,6 +599,8 @@ private fun GoldVisionApp() {
                         FedMeetingNotificationScheduler.setEnabled(enabled)
                     }
                 )
+            } else if (showFedSchedule) {
+                FedMeetingsScreen(onBack = { showFedSchedule = false })
             } else {
                 when (selectedBottom) {
                     0 -> HomeScreen(
@@ -619,7 +623,8 @@ private fun GoldVisionApp() {
                         onNavigateCalculator = { selectedBottom = 1 },
                         onNavigateChart = { showChartFull = true },
                         onNavigateNews = { selectedBottom = 2 },
-                        onNavigatePortfolio = { selectedBottom = 3 }
+                        onNavigatePortfolio = { selectedBottom = 3 },
+                        onNavigateFedSchedule = { showFedSchedule = true }
                     )
                     1 -> CalculatorFullScreen(
                         selectedKarat = selectedKarat,
@@ -708,11 +713,13 @@ private fun HomeScreen(
     onNavigateCalculator: () -> Unit,
     onNavigateChart: () -> Unit,
     onNavigateNews: () -> Unit,
-    onNavigatePortfolio: () -> Unit
+    onNavigatePortfolio: () -> Unit,
+    onNavigateFedSchedule: () -> Unit
 ) {
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .verticalScroll(rememberScrollState())
             .padding(horizontal = 12.dp)
     ) {
         LiveStatus(updateText = liveTimeText)
@@ -780,6 +787,7 @@ private fun HomeScreen(
                 modifier = Modifier
                     .weight(1f)
                     .height(225.dp)
+                    .clickable { onNavigateFedSchedule() }
             ) {
                 FedSchedule(rows = fedRows)
             }
@@ -6309,6 +6317,121 @@ private fun FedSchedule(rows: List<FedMeetingRow>) {
             textAlign = TextAlign.Center,
             maxLines = 1
         )
+    }
+}
+
+// ==================== شاشة مواعيد الفيدرالي الكاملة ====================
+@Composable
+private fun FedMeetingsScreen(onBack: () -> Unit) {
+    val rows = remember { upcomingFedMeetings() }
+    Column(modifier = Modifier.fillMaxSize()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
+                contentDescription = "رجوع",
+                tint = Gold,
+                modifier = Modifier
+                    .size(20.dp)
+                    .clickable { onBack() }
+            )
+            Text(
+                "مواعيد اجتماعات الفيدرالي",
+                color = Gold,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp)
+                .clip(RoundedCornerShape(10.dp))
+                .border(1.dp, Border, RoundedCornerShape(10.dp))
+                .padding(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.Top
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.Info,
+                contentDescription = null,
+                tint = Gold,
+                modifier = Modifier
+                    .size(15.dp)
+                    .padding(top = 1.dp)
+            )
+            Text(
+                "قرار الفائدة الأمريكية يُعلن عادة الساعة 9:00 مساءً بتوقيت مكة المكرمة " +
+                    "(2:00 ظهراً بتوقيت واشنطن)",
+                color = Gray,
+                fontSize = 10.sp,
+                lineHeight = 15.sp
+            )
+        }
+
+        Spacer(Modifier.height(8.dp))
+
+        if (rows.isEmpty()) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text("لا توجد اجتماعات مجدولة قريباً", color = Gray, fontSize = 12.sp)
+            }
+            return
+        }
+
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            items(rows) { row ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(9.dp))
+                        .border(1.dp, Border, RoundedCornerShape(9.dp))
+                        .background(CardBlack)
+                        .padding(12.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text(
+                            "${row.day} ${row.date}",
+                            color = White,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(Modifier.height(3.dp))
+                        Text(
+                            "الساعة ${row.time} بتوقيت مكة المكرمة",
+                            color = Gray,
+                            fontSize = 9.5.sp
+                        )
+                    }
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(6.dp))
+                            .background((if (row.daysLeft <= 3) Red else Gold).copy(alpha = 0.15f))
+                            .padding(horizontal = 8.dp, vertical = 5.dp)
+                    ) {
+                        Text(
+                            text = if (row.daysLeft == 0) "اليوم" else "بعد ${row.daysLeft} يوم",
+                            color = if (row.daysLeft <= 3) Red else Gold,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
+            item { Spacer(Modifier.height(16.dp)) }
+        }
     }
 }
 
