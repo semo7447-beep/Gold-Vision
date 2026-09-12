@@ -5143,49 +5143,69 @@ private fun NotificationBell(count: Int) {
 
 // ماسة (سداسية) بحدّ متدرّج ذهبي، وحرف "G" في المنتصف — شعار التطبيق
 // المستخدَم في الشريط العلوي وفي كل مكان يظهر فيه اسم "GOLD VISION"
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawGoldLogoShape(w: Float, h: Float) {
+    val cx = w / 2f
+
+    val topY = h * 0.05f
+    val bottomY = h * 0.96f
+    val shoulderY = h * 0.32f
+    val leftX = w * 0.03f
+    val rightX = w * 0.97f
+    val topLeftX = w * 0.28f
+    val topRightX = w * 0.72f
+
+    val diamond = Path().apply {
+        moveTo(topLeftX, topY)
+        lineTo(topRightX, topY)
+        lineTo(rightX, shoulderY)
+        lineTo(cx, bottomY)
+        lineTo(leftX, shoulderY)
+        close()
+    }
+    drawPath(
+        path = diamond,
+        brush = Brush.linearGradient(
+            colors = listOf(Color(0xFFFFE9A8), Gold, GoldDark),
+            start = Offset(0f, 0f),
+            end = Offset(w, h)
+        ),
+        style = Stroke(width = h * 0.1f)
+    )
+
+    // حرف "G" ملتصق بالحدّ الأيسر للماسة، حتى يظهر معها كقطعة واحدة
+    // متّصلة بدل شكلين منفصلين
+    val gCx = w * 0.32f
+    val gCy = h * 0.40f
+    val s = h * 0.17f
+    val t = h * 0.075f
+
+    val bracket = Path().apply {
+        moveTo(gCx - s, gCy - s)
+        lineTo(gCx + s, gCy - s)
+        lineTo(gCx + s, gCy - s + t)
+        lineTo(gCx - s + t, gCy - s + t)
+        lineTo(gCx - s + t, gCy + s - t)
+        lineTo(gCx + s, gCy + s - t)
+        lineTo(gCx + s, gCy + s)
+        lineTo(gCx - s, gCy + s)
+        close()
+    }
+    drawPath(path = bracket, color = Gold)
+
+    drawRect(
+        color = Gold,
+        topLeft = Offset(gCx, gCy - t / 2f),
+        size = androidx.compose.ui.geometry.Size(s - t, t)
+    )
+}
+
+// ماسة (سداسية) بحدّ متدرّج ذهبي، وحرف "G" ملتصق بحدّها الأيسر كقطعة
+// واحدة — شعار التطبيق المستخدَم في الشريط العلوي وفي كل مكان يظهر فيه
+// اسم "GOLD VISION". نفس الشكل بالضبط مستخدَم في أيقونة التطبيق
 @Composable
 private fun GoldLogo(size: Dp = 30.dp) {
-    Box(
-        modifier = Modifier.size(size),
-        contentAlignment = Alignment.Center
-    ) {
-        Canvas(modifier = Modifier.fillMaxSize()) {
-            val w = this.size.width
-            val h = this.size.height
-            val cx = w / 2f
-
-            val topY = h * 0.05f
-            val bottomY = h * 0.96f
-            val shoulderY = h * 0.32f
-            val leftX = w * 0.03f
-            val rightX = w * 0.97f
-            val topLeftX = w * 0.28f
-            val topRightX = w * 0.72f
-
-            val diamond = Path().apply {
-                moveTo(topLeftX, topY)
-                lineTo(topRightX, topY)
-                lineTo(rightX, shoulderY)
-                lineTo(cx, bottomY)
-                lineTo(leftX, shoulderY)
-                close()
-            }
-            drawPath(
-                path = diamond,
-                brush = Brush.linearGradient(
-                    colors = listOf(Color(0xFFFFE9A8), Gold, GoldDark),
-                    start = Offset(0f, 0f),
-                    end = Offset(w, h)
-                ),
-                style = Stroke(width = h * 0.1f)
-            )
-        }
-        Text(
-            "G",
-            color = Gold,
-            fontSize = (size.value * 0.42f).sp,
-            fontWeight = FontWeight.Black
-        )
+    Canvas(modifier = Modifier.size(size)) {
+        drawGoldLogoShape(this.size.width, this.size.height)
     }
 }
 
