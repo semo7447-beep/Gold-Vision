@@ -96,6 +96,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.LayoutDirection
@@ -341,13 +342,13 @@ private fun GoldVisionApp() {
     }
 
     // يجلب أسعار الذهب العالمية الحقيقية عند فتح التطبيق ثم يحدّثها
-    // تلقائياً كل 20 ثانية (GoldMarket.kt) لتحديث شبه لحظي. لو لاحظت
-    // ظهور "غير محدث" بشكل متكرر، هذا مؤشر على رفض طلبات من المزوّد
-    // المجاني (تحديد معدّل) ونحتاج نبطّئها مرة ثانية
+    // تلقائياً كل 45 ثانية (GoldMarket.kt). التحديث كل 20 ثانية كان
+    // عدوانياً جداً على مزوّد مجاني ويبدو أنه تسبب برفض كل الطلبات
+    // (تحديد معدّل) — 45 ثانية توازن بين السرعة وتجنّب هذا الرفض
     LaunchedEffect(Unit) {
         while (true) {
             GoldMarket.refresh()
-            delay(20.seconds)
+            delay(45.seconds)
         }
     }
 
@@ -458,22 +459,25 @@ private fun GoldVisionApp() {
                         onWeightChanged = { weight = it },
                         onManufacturingChanged = { manufacturing = it },
                         onNavigateDealEvaluator = { showDealEvaluator = true },
-                        savedDeals = savedDeals
+                        savedDeals = savedDeals,
+                        onBack = { selectedBottom = 0 }
                     )
-                    2 -> NewsScreen()
+                    2 -> NewsScreen(onBack = { selectedBottom = 0 })
                     3 -> PortfolioScreen(
                         savedItems = savedGoldItems,
                         onNavigateAddItem = { showAddGoldItem = true },
                         onEditItem = { index ->
                             editingGoldItemIndex = index
                             showAddGoldItem = true
-                        }
+                        },
+                        onBack = { selectedBottom = 0 }
                     )
                     4 -> ZakatScreen(
                         savedItems = savedGoldItems,
-                        onNavigateAddItem = { showAddGoldItem = true }
+                        onNavigateAddItem = { showAddGoldItem = true },
+                        onBack = { selectedBottom = 0 }
                     )
-                    5 -> MoreScreen()
+                    5 -> MoreScreen(onBack = { selectedBottom = 0 })
                 }
             }
         }
@@ -622,7 +626,8 @@ private fun CalculatorFullScreen(
     onWeightChanged: (Double) -> Unit,
     onManufacturingChanged: (Double) -> Unit,
     onNavigateDealEvaluator: () -> Unit,
-    savedDeals: List<SavedDeal>
+    savedDeals: List<SavedDeal>,
+    onBack: () -> Unit
 ) {
     val selectedPrice = GoldMarket.prices.first { it.karat == selectedKarat }
     val finalGramPrice = if (weight > 0) total / weight else 0.0
@@ -650,6 +655,15 @@ private fun CalculatorFullScreen(
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.align(Alignment.Center)
+            )
+            Icon(
+                imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
+                contentDescription = "رجوع",
+                tint = Gold,
+                modifier = Modifier
+                    .size(22.dp)
+                    .align(Alignment.CenterEnd)
+                    .clickable { onBack() }
             )
         }
 
@@ -1346,7 +1360,7 @@ private fun SaveDealDialog(
                     value = shopName,
                     onValueChange = { shopName = it },
                     singleLine = true,
-                    textStyle = TextStyle(color = White, fontSize = 12.sp),
+                    textStyle = TextStyle(color = White, fontSize = 12.sp, textDirection = TextDirection.Content),
                     cursorBrush = SolidColor(Gold),
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -1583,7 +1597,7 @@ private fun AddGoldItemScreen(
                 value = name,
                 onValueChange = { name = it },
                 singleLine = true,
-                textStyle = TextStyle(color = White, fontSize = 12.sp),
+                textStyle = TextStyle(color = White, fontSize = 12.sp, textDirection = TextDirection.Content),
                 cursorBrush = SolidColor(Gold),
                 modifier = Modifier.fillMaxWidth()
             )
@@ -1796,7 +1810,7 @@ private fun AddGoldItemScreen(
                 value = notes,
                 onValueChange = { notes = it },
                 singleLine = true,
-                textStyle = TextStyle(color = White, fontSize = 12.sp),
+                textStyle = TextStyle(color = White, fontSize = 12.sp, textDirection = TextDirection.Content),
                 cursorBrush = SolidColor(Gold),
                 modifier = Modifier.fillMaxWidth()
             )
@@ -2954,15 +2968,30 @@ private val fullNewsList = listOf(
 )
 
 @Composable
-private fun NewsScreen() {
+private fun NewsScreen(onBack: () -> Unit) {
     Column(modifier = Modifier.fillMaxSize()) {
-        Text(
-            "الأخبار",
-            color = Gold,
-            fontSize = 18.sp,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
-        )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
+                contentDescription = "رجوع",
+                tint = Gold,
+                modifier = Modifier
+                    .size(20.dp)
+                    .clickable { onBack() }
+            )
+            Text(
+                "الأخبار",
+                color = Gold,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
@@ -3042,7 +3071,8 @@ private fun portfolioTotals(savedItems: List<GoldItem>): PortfolioTotals = Portf
 private fun PortfolioScreen(
     savedItems: List<GoldItem>,
     onNavigateAddItem: () -> Unit,
-    onEditItem: (Int) -> Unit
+    onEditItem: (Int) -> Unit,
+    onBack: () -> Unit
 ) {
     val savedValues = savedItems.map { it to it.currentValue() }
     val totalValue = savedValues.sumOf { it.second }
@@ -3050,13 +3080,28 @@ private fun PortfolioScreen(
     val itemCount = savedItems.size
 
     Column(modifier = Modifier.fillMaxSize()) {
-        Text(
-            "المحفظة",
-            color = Gold,
-            fontSize = 18.sp,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
-        )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
+                contentDescription = "رجوع",
+                tint = Gold,
+                modifier = Modifier
+                    .size(20.dp)
+                    .clickable { onBack() }
+            )
+            Text(
+                "المحفظة",
+                color = Gold,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
 
         Box(modifier = Modifier.padding(horizontal = 12.dp)) {
             PortfolioSummary(totalValue = totalValue, itemCount = itemCount, totalWeight = totalWeight)
@@ -3142,7 +3187,8 @@ private fun PortfolioScreen(
 @Composable
 private fun ZakatScreen(
     savedItems: List<GoldItem>,
-    onNavigateAddItem: () -> Unit
+    onNavigateAddItem: () -> Unit,
+    onBack: () -> Unit
 ) {
     var zakatPercent by remember { mutableDoubleStateOf(2.5) }
     var showAllItems by remember { mutableStateOf(true) }
@@ -3212,14 +3258,27 @@ private fun ZakatScreen(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(
-                imageVector = Icons.Outlined.Refresh,
-                contentDescription = "تحديث",
-                tint = Gold,
-                modifier = Modifier
-                    .size(20.dp)
-                    .clickable { marketScope.launch { GoldMarket.refresh() } }
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
+                    contentDescription = "رجوع",
+                    tint = Gold,
+                    modifier = Modifier
+                        .size(20.dp)
+                        .clickable { onBack() }
+                )
+                Icon(
+                    imageVector = Icons.Outlined.Refresh,
+                    contentDescription = "تحديث",
+                    tint = Gold,
+                    modifier = Modifier
+                        .size(20.dp)
+                        .clickable { marketScope.launch { GoldMarket.refresh() } }
+                )
+            }
             Text("الزكاة", color = White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
             Icon(
                 imageVector = Icons.Outlined.Info,
@@ -4025,19 +4084,32 @@ private fun PlaceholderScreen(title: String) {
 
 // ==================== شاشة المزيد: الملف الشخصي والإعدادات ====================
 @Composable
-private fun MoreScreen() {
+private fun MoreScreen(onBack: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 12.dp, vertical = 8.dp)
     ) {
-        Text(
-            "المزيد",
-            color = Gold,
-            fontSize = 18.sp,
-            fontWeight = FontWeight.Bold
-        )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
+                contentDescription = "رجوع",
+                tint = Gold,
+                modifier = Modifier
+                    .size(20.dp)
+                    .clickable { onBack() }
+            )
+            Text(
+                "المزيد",
+                color = Gold,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
 
         Spacer(Modifier.height(12.dp))
 

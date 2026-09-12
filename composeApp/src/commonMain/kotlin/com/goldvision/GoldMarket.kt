@@ -84,6 +84,12 @@ internal object GoldMarket {
             prices = updated
             lastError = null
         } catch (e: Exception) {
+            // نرسل تفاصيل الخطأ الفعلية مرة واحدة فقط عند أول فشل بعد نجاح
+            // (وليس عند كل محاولة فاشلة متكررة) لتشخيص أسباب انقطاع
+            // الأسعار عن بُعد بدل الاعتماد على لقطات شاشة فقط
+            if (lastError == null) {
+                reportSilentError("GoldMarket.refresh failed: ${e.message}")
+            }
             lastError = "تعذر تحديث الأسعار العالمية، يتم عرض آخر سعر متوفر"
         } finally {
             isLoading = false
