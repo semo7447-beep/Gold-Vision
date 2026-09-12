@@ -435,6 +435,11 @@ private fun GoldVisionApp() {
                             savedGoldItems.add(0, item)
                         }
                         persistGoldItems(savedGoldItems)
+                        // الحفظ القادم من الحاسبة (prefillGoldItem) ينقل تلقائياً
+                        // إلى شاشة المحفظة، حتى يرى المستخدم القطعة فور حفظها
+                        if (prefillGoldItem != null) {
+                            selectedBottom = 3
+                        }
                         showAddGoldItem = false
                         editingGoldItemIndex = null
                         prefillGoldItem = null
