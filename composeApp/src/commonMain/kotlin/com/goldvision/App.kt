@@ -36,7 +36,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.Article
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowLeft
-import androidx.compose.material.icons.automirrored.outlined.Logout
 import androidx.compose.material.icons.automirrored.outlined.ShowChart
 import androidx.compose.material.icons.outlined.AccountBalanceWallet
 import androidx.compose.material.icons.outlined.AttachMoney
@@ -140,6 +139,16 @@ internal data class KaratPrice(
     val change: Double,
     val percent: Double
 )
+
+// ملف شخصي محلي بسيط (اسم + رمز تعبيري) — بلا تسجيل دخول ولا حساب فعلي،
+// يُحفظ على الجهاز فقط عبر AppStorage، بلا أي خادم أو مزامنة
+@Serializable
+private data class UserProfile(
+    val name: String = "",
+    val avatar: String = "👤"
+)
+
+private val profileAvatarOptions = listOf("👤", "😊", "🧑", "👨", "👩", "🧔", "👳", "🕵️")
 
 // بيانات صفقة محفوظة من شاشة "المحل أعطاك سعراً؟" (اسم المحل + السعر + مستوى التقييم)
 private data class SavedDeal(
@@ -342,6 +351,9 @@ private fun GoldVisionApp() {
     val savedDeals = remember { mutableStateListOf<SavedDeal>() }
     val savedGoldItems = remember { mutableStateListOf<GoldItem>().apply { addAll(loadSavedGoldItems()) } }
     var prefillGoldItem by remember { mutableStateOf<GoldItem?>(null) }
+    var userProfile by remember { mutableStateOf(loadUserProfile()) }
+    var showProfileScreen by remember { mutableStateOf(false) }
+    var showPrivacyPolicy by remember { mutableStateOf(false) }
 
     var liveTimeText by remember { mutableStateOf(currentDateTimeText()) }
     LaunchedEffect(Unit) {
@@ -456,6 +468,18 @@ private fun GoldVisionApp() {
                         }
                     } else null
                 )
+            } else if (showProfileScreen) {
+                ProfileScreen(
+                    profile = userProfile,
+                    onBack = { showProfileScreen = false },
+                    onSave = { profile ->
+                        userProfile = profile
+                        persistUserProfile(profile)
+                        showProfileScreen = false
+                    }
+                )
+            } else if (showPrivacyPolicy) {
+                PrivacyPolicyScreen(onBack = { showPrivacyPolicy = false })
             } else {
                 when (selectedBottom) {
                     0 -> HomeScreen(
@@ -520,7 +544,12 @@ private fun GoldVisionApp() {
                         onNavigateAddItem = { showAddGoldItem = true },
                         onBack = { selectedBottom = 0 }
                     )
-                    5 -> MoreScreen(onBack = { selectedBottom = 0 })
+                    5 -> MoreScreen(
+                        profile = userProfile,
+                        onNavigateProfile = { showProfileScreen = true },
+                        onNavigatePrivacyPolicy = { showPrivacyPolicy = true },
+                        onBack = { selectedBottom = 0 }
+                    )
                 }
             }
         }
@@ -3201,6 +3230,21 @@ private fun persistGoldItems(items: List<GoldItem>) {
     AppStorage.writeText(goldItemsStorageFile, Json.encodeToString(items))
 }
 
+private const val userProfileStorageFile = "user_profile.json"
+
+private fun loadUserProfile(): UserProfile {
+    val text = AppStorage.readText(userProfileStorageFile) ?: return UserProfile()
+    return try {
+        Json.decodeFromString<UserProfile>(text)
+    } catch (e: Exception) {
+        UserProfile()
+    }
+}
+
+private fun persistUserProfile(profile: UserProfile) {
+    AppStorage.writeText(userProfileStorageFile, Json.encodeToString(profile))
+}
+
 // يحسب القيمة الحالية لقطعة بسعر السوق الحي (ذهب + مصنعية + ضريبة، معفى لعيار 24)
 private fun GoldItem.currentValue(): Double {
     val pricePerGram = GoldMarket.prices.first { it.karat == karat }.price
@@ -4258,7 +4302,12 @@ private fun PlaceholderScreen(title: String) {
 
 // ==================== شاشة المزيد: الملف الشخصي والإعدادات ====================
 @Composable
-private fun MoreScreen(onBack: () -> Unit) {
+private fun MoreScreen(
+    profile: UserProfile,
+    onNavigateProfile: () -> Unit,
+    onNavigatePrivacyPolicy: () -> Unit,
+    onBack: () -> Unit
+) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -4293,6 +4342,7 @@ private fun MoreScreen(onBack: () -> Unit) {
                 .clip(RoundedCornerShape(9.dp))
                 .border(1.dp, Border, RoundedCornerShape(9.dp))
                 .background(CardBlack)
+                .clickable { onNavigateProfile() }
                 .padding(12.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
@@ -4308,11 +4358,16 @@ private fun MoreScreen(onBack: () -> Unit) {
                         .background(Gold),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("م", color = Black, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                    Text(profile.avatar, fontSize = 20.sp)
                 }
                 Column {
-                    Text("محمد العتيبي", color = White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                    Text("عرض الملف الشخصي", color = Gray, fontSize = 10.sp)
+                    Text(
+                        profile.name.ifBlank { "أضف اسمك" },
+                        color = White,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text("تعديل الملف الشخصي", color = Gray, fontSize = 10.sp)
                 }
             }
             Icon(
@@ -4344,9 +4399,9 @@ private fun MoreScreen(onBack: () -> Unit) {
             SettingsRow(icon = Icons.Outlined.Info, label = "عن التطبيق")
             SettingsDivider()
             SettingsRow(
-                icon = Icons.AutoMirrored.Outlined.Logout,
-                label = "تسجيل الخروج",
-                tint = Red
+                icon = Icons.Outlined.Balance,
+                label = "سياسة الخصوصية",
+                onClick = onNavigatePrivacyPolicy
             )
         }
 
@@ -4355,11 +4410,11 @@ private fun MoreScreen(onBack: () -> Unit) {
 }
 
 @Composable
-private fun SettingsRow(icon: ImageVector, label: String, tint: Color = Gold) {
+private fun SettingsRow(icon: ImageVector, label: String, tint: Color = Gold, onClick: () -> Unit = {}) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { }
+            .clickable(onClick = onClick)
             .padding(horizontal = 12.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
@@ -4389,6 +4444,200 @@ private fun SettingsDivider() {
             .height(1.dp)
             .background(Border)
     )
+}
+
+// ==================== شاشة الملف الشخصي (محلي، بلا تسجيل دخول) ====================
+@Composable
+private fun ProfileScreen(profile: UserProfile, onBack: () -> Unit, onSave: (UserProfile) -> Unit) {
+    var name by remember { mutableStateOf(profile.name) }
+    var selectedAvatar by remember { mutableStateOf(profile.avatar) }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 14.dp, vertical = 8.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
+                contentDescription = "رجوع",
+                tint = Gold,
+                modifier = Modifier
+                    .size(22.dp)
+                    .clickable { onBack() }
+            )
+            Text(
+                "الملف الشخصي",
+                color = White,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.weight(1f)
+            )
+            Spacer(Modifier.size(22.dp))
+        }
+
+        Spacer(Modifier.height(16.dp))
+        Text(
+            "بياناتك محفوظة على جهازك فقط، ولا تُرسل لأي خادم — لا يوجد تسجيل دخول أو حساب فعلي في التطبيق",
+            color = Gray,
+            fontSize = 10.sp
+        )
+
+        Spacer(Modifier.height(20.dp))
+
+        Text("الاسم", color = Gray, fontSize = 10.sp)
+        Spacer(Modifier.height(6.dp))
+        val nameFocus = remember { FocusRequester() }
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(42.dp)
+                .clip(RoundedCornerShape(9.dp))
+                .border(1.dp, Border, RoundedCornerShape(9.dp))
+                .clickable(
+                    indication = null,
+                    interactionSource = remember { MutableInteractionSource() }
+                ) { nameFocus.requestFocus() }
+                .padding(horizontal = 12.dp),
+            contentAlignment = Alignment.CenterStart
+        ) {
+            if (name.isEmpty()) {
+                Text("مثال: محمد العتيبي", color = Gray, fontSize = 12.sp)
+            }
+            BasicTextField(
+                value = name,
+                onValueChange = { name = it },
+                singleLine = true,
+                textStyle = TextStyle(color = White, fontSize = 12.sp, textDirection = TextDirection.Content),
+                cursorBrush = SolidColor(Gold),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .focusRequester(nameFocus)
+            )
+        }
+
+        Spacer(Modifier.height(16.dp))
+
+        Text("الصورة الرمزية", color = Gray, fontSize = 10.sp)
+        Spacer(Modifier.height(6.dp))
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            profileAvatarOptions.forEach { avatar ->
+                val selected = avatar == selectedAvatar
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(RoundedCornerShape(24.dp))
+                        .border(
+                            width = if (selected) 1.5.dp else 1.dp,
+                            color = if (selected) Gold else Border,
+                            shape = RoundedCornerShape(24.dp)
+                        )
+                        .background(if (selected) GoldDark.copy(alpha = 0.2f) else Color.Transparent)
+                        .clickable { selectedAvatar = avatar },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(avatar, fontSize = 20.sp)
+                }
+            }
+        }
+
+        Spacer(Modifier.height(24.dp))
+
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(48.dp)
+                .clip(RoundedCornerShape(10.dp))
+                .background(Gold)
+                .clickable { onSave(UserProfile(name = name.trim(), avatar = selectedAvatar)) },
+            contentAlignment = Alignment.Center
+        ) {
+            Text("حفظ", color = Black, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+        }
+
+        Spacer(Modifier.height(16.dp))
+    }
+}
+
+// ==================== شاشة سياسة الخصوصية (داخل التطبيق) ====================
+private val privacyPolicySections = listOf(
+    "البيانات المحفوظة على جهازك فقط" to
+        "قطع المحفظة، بيانات الزكاة، والملف الشخصي تُحفظ كملفات محلية على جهازك فقط عبر مساحة تخزين التطبيق الخاصة. لا يوجد خادم أو حساب سحابي يستقبل هذه البيانات، ولا تُشارك مع أي طرف ثالث.",
+    "لا تسجيل دخول ولا حساب" to
+        "التطبيق لا يطلب بريداً إلكترونياً ولا رقم هاتف ولا كلمة مرور، ولا ينشئ حساباً على أي خادم. الملف الشخصي (الاسم والصورة الرمزية) اختياري ومحفوظ على جهازك فقط.",
+    "أسعار الذهب" to
+        "تُجلب الأسعار الحية والتاريخية من مزوّد بيانات خارجي متخصص بأسعار الذهب (XAU/USD)، دون إرسال أي معلومة تعرّف بك أو ببياناتك المحفوظة.",
+    "تتبع الأعطال (Sentry)" to
+        "عند حدوث عطل تقني أو فشل في تحديث الأسعار، تُرسل رسالة تشخيصية تقنية (بلا اسمك أو بياناتك) إلى خدمة Sentry لمساعدتنا على اكتشاف المشكلة وإصلاحها بسرعة.",
+    "إحصاءات استخدام مجهولة (PostHog)" to
+        "نستخدم PostHog لجمع إحصاءات مجهولة عن استخدام الشاشات (بلا اسمك أو رقم يعرّفك) لفهم الميزات الأكثر استخداماً وتحسين التطبيق. لا يوجد تسجيل لجلسات الشاشة (Session Replay).",
+    "التواصل" to
+        "لأي استفسار أو طلب حذف بيانات، يمكن التواصل عبر البريد الإلكتروني: semo7447@gmail.com"
+)
+
+@Composable
+private fun PrivacyPolicyScreen(onBack: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 14.dp, vertical = 8.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
+                contentDescription = "رجوع",
+                tint = Gold,
+                modifier = Modifier
+                    .size(22.dp)
+                    .clickable { onBack() }
+            )
+            Text(
+                "سياسة الخصوصية",
+                color = White,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.weight(1f)
+            )
+            Spacer(Modifier.size(22.dp))
+        }
+
+        Spacer(Modifier.height(16.dp))
+
+        privacyPolicySections.forEachIndexed { index, (title, body) ->
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(10.dp))
+                    .border(1.dp, Border, RoundedCornerShape(10.dp))
+                    .background(CardBlack)
+                    .padding(12.dp)
+            ) {
+                Text(title, color = Gold, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.height(6.dp))
+                Text(body, color = Gray, fontSize = 11.sp, lineHeight = 17.sp)
+            }
+            if (index != privacyPolicySections.lastIndex) {
+                Spacer(Modifier.height(10.dp))
+            }
+        }
+
+        Spacer(Modifier.height(16.dp))
+    }
 }
 
 // ==================== الشريط العلوي ====================
