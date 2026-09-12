@@ -176,7 +176,11 @@ private data class GoldItem(
     val purchasePriceWithTax: Double,
     val manufacturingPerGram: Double,
     val purchaseDate: String,
-    val notes: String
+    val notes: String,
+    // قطعة "مباعة" (محفوظة من الحاسبة في وضع بيع) لم تعد مِلكاً للمستخدم:
+    // تُستبعد من إجمالي الزكاة رغم بقائها في سجل المحفظة. القيمة
+    // الافتراضية false تحافظ على توافق القطع المحفوظة قبل إضافة هذا الحقل
+    val isSold: Boolean = false
 )
 
 // رموز تشكيلية لتمثيل شكل القطعة بدل صورة فعلية (خاتم/سوار/سلسلة/سبيكة...)
@@ -957,7 +961,8 @@ private fun CalculatorFullScreen(
                     purchasePriceWithTax = total,
                     manufacturingPerGram = if (buyMode) manufacturing else 0.0,
                     purchaseDate = todayDateText(),
-                    notes = ""
+                    notes = "",
+                    isSold = !buyMode
                 )
             )
         }
@@ -1618,6 +1623,7 @@ private fun AddGoldItemScreen(
     var manufacturing by remember { mutableDoubleStateOf(initialValues?.manufacturingPerGram ?: 35.0) }
     var purchaseDate by remember { mutableStateOf(initialValues?.purchaseDate ?: todayDateText()) }
     var notes by remember { mutableStateOf(initialValues?.notes ?: "") }
+    var isSold by remember { mutableStateOf(initialValues?.isSold ?: false) }
     var showDatePicker by remember { mutableStateOf(false) }
 
     // الذهب الاستثماري عيار 24 (سبائك/عملات) معفى من ضريبة القيمة المضافة
@@ -1902,6 +1908,29 @@ private fun AddGoldItemScreen(
 
         Spacer(Modifier.height(12.dp))
 
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Switch(
+                checked = isSold,
+                onCheckedChange = { isSold = it },
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = Black,
+                    checkedTrackColor = Red,
+                    uncheckedThumbColor = Gray,
+                    uncheckedTrackColor = CardBlack
+                )
+            )
+            Column(horizontalAlignment = Alignment.End) {
+                Text("قطعة مباعة", color = White, fontSize = 12.sp)
+                Text("لا تُحسب ضمن إجمالي الزكاة", color = Gray, fontSize = 9.sp)
+            }
+        }
+
+        Spacer(Modifier.height(12.dp))
+
         Text("ملاحظات (اختياري)", color = Gray, fontSize = 10.sp)
         Spacer(Modifier.height(6.dp))
         val notesFocus = remember { FocusRequester() }
@@ -2040,7 +2069,8 @@ private fun AddGoldItemScreen(
                                 purchasePriceWithTax = purchasePriceWithTax,
                                 manufacturingPerGram = manufacturing,
                                 purchaseDate = purchaseDate,
-                                notes = notes
+                                notes = notes,
+                                isSold = isSold
                             )
                         )
                     },
@@ -3178,11 +3208,15 @@ private fun GoldItem.currentValue(): Double {
 
 private data class PortfolioTotals(val totalValue: Double, val itemCount: Int, val totalWeight: Double)
 
-private fun portfolioTotals(savedItems: List<GoldItem>): PortfolioTotals = PortfolioTotals(
-    totalValue = savedItems.sumOf { it.currentValue() },
-    itemCount = savedItems.size,
-    totalWeight = savedItems.sumOf { it.weightGrams }
-)
+// القطع "المباعة" لم تعد مِلكاً فعلياً، فلا تُحسب ضمن إجمالي المحفظة
+private fun portfolioTotals(savedItems: List<GoldItem>): PortfolioTotals {
+    val ownedItems = savedItems.filter { !it.isSold }
+    return PortfolioTotals(
+        totalValue = ownedItems.sumOf { it.currentValue() },
+        itemCount = ownedItems.size,
+        totalWeight = ownedItems.sumOf { it.weightGrams }
+    )
+}
 
 @Composable
 private fun PortfolioScreen(
@@ -3192,9 +3226,12 @@ private fun PortfolioScreen(
     onBack: () -> Unit
 ) {
     val savedValues = savedItems.map { it to it.currentValue() }
-    val totalValue = savedValues.sumOf { it.second }
-    val totalWeight = savedItems.sumOf { it.weightGrams }
-    val itemCount = savedItems.size
+    // القطع "المباعة" تبقى في السجل للمرجعية لكنها لم تعد مِلكاً فعلياً،
+    // فلا تُحسب ضمن إجمالي قيمة/وزن/عدد قطع المحفظة
+    val ownedValues = savedValues.filter { !it.first.isSold }
+    val totalValue = ownedValues.sumOf { it.second }
+    val totalWeight = ownedValues.sumOf { it.first.weightGrams }
+    val itemCount = ownedValues.size
 
     Column(modifier = Modifier.fillMaxSize()) {
         Row(
@@ -3260,7 +3297,7 @@ private fun PortfolioScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(9.dp))
-                        .border(1.dp, Border, RoundedCornerShape(9.dp))
+                        .border(1.dp, if (item.isSold) Red.copy(alpha = 0.4f) else Border, RoundedCornerShape(9.dp))
                         .background(CardBlack)
                         .clickable { onEditItem(index) }
                         .padding(10.dp),
@@ -3272,13 +3309,25 @@ private fun PortfolioScreen(
                             modifier = Modifier
                                 .size(26.dp)
                                 .clip(RoundedCornerShape(13.dp))
-                                .background(GoldDark.copy(alpha = 0.25f)),
+                                .background((if (item.isSold) Red else GoldDark).copy(alpha = 0.25f)),
                             contentAlignment = Alignment.Center
                         ) {
                             Text(item.emoji, fontSize = 12.sp)
                         }
                         Column {
-                            Text(item.name, color = White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                Text(item.name, color = White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                                if (item.isSold) {
+                                    Box(
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(4.dp))
+                                            .background(Red.copy(alpha = 0.15f))
+                                            .padding(horizontal = 5.dp, vertical = 1.dp)
+                                    ) {
+                                        Text("مباع", color = Red, fontSize = 8.sp, fontWeight = FontWeight.Bold)
+                                    }
+                                }
+                            }
                             Text(
                                 "${item.karat} • ${fmt(item.weightGrams, 2)} جرام",
                                 color = Gray,
@@ -3288,7 +3337,7 @@ private fun PortfolioScreen(
                     }
                     Text(
                         "${fmt(value, 2, grouped = true)} ريال",
-                        color = Gold,
+                        color = if (item.isSold) Red else Gold,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -3326,8 +3375,11 @@ private fun ZakatScreen(
     var date18 by remember { mutableStateOf(todayDateText()) }
     var activeDateKarat by remember { mutableStateOf<String?>(null) }
 
+    // القطع "المباعة" لم تعد مِلكاً للمستخدم، فلا تُحسب ضمن الزكاة إطلاقاً
+    val ownedItems = savedItems.filter { !it.isSold }
+
     fun earliestPurchaseDate(karat: String): String =
-        savedItems
+        ownedItems
             .filter { it.karat == karat }
             .mapNotNull { parseDisplayDate(it.purchaseDate) }
             .minOrNull()
@@ -3335,17 +3387,17 @@ private fun ZakatScreen(
             ?: todayDateText()
 
     fun fillWeightsFromPortfolio() {
-        weight24 = savedItems.filter { it.karat == "24K" }.sumOf { it.weightGrams }
-        weight22 = savedItems.filter { it.karat == "22K" }.sumOf { it.weightGrams }
-        weight21 = savedItems.filter { it.karat == "21K" }.sumOf { it.weightGrams }
-        weight18 = savedItems.filter { it.karat == "18K" }.sumOf { it.weightGrams }
+        weight24 = ownedItems.filter { it.karat == "24K" }.sumOf { it.weightGrams }
+        weight22 = ownedItems.filter { it.karat == "22K" }.sumOf { it.weightGrams }
+        weight21 = ownedItems.filter { it.karat == "21K" }.sumOf { it.weightGrams }
+        weight18 = ownedItems.filter { it.karat == "18K" }.sumOf { it.weightGrams }
         date24 = earliestPurchaseDate("24K")
         date22 = earliestPurchaseDate("22K")
         date21 = earliestPurchaseDate("21K")
         date18 = earliestPurchaseDate("18K")
     }
 
-    val allZakatItems = zakatItems + savedItems.map { it.toZakatItem() }
+    val allZakatItems = zakatItems + ownedItems.map { it.toZakatItem() }
     val displayedItems = if (showAllItems) allZakatItems else allZakatItems.take(3)
 
     val karatWeights = listOf("24K" to weight24, "22K" to weight22, "21K" to weight21, "18K" to weight18)
