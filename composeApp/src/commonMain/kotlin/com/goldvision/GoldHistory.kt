@@ -17,14 +17,12 @@ import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.jsonPrimitive
 
-// جسر بيانات الأسعار التاريخية الحقيقية: نفس مزوّد الأسعار الحية
-// (api.goldprice.dev) عنده مسار /v1/bars يرجّع شموع يومية حقيقية
-// (open/high/low/close) لسعر الأونصة بالدولار — لكن خطته المجانية بلا
-// تسجيل تسمح فقط بآخر 30 يوماً (حتى مع فتح حساب مجاني، هذا سقف الخطة
-// وليس حد تسجيل). الفترات الأطول (3 شهور فأكثر) تحتاج اشتراك مدفوع
-// عند نفس المزوّد، فنستخدم لها تقديراً "ذكياً" مبنياً على زخم آخر
-// 30 يوماً الحقيقية بدل رسم عشوائي غير مرتبط بالواقع (انظر
-// estimatedPeriodStats في App.kt)
+// جسر بيانات الأسعار التاريخية الحقيقية: xaus.com/api/v1/history يرجّع
+// حتى 5 سنوات من الشموع اليومية (XAU/USD) دون أي حاجة لمفتاح أو معاملات
+// — نفس مزوّد الأسعار الحية في GoldMarket.kt (استُبدل به api.goldprice.dev
+// بعد اكتشاف حصته الشهرية المحدودة 1000 طلب فقط، والتي نفدت فعلياً
+// بالتجربة). نأخذ من الاستجابة الكاملة آخر 30 يوماً فقط (كافية لفترات
+// "أمس/أسبوع/شهر" في شاشة التحليل الفني)
 internal object GoldHistory {
 
     private const val REAL_HISTORY_DAYS = 30L
@@ -50,55 +48,74 @@ internal object GoldHistory {
 
     suspend fun refresh(today: LocalDate) {
         isLoading = true
+        var rawBody = ""
         try {
-            val from = today.minus(REAL_HISTORY_DAYS - 1, DateTimeUnit.DAY)
-            val url = "https://api.goldprice.dev/v1/bars" +
-                    "?symbol=XAU-USD-SPOT&interval=1d&from=$from&to=$today&limit=100"
-            val bodyText = client.get(url).bodyAsText()
-            val bars = parseBars(bodyText)
+            rawBody = client.get("https://xaus.com/api/v1/history").bodyAsText()
+            val cutoff = today.minus(REAL_HISTORY_DAYS - 1, DateTimeUnit.DAY)
+            val bars = parseBars(rawBody).filter { it.date >= cutoff && it.date <= today }
             if (bars.isEmpty()) {
+                reportSilentError("GoldHistory.refresh failed: no bars parsed | body: ${rawBody.take(500)}")
                 lastError = "تعذر تحليل بيانات الأسعار التاريخية الحقيقية"
             } else {
                 dailyBarsUsdPerOunce = bars
                 lastError = null
             }
         } catch (e: Exception) {
+            reportSilentError("GoldHistory.refresh failed: ${e.message} | body: ${rawBody.take(500)}")
             lastError = "تعذر تحميل بيانات الأسعار التاريخية الحقيقية"
         } finally {
             isLoading = false
         }
     }
 
-    // تحليل دفاعي: شكل استجابة /v1/bars غير موثّق بدقة (لم تُتَح تجربته
-    // مباشرة من هذه البيئة بسبب حجب الشبكة)، فبدل كائن Kotlin صارم يفشل
-    // بالكامل عند أول اختلاف تسمية، نبحث يدوياً عن أول مصفوفة JSON في
-    // الاستجابة ثم نقرأ كل شمعة بمرونة (نص التاريخ يُقبل بعدة تسميات
-    // شائعة)، فإن فشل كل شيء نرجع قائمة فارغة ويظهر تحذير بدل بيانات
-    // مزيّفة أو تعطّل التطبيق
+    // تحليل دفاعي: شكل استجابة /v1/history غير موثّق بدقة كافية (لم تُتَح
+    // تجربته مباشرة من هذه البيئة بسبب حجب الشبكة)، فبدل كائن Kotlin
+    // صارم يفشل بالكامل عند أول اختلاف تسمية، نبحث يدوياً عن أول مصفوفة
+    // JSON في الاستجابة (بما فيها "points" الموثَّقة) ثم نقرأ كل شمعة
+    // بمرونة (حروف مختصرة شائعة: d/c/h/l إضافة للأسماء الكاملة). حقل
+    // الافتتاح غالباً غير متوفر بهذا المزوّد (شموع close/high/low فقط)،
+    // فنشتقه من إغلاق اليوم السابق بعد الترتيب الزمني بدل استبعاد الشمعة
     private fun parseBars(bodyText: String): List<HistoryBar> {
         val root = Json.parseToJsonElement(bodyText) as? JsonObject ?: return emptyList()
 
-        val arrayCandidateKeys = listOf("bars", "data", "results", "items", "prices", "candles")
+        val arrayCandidateKeys = listOf("points", "bars", "data", "results", "items", "prices", "candles")
         val barsArray: JsonArray = arrayCandidateKeys
             .firstNotNullOfOrNull { key -> root[key] as? JsonArray }
             ?: root.values.filterIsInstance<JsonArray>().firstOrNull()
             ?: return emptyList()
 
-        val dateKeys = listOf("t", "date", "time", "timestamp", "d")
+        val dateKeys = listOf("d", "t", "date", "time", "timestamp")
+        val closeKeys = listOf("c", "close")
+        val highKeys = listOf("h", "high")
+        val lowKeys = listOf("l", "low")
+        val openKeys = listOf("o", "open")
 
-        return barsArray.mapNotNull { element ->
-            val bar = element as? JsonObject ?: return@mapNotNull null
-            // قيمة صفرية/سالبة تعني شمعة غير سليمة (شكل استجابة مختلف عن
-            // المتوقع) — نستبعدها بدل قبولها كسعر حقيقي بصفر
-            val open = bar["open"]?.jsonPrimitive?.doubleOrNull?.takeIf { it > 0.0 } ?: return@mapNotNull null
-            val close = bar["close"]?.jsonPrimitive?.doubleOrNull?.takeIf { it > 0.0 } ?: return@mapNotNull null
-            val high = bar["high"]?.jsonPrimitive?.doubleOrNull?.takeIf { it > 0.0 } ?: maxOf(open, close)
-            val low = bar["low"]?.jsonPrimitive?.doubleOrNull?.takeIf { it > 0.0 } ?: minOf(open, close)
-            val dateText = dateKeys.firstNotNullOfOrNull { key -> bar[key]?.jsonPrimitive?.contentOrNull }
+        data class RawPoint(val date: LocalDate, val open: Double?, val high: Double, val low: Double, val close: Double)
+
+        val points = barsArray.mapNotNull { element ->
+            val point = element as? JsonObject ?: return@mapNotNull null
+            // قيمة صفرية/سالبة تعني نقطة غير سليمة (شكل استجابة مختلف
+            // عن المتوقع) — نستبعدها بدل قبولها كسعر حقيقي بصفر
+            val close = closeKeys.firstNotNullOfOrNull { key -> point[key]?.jsonPrimitive?.doubleOrNull }
+                ?.takeIf { it > 0.0 } ?: return@mapNotNull null
+            val high = highKeys.firstNotNullOfOrNull { key -> point[key]?.jsonPrimitive?.doubleOrNull }
+                ?.takeIf { it > 0.0 } ?: close
+            val low = lowKeys.firstNotNullOfOrNull { key -> point[key]?.jsonPrimitive?.doubleOrNull }
+                ?.takeIf { it > 0.0 } ?: close
+            val open = openKeys.firstNotNullOfOrNull { key -> point[key]?.jsonPrimitive?.doubleOrNull }
+                ?.takeIf { it > 0.0 }
+            val dateText = dateKeys.firstNotNullOfOrNull { key -> point[key]?.jsonPrimitive?.contentOrNull }
                 ?: return@mapNotNull null
             val date = parseLooseIsoDate(dateText) ?: return@mapNotNull null
-            HistoryBar(date = date, open = open, high = high, low = low, close = close)
+            RawPoint(date, open, high, low, close)
         }.sortedBy { it.date }
+
+        var previousClose: Double? = null
+        return points.map { p ->
+            val open = p.open ?: previousClose ?: p.close
+            previousClose = p.close
+            HistoryBar(date = p.date, open = open, high = p.high, low = p.low, close = p.close)
+        }
     }
 
     // يقبل "2026-08-12" أو "2026-08-12T00:00:00Z" أو ما شابه، ويأخذ أول
