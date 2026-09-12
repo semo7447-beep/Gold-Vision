@@ -286,7 +286,7 @@ private val arabicDayNames = mapOf(
     DayOfWeek.FRIDAY to "الجمعة"
 )
 
-private fun todayLocalDate(): LocalDate =
+internal fun todayLocalDate(): LocalDate =
     Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
 
 private fun upcomingFedMeetings(): List<Triple<String, String, String>> {
@@ -354,6 +354,8 @@ private fun GoldVisionApp() {
     var userProfile by remember { mutableStateOf(loadUserProfile()) }
     var showProfileScreen by remember { mutableStateOf(false) }
     var showPrivacyPolicy by remember { mutableStateOf(false) }
+    var notificationSettings by remember { mutableStateOf(loadNotificationSettings()) }
+    var showNotificationSettings by remember { mutableStateOf(false) }
 
     var liveTimeText by remember { mutableStateOf(currentDateTimeText()) }
     LaunchedEffect(Unit) {
@@ -480,6 +482,16 @@ private fun GoldVisionApp() {
                 )
             } else if (showPrivacyPolicy) {
                 PrivacyPolicyScreen(onBack = { showPrivacyPolicy = false })
+            } else if (showNotificationSettings) {
+                NotificationSettingsScreen(
+                    settings = notificationSettings,
+                    onBack = { showNotificationSettings = false },
+                    onToggleDailyPrice = { enabled ->
+                        notificationSettings = notificationSettings.copy(dailyPriceEnabled = enabled)
+                        persistNotificationSettings(notificationSettings)
+                        PriceNotificationScheduler.setEnabled(enabled)
+                    }
+                )
             } else {
                 when (selectedBottom) {
                     0 -> HomeScreen(
@@ -548,6 +560,7 @@ private fun GoldVisionApp() {
                         profile = userProfile,
                         onNavigateProfile = { showProfileScreen = true },
                         onNavigatePrivacyPolicy = { showPrivacyPolicy = true },
+                        onNavigateNotifications = { showNotificationSettings = true },
                         onBack = { selectedBottom = 0 }
                     )
                 }
@@ -2759,7 +2772,7 @@ private const val TROY_OUNCE_GRAMS = 31.1034768
 private const val HISTORY_USD_TO_SAR = 3.75
 private val karatPurity = mapOf("24K" to 1.0, "22K" to 22.0 / 24.0, "21K" to 21.0 / 24.0, "18K" to 18.0 / 24.0)
 
-private fun usdPerOunceToSarPerGram(usdPerOunce: Double, karat: String): Double {
+internal fun usdPerOunceToSarPerGram(usdPerOunce: Double, karat: String): Double {
     val purity = karatPurity[karat] ?: 1.0
     return (usdPerOunce / TROY_OUNCE_GRAMS) * purity * HISTORY_USD_TO_SAR
 }
@@ -4306,6 +4319,7 @@ private fun MoreScreen(
     profile: UserProfile,
     onNavigateProfile: () -> Unit,
     onNavigatePrivacyPolicy: () -> Unit,
+    onNavigateNotifications: () -> Unit,
     onBack: () -> Unit
 ) {
     Column(
@@ -4390,7 +4404,11 @@ private fun MoreScreen(
                 .border(1.dp, Border, RoundedCornerShape(9.dp))
                 .background(CardBlack)
         ) {
-            SettingsRow(icon = Icons.Outlined.Notifications, label = "الإشعارات")
+            SettingsRow(
+                icon = Icons.Outlined.Notifications,
+                label = "الإشعارات",
+                onClick = onNavigateNotifications
+            )
             SettingsDivider()
             SettingsRow(icon = Icons.Outlined.AttachMoney, label = "العملة")
             SettingsDivider()
@@ -4632,6 +4650,80 @@ private fun PrivacyPolicyScreen(onBack: () -> Unit) {
             if (index != privacyPolicySections.lastIndex) {
                 Spacer(Modifier.height(10.dp))
             }
+        }
+
+        Spacer(Modifier.height(16.dp))
+    }
+}
+
+// ==================== شاشة إعدادات الإشعارات ====================
+@Composable
+private fun NotificationSettingsScreen(
+    settings: NotificationSettings,
+    onBack: () -> Unit,
+    onToggleDailyPrice: (Boolean) -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 14.dp, vertical = 8.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
+                contentDescription = "رجوع",
+                tint = Gold,
+                modifier = Modifier
+                    .size(22.dp)
+                    .clickable { onBack() }
+            )
+            Text(
+                "الإشعارات",
+                color = White,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.weight(1f)
+            )
+            Spacer(Modifier.size(22.dp))
+        }
+
+        Spacer(Modifier.height(16.dp))
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(10.dp))
+                .border(1.dp, Border, RoundedCornerShape(10.dp))
+                .background(CardBlack)
+                .padding(12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text("سعر الذهب اليومي", color = White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    "إشعار يومي بسعري الافتتاح والإغلاق الفعليين لعيار 24 وعيار 21",
+                    color = Gray,
+                    fontSize = 10.sp,
+                    lineHeight = 15.sp
+                )
+            }
+            Switch(
+                checked = settings.dailyPriceEnabled,
+                onCheckedChange = onToggleDailyPrice,
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = Black,
+                    checkedTrackColor = Gold,
+                    uncheckedThumbColor = Gray,
+                    uncheckedTrackColor = CardBlack
+                )
+            )
         }
 
         Spacer(Modifier.height(16.dp))

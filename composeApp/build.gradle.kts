@@ -43,6 +43,9 @@ kotlin {
             // تحليلات استخدام مجهولة الهوية (PostHog) — تُهيَّأ من
             // GoldVisionApplication.kt، بلا أي تعريف شخصي (لا identify())
             implementation("com.posthog:posthog-android:3.64.0")
+            // جدولة إشعار سعر الذهب اليومي (افتتاح/إغلاق) حتى عند إغلاق
+            // التطبيق — PriceNotificationWorker.android.kt
+            implementation("androidx.work:work-runtime-ktx:2.9.1")
         }
         commonMain.dependencies {
             implementation(compose.runtime)
