@@ -4,14 +4,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import io.ktor.client.HttpClient
-import io.ktor.client.call.body
 import io.ktor.client.plugins.HttpTimeout
-import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.request.get
-import io.ktor.serialization.kotlinx.json.json
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
+import io.ktor.client.statement.bodyAsText
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonPrimitive
 
 // جسر الأسعار العالمية الحية: يجلب سعر الذهب الفعلي بالجرام لكل عيار من
 // goldprice.dev (مزوّد عام موثّق، بلا حاجة لمفتاح API ولا تسجيل — على عكس
@@ -47,9 +46,6 @@ internal object GoldMarket {
         private set
 
     private val client = HttpClient {
-        install(ContentNegotiation) {
-            json(Json { ignoreUnknownKeys = true })
-        }
         install(HttpTimeout) {
             requestTimeoutMillis = 10_000
         }
@@ -57,16 +53,18 @@ internal object GoldMarket {
 
     suspend fun refresh() {
         isLoading = true
+        var rawBody = ""
         try {
-            val response: CaratResponse =
-                client.get("https://api.goldprice.dev/v1/carat?currency=USD").body()
+            rawBody = client.get("https://api.goldprice.dev/v1/carat?currency=USD").bodyAsText()
+            val fields = extractCaratFields(rawBody)
+                ?: error("شكل استجابة غير متوقع من مزوّد الأسعار")
 
             val previous = prices
             val updated = listOf(
-                "24K" to response.priceGram24k,
-                "22K" to response.priceGram22k,
-                "21K" to response.priceGram21k,
-                "18K" to response.priceGram18k
+                "24K" to fields.priceGram24k,
+                "22K" to fields.priceGram22k,
+                "21K" to fields.priceGram21k,
+                "18K" to fields.priceGram18k
             ).map { (karat, usdPerGramText) ->
                 // قيمة غير رقمية أو صفرية/سالبة تعني استجابة غير سليمة
                 // (شكل مختلف، صيانة، تحديد معدّل...) — نرفضها بدل قبولها
@@ -85,10 +83,11 @@ internal object GoldMarket {
             lastError = null
         } catch (e: Exception) {
             // نرسل تفاصيل الخطأ الفعلية مرة واحدة فقط عند أول فشل بعد نجاح
-            // (وليس عند كل محاولة فاشلة متكررة) لتشخيص أسباب انقطاع
-            // الأسعار عن بُعد بدل الاعتماد على لقطات شاشة فقط
+            // (وليس عند كل محاولة فاشلة متكررة)، مع مقطع من نص الاستجابة
+            // الخام، لتشخيص أسباب انقطاع الأسعار عن بُعد بدل الاعتماد على
+            // لقطات شاشة فقط
             if (lastError == null) {
-                reportSilentError("GoldMarket.refresh failed: ${e.message}")
+                reportSilentError("GoldMarket.refresh failed: ${e.message} | body: ${rawBody.take(500)}")
             }
             lastError = "تعذر تحديث الأسعار العالمية، يتم عرض آخر سعر متوفر"
         } finally {
@@ -99,14 +98,40 @@ internal object GoldMarket {
 
 // شكل استجابة GET https://api.goldprice.dev/v1/carat?currency=USD — مزوّد
 // عام بلا حاجة لمفتاح API. الأسعار ترجع كنصوص عشرية (decimal strings)
-// وليست أرقاماً مباشرة، لذلك الحقول هنا String وتُحوَّل يدوياً لاحقاً.
-// عمداً بلا قيمة افتراضية: لو تغيّر شكل الاستجابة واختفى أحد الحقول
-// نريد فشل التحليل (Exception) صراحة بدل الحصول على "0" بصمت — الفشل
-// الصريح يُمسَك في catch أعلاه ويُبقي آخر سعر ناجح بدل تصفيره
-@Serializable
-private data class CaratResponse(
-    @SerialName("price_gram_24k") val priceGram24k: String,
-    @SerialName("price_gram_22k") val priceGram22k: String,
-    @SerialName("price_gram_21k") val priceGram21k: String,
-    @SerialName("price_gram_18k") val priceGram18k: String
+// وليست أرقاماً مباشرة
+private data class CaratFields(
+    val priceGram24k: String,
+    val priceGram22k: String,
+    val priceGram21k: String,
+    val priceGram18k: String
 )
+
+// تحليل دفاعي: نبحث عن الحقول الأربعة في جذر الاستجابة مباشرة، وإن لم
+// نجدها هناك نبحث داخل أغلفة شائعة (data/result/prices) بدل الفشل فوراً
+// — هذا يتحمّل تغيّر شكل الاستجابة (تغليفها بكائن إضافي مثلاً) دون
+// الحاجة لتحديث الكود في كل مرة
+private fun extractCaratFields(bodyText: String): CaratFields? {
+    val root = try {
+        Json.parseToJsonElement(bodyText) as? JsonObject
+    } catch (e: Exception) {
+        null
+    } ?: return null
+
+    val candidateObjects = listOfNotNull(
+        root,
+        root["data"] as? JsonObject,
+        root["result"] as? JsonObject,
+        root["prices"] as? JsonObject
+    )
+
+    for (obj in candidateObjects) {
+        val g24 = obj["price_gram_24k"]?.jsonPrimitive?.contentOrNull
+        val g22 = obj["price_gram_22k"]?.jsonPrimitive?.contentOrNull
+        val g21 = obj["price_gram_21k"]?.jsonPrimitive?.contentOrNull
+        val g18 = obj["price_gram_18k"]?.jsonPrimitive?.contentOrNull
+        if (g24 != null && g22 != null && g21 != null && g18 != null) {
+            return CaratFields(g24, g22, g21, g18)
+        }
+    }
+    return null
+}
