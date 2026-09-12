@@ -8,6 +8,7 @@ import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.drag
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.layout.Arrangement
@@ -79,6 +80,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -1344,12 +1347,17 @@ private fun SaveDealDialog(
             Text("اسم المحل", color = Gray, fontSize = 10.sp)
             Spacer(Modifier.height(6.dp))
 
+            val shopNameFocus = remember { FocusRequester() }
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(42.dp)
                     .clip(RoundedCornerShape(9.dp))
                     .border(1.dp, Border, RoundedCornerShape(9.dp))
+                    .clickable(
+                        indication = null,
+                        interactionSource = remember { MutableInteractionSource() }
+                    ) { shopNameFocus.requestFocus() }
                     .padding(horizontal = 12.dp),
                 contentAlignment = Alignment.CenterStart
             ) {
@@ -1362,7 +1370,9 @@ private fun SaveDealDialog(
                     singleLine = true,
                     textStyle = TextStyle(color = White, fontSize = 12.sp, textDirection = TextDirection.Content),
                     cursorBrush = SolidColor(Gold),
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .focusRequester(shopNameFocus)
                 )
             }
 
@@ -1581,12 +1591,17 @@ private fun AddGoldItemScreen(
 
         Text("اسم القطعة", color = Gray, fontSize = 10.sp)
         Spacer(Modifier.height(6.dp))
+        val nameFocus = remember { FocusRequester() }
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(42.dp)
                 .clip(RoundedCornerShape(9.dp))
                 .border(1.dp, Border, RoundedCornerShape(9.dp))
+                .clickable(
+                    indication = null,
+                    interactionSource = remember { MutableInteractionSource() }
+                ) { nameFocus.requestFocus() }
                 .padding(horizontal = 12.dp),
             contentAlignment = Alignment.CenterStart
         ) {
@@ -1599,7 +1614,9 @@ private fun AddGoldItemScreen(
                 singleLine = true,
                 textStyle = TextStyle(color = White, fontSize = 12.sp, textDirection = TextDirection.Content),
                 cursorBrush = SolidColor(Gold),
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .focusRequester(nameFocus)
             )
         }
 
@@ -1794,12 +1811,17 @@ private fun AddGoldItemScreen(
 
         Text("ملاحظات (اختياري)", color = Gray, fontSize = 10.sp)
         Spacer(Modifier.height(6.dp))
+        val notesFocus = remember { FocusRequester() }
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(42.dp)
                 .clip(RoundedCornerShape(9.dp))
                 .border(1.dp, Border, RoundedCornerShape(9.dp))
+                .clickable(
+                    indication = null,
+                    interactionSource = remember { MutableInteractionSource() }
+                ) { notesFocus.requestFocus() }
                 .padding(horizontal = 12.dp),
             contentAlignment = Alignment.CenterStart
         ) {
@@ -1812,7 +1834,9 @@ private fun AddGoldItemScreen(
                 singleLine = true,
                 textStyle = TextStyle(color = White, fontSize = 12.sp, textDirection = TextDirection.Content),
                 cursorBrush = SolidColor(Gold),
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .focusRequester(notesFocus)
             )
         }
 
