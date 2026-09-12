@@ -1234,6 +1234,7 @@ private fun DealEvaluatorScreen(
     var showSaveDialog by remember { mutableStateOf(false) }
     var dealCountryTax by remember { mutableStateOf(countryTaxOptions.first()) }
     var dealTaxPercent by remember { mutableDoubleStateOf(countryTaxOptions.first().vatPercent) }
+    var showKaratPicker by remember { mutableStateOf(false) }
     val isDealTaxExempt = karat == "24K"
 
     val karatPrice = GoldMarket.prices.first { it.karat == karat }.price
@@ -1300,10 +1301,7 @@ private fun DealEvaluatorScreen(
                     .height(42.dp)
                     .clip(RoundedCornerShape(9.dp))
                     .border(1.dp, Border, RoundedCornerShape(9.dp))
-                    .clickable {
-                        val order = listOf("24K", "22K", "21K", "18K")
-                        karat = order[(order.indexOf(karat) + 1) % order.size]
-                    }
+                    .clickable { showKaratPicker = true }
                     .padding(horizontal = 12.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
@@ -1536,6 +1534,67 @@ private fun DealEvaluatorScreen(
                     showSaveDialog = false
                 }
             )
+        }
+
+        if (showKaratPicker) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.65f))
+                    .clickable(
+                        indication = null,
+                        interactionSource = remember { MutableInteractionSource() }
+                    ) { showKaratPicker = false },
+                contentAlignment = Alignment.Center
+            ) {
+                Column(
+                    modifier = Modifier
+                        .padding(horizontal = 28.dp)
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(14.dp))
+                        .border(1.dp, Border, RoundedCornerShape(14.dp))
+                        .background(CardBlack)
+                        .clickable(
+                            indication = null,
+                            interactionSource = remember { MutableInteractionSource() }
+                        ) { }
+                        .padding(vertical = 8.dp)
+                ) {
+                    Text(
+                        "اختر العيار",
+                        color = White,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 14.dp, vertical = 8.dp),
+                        textAlign = TextAlign.End
+                    )
+                    listOf("24K", "22K", "21K", "18K").forEach { option ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    karat = option
+                                    showKaratPicker = false
+                                }
+                                .padding(horizontal = 14.dp, vertical = 12.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                karatLabel(option),
+                                color = if (option == karat) Gold else White,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                            if (option == karat) {
+                                Text("✓", color = Gold, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }
