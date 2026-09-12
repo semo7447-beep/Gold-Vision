@@ -1,6 +1,7 @@
 package com.goldvision
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -106,6 +107,9 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.goldvision.resources.Res
+import com.goldvision.resources.logo_gold_vision
+import org.jetbrains.compose.resources.painterResource
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
@@ -5141,66 +5145,16 @@ private fun NotificationBell(count: Int) {
     }
 }
 
-// ماسة (سداسية) حدّها الذهبي نفسه يشكّل حرف "G": فجوة صغيرة في الضلع
-// السفلي الأيمن مع زائدة أفقية تمتد للداخل من أعلى الفجوة — تماماً مثل
-// أي حرف G مبني من دائرة/شكل مقطوع بزائدة، بدل حرف منفصل داخل الماسة
-private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawGoldLogoShape(w: Float, h: Float) {
-    val cx = w / 2f
-
-    val topY = h * 0.05f
-    val bottomY = h * 0.96f
-    val shoulderY = h * 0.32f
-    val leftX = w * 0.03f
-    val rightX = w * 0.97f
-    val topLeftX = w * 0.28f
-    val topRightX = w * 0.72f
-
-    val topLeft = Offset(topLeftX, topY)
-    val topRight = Offset(topRightX, topY)
-    val rightShoulder = Offset(rightX, shoulderY)
-    val bottom = Offset(cx, bottomY)
-    val leftShoulder = Offset(leftX, shoulderY)
-
-    // نقطتا الفجوة على الضلع الواصل بين الكتف الأيمن وأسفل الماسة
-    fun along(from: Offset, to: Offset, f: Float) =
-        Offset(from.x + (to.x - from.x) * f, from.y + (to.y - from.y) * f)
-
-    val gapNearShoulder = along(rightShoulder, bottom, 0.22f)
-    val gapNearBottom = along(rightShoulder, bottom, 0.40f)
-
-    // الزائدة الأفقية تبدأ من أعلى الفجوة وتمتد للداخل، بنفس ارتفاعها
-    val spurTip = Offset(w * 0.42f, gapNearShoulder.y)
-
-    val logoPath = Path().apply {
-        moveTo(gapNearBottom.x, gapNearBottom.y)
-        lineTo(bottom.x, bottom.y)
-        lineTo(leftShoulder.x, leftShoulder.y)
-        lineTo(topLeft.x, topLeft.y)
-        lineTo(topRight.x, topRight.y)
-        lineTo(rightShoulder.x, rightShoulder.y)
-        lineTo(gapNearShoulder.x, gapNearShoulder.y)
-        lineTo(spurTip.x, spurTip.y)
-    }
-
-    drawPath(
-        path = logoPath,
-        brush = Brush.linearGradient(
-            colors = listOf(Color(0xFFFFE9A8), Gold, GoldDark),
-            start = Offset(0f, 0f),
-            end = Offset(w, h)
-        ),
-        style = Stroke(width = h * 0.1f, cap = StrokeCap.Round)
-    )
-}
-
-// ماسة (سداسية) بحدّ متدرّج ذهبي، وحرف "G" ملتصق بحدّها الأيسر كقطعة
-// واحدة — شعار التطبيق المستخدَم في الشريط العلوي وفي كل مكان يظهر فيه
-// اسم "GOLD VISION". نفس الشكل بالضبط مستخدَم في أيقونة التطبيق
+// شعار "GOLD VISION" الفعلي (صورة حقيقية بخلفية شفافة، composeResources/drawable) —
+// نفس الصورة المستخدَمة في أيقونة التطبيق، تظهر في الشريط العلوي وبالتالي
+// في كل صفحات التطبيق
 @Composable
 private fun GoldLogo(size: Dp = 30.dp) {
-    Canvas(modifier = Modifier.size(size)) {
-        drawGoldLogoShape(this.size.width, this.size.height)
-    }
+    Image(
+        painter = painterResource(Res.drawable.logo_gold_vision),
+        contentDescription = null,
+        modifier = Modifier.size(size)
+    )
 }
 
 @Composable

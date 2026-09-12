@@ -59,6 +59,8 @@ kotlin {
             implementation(compose.material3)
             implementation(compose.materialIconsExtended)
             implementation(compose.ui)
+            // شعار GOLD VISION الفعلي (صورة حقيقية) في composeResources/drawable
+            implementation(compose.components.resources)
             implementation(libs.kotlinx.datetime)
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.kotlinx.serialization.json)
@@ -70,6 +72,10 @@ kotlin {
             implementation(libs.ktor.client.darwin)
         }
     }
+}
+
+compose.resources {
+    packageOfResClass = "com.goldvision.resources"
 }
 
 android {
