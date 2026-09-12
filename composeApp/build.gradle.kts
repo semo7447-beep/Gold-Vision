@@ -40,6 +40,9 @@ kotlin {
             // بيانات شخصية افتراضياً (sendDefaultPii = false)، متّسق مع سياسة
             // الخصوصية المحلية للتطبيق
             implementation("io.sentry:sentry-android:8.56.0")
+            // تحليلات استخدام مجهولة الهوية (PostHog) — تُهيَّأ من
+            // GoldVisionApplication.kt، بلا أي تعريف شخصي (لا identify())
+            implementation("com.posthog:posthog-android:3.64.0")
         }
         commonMain.dependencies {
             implementation(compose.runtime)
