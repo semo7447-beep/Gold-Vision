@@ -44,7 +44,6 @@ import androidx.compose.material.icons.outlined.Balance
 import androidx.compose.material.icons.outlined.Bolt
 import androidx.compose.material.icons.outlined.Calculate
 import androidx.compose.material.icons.outlined.CalendarMonth
-import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Home
@@ -338,7 +337,7 @@ private fun GoldVisionApp() {
     var editingGoldItemIndex by remember { mutableStateOf<Int?>(null) }
     val savedDeals = remember { mutableStateListOf<SavedDeal>() }
     val savedGoldItems = remember { mutableStateListOf<GoldItem>().apply { addAll(loadSavedGoldItems()) } }
-    val savedCalculations = remember { mutableStateListOf<SavedCalculation>().apply { addAll(loadSavedCalculations()) } }
+    var prefillGoldItem by remember { mutableStateOf<GoldItem?>(null) }
 
     var liveTimeText by remember { mutableStateOf(currentDateTimeText()) }
     LaunchedEffect(Unit) {
@@ -382,9 +381,14 @@ private fun GoldVisionApp() {
 
     val selectedPrice = GoldMarket.prices.first { it.karat == selectedKarat }.price
     val beforeVat = selectedPrice * weight
-    val isCalculatorTaxExempt = selectedKarat == "24K"
-    val vat = if (isCalculatorTaxExempt) 0.0 else (beforeVat + manufacturing * weight) * (taxPercent / 100.0)
-    val total = beforeVat + manufacturing * weight + vat
+    // عند "بيع" الذهب للمحل: يُدفع لك سعر الذهب الخام فقط دون مصنعية ولا
+    // ضريبة (هذا هو المعتاد فعلياً — المحل لا يدفع مقابل مصنعية قطعة
+    // مستعملة يشتريها منك، ولا ضريبة على هذا النوع من الشراء)، بعكس
+    // "شراء" قطعة من المحل حيث تُضاف المصنعية والضريبة كاملة
+    val manufacturingTotal = if (buyMode) manufacturing * weight else 0.0
+    val isCalculatorTaxExempt = !buyMode || selectedKarat == "24K"
+    val vat = if (isCalculatorTaxExempt) 0.0 else (beforeVat + manufacturingTotal) * (taxPercent / 100.0)
+    val total = beforeVat + manufacturingTotal + vat
 
     Column(
         modifier = Modifier
@@ -414,9 +418,11 @@ private fun GoldVisionApp() {
                 val editingIndex = editingGoldItemIndex
                 AddGoldItemScreen(
                     editingItem = editingIndex?.let { savedGoldItems.getOrNull(it) },
+                    prefillItem = prefillGoldItem,
                     onBack = {
                         showAddGoldItem = false
                         editingGoldItemIndex = null
+                        prefillGoldItem = null
                     },
                     onSave = { item ->
                         if (editingIndex != null && editingIndex in savedGoldItems.indices) {
@@ -427,6 +433,7 @@ private fun GoldVisionApp() {
                         persistGoldItems(savedGoldItems)
                         showAddGoldItem = false
                         editingGoldItemIndex = null
+                        prefillGoldItem = null
                     },
                     onDelete = if (editingIndex != null) {
                         {
@@ -436,6 +443,7 @@ private fun GoldVisionApp() {
                             persistGoldItems(savedGoldItems)
                             showAddGoldItem = false
                             editingGoldItemIndex = null
+                            prefillGoldItem = null
                         }
                     } else null
                 )
@@ -482,10 +490,9 @@ private fun GoldVisionApp() {
                         onManufacturingChanged = { manufacturing = it },
                         onNavigateDealEvaluator = { showDealEvaluator = true },
                         savedDeals = savedDeals,
-                        savedCalculations = savedCalculations,
-                        onSaveCalculation = { calc ->
-                            savedCalculations.add(calc)
-                            persistSavedCalculations(savedCalculations)
+                        onSaveToPortfolio = { item ->
+                            prefillGoldItem = item
+                            showAddGoldItem = true
                         },
                         onBack = { selectedBottom = 0 }
                     )
@@ -659,8 +666,7 @@ private fun CalculatorFullScreen(
     onManufacturingChanged: (Double) -> Unit,
     onNavigateDealEvaluator: () -> Unit,
     savedDeals: List<SavedDeal>,
-    savedCalculations: List<SavedCalculation>,
-    onSaveCalculation: (SavedCalculation) -> Unit,
+    onSaveToPortfolio: (GoldItem) -> Unit,
     onBack: () -> Unit
 ) {
     val selectedPrice = GoldMarket.prices.first { it.karat == selectedKarat }
@@ -815,7 +821,16 @@ private fun CalculatorFullScreen(
             }
         }
 
-        if (manufacturing <= 0.0) {
+        if (!buyMode) {
+            Spacer(Modifier.height(6.dp))
+            Text(
+                "سعر البيع للمحل: قيمة الذهب فقط - بدون مصنعية أو ضريبة",
+                color = Gray,
+                fontSize = 10.sp,
+                modifier = Modifier.fillMaxWidth(),
+                textAlign = TextAlign.Center
+            )
+        } else if (manufacturing <= 0.0) {
             Spacer(Modifier.height(6.dp))
             Text(
                 "ذهب خالص - بدون مصنعية أو ضريبة",
@@ -922,7 +937,7 @@ private fun CalculatorFullScreen(
             Spacer(Modifier.height(10.dp))
 
             CalculatorRow("سعر الذهب", "${fmt(beforeVat, 2, grouped = true)} ريال")
-            CalculatorRow("المصنعية", "${fmt(manufacturing * weight, 2, grouped = true)} ريال")
+            CalculatorRow("المصنعية", "${fmt(if (buyMode) manufacturing * weight else 0.0, 2, grouped = true)} ريال")
             CalculatorRow(
                 if (isTaxExempt) "ضريبة القيمة المضافة (معفى)" else "ضريبة القيمة المضافة (${fmt(taxPercent, 0)}%)",
                 "${fmt(vat, 2, grouped = true)} ريال"
@@ -932,13 +947,20 @@ private fun CalculatorFullScreen(
 
         Spacer(Modifier.height(14.dp))
 
-        SaveCalculationBox(
-            karat = selectedKarat,
-            weight = weight,
-            buyMode = buyMode,
-            total = total,
-            onSave = onSaveCalculation
-        )
+        SaveToPortfolioBox {
+            onSaveToPortfolio(
+                GoldItem(
+                    name = "",
+                    emoji = pieceEmojiOptions.first().first,
+                    karat = selectedKarat,
+                    weightGrams = weight,
+                    purchasePriceWithTax = total,
+                    manufacturingPerGram = if (buyMode) manufacturing else 0.0,
+                    purchaseDate = todayDateText(),
+                    notes = ""
+                )
+            )
+        }
 
         Spacer(Modifier.height(14.dp))
 
@@ -956,7 +978,12 @@ private fun CalculatorFullScreen(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                Text("المحل أعطاك سعراً؟", color = Gold, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                Text(
+                    if (buyMode) "المحل أعطاك سعراً؟" else "المحل أعطاك سعراً للشراء؟",
+                    color = Gold,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold
+                )
                 Icon(
                     imageVector = Icons.Outlined.LocationOn,
                     contentDescription = null,
@@ -1008,65 +1035,6 @@ private fun CalculatorFullScreen(
                         )
                     }
                     if (index != savedDeals.lastIndex) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 12.dp)
-                                .height(1.dp)
-                                .background(Border)
-                        )
-                    }
-                }
-            }
-        }
-
-        if (savedCalculations.isNotEmpty()) {
-            Spacer(Modifier.height(14.dp))
-            Text("حساباتي المحفوظة", color = Gray, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-            Spacer(Modifier.height(6.dp))
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(10.dp))
-                    .border(1.dp, Border, RoundedCornerShape(10.dp))
-                    .background(CardBlack)
-            ) {
-                savedCalculations.forEachIndexed { index, calc ->
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 12.dp, vertical = 10.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Outlined.Calculate,
-                                contentDescription = null,
-                                tint = Gold,
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Column {
-                                Text(
-                                    "${karatLabel(calc.karat)} · ${fmt(calc.weight, 2)} جم",
-                                    color = White,
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
-                                Text(if (calc.buyMode) "شراء" else "بيع", color = Gray, fontSize = 9.sp)
-                            }
-                        }
-                        Text(
-                            "${fmt(calc.total, 2, grouped = true)} ريال",
-                            color = Gold,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                    if (index != savedCalculations.lastIndex) {
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -1632,20 +1600,24 @@ private fun AddGoldItemScreen(
     editingItem: GoldItem?,
     onBack: () -> Unit,
     onSave: (GoldItem) -> Unit,
-    onDelete: (() -> Unit)? = null
+    onDelete: (() -> Unit)? = null,
+    prefillItem: GoldItem? = null
 ) {
     val isEditing = editingItem != null
+    // عند الحفظ من الحاسبة (prefillItem) تُملأ الحقول بنفس قيم الحساب
+    // الأخير، لكن هذه تبقى "إضافة" جديدة وليست تعديلاً — بلا زر حذف
+    val initialValues = editingItem ?: prefillItem
     var showDeleteConfirm by remember { mutableStateOf(false) }
-    var name by remember { mutableStateOf(editingItem?.name ?: "") }
-    var selectedEmoji by remember { mutableStateOf(editingItem?.emoji ?: pieceEmojiOptions.first().first) }
-    var karat by remember { mutableStateOf(editingItem?.karat ?: "21K") }
-    var weight by remember { mutableDoubleStateOf(editingItem?.weightGrams ?: 5.0) }
+    var name by remember { mutableStateOf(initialValues?.name ?: "") }
+    var selectedEmoji by remember { mutableStateOf(initialValues?.emoji ?: pieceEmojiOptions.first().first) }
+    var karat by remember { mutableStateOf(initialValues?.karat ?: "21K") }
+    var weight by remember { mutableDoubleStateOf(initialValues?.weightGrams ?: 5.0) }
     // عند التعديل، السعر المحفوظ (purchasePriceWithTax) شامل الضريبة أصلاً
-    var purchasePrice by remember { mutableDoubleStateOf(editingItem?.purchasePriceWithTax ?: 3000.0) }
+    var purchasePrice by remember { mutableDoubleStateOf(initialValues?.purchasePriceWithTax ?: 3000.0) }
     var includingTax by remember { mutableStateOf(true) }
-    var manufacturing by remember { mutableDoubleStateOf(editingItem?.manufacturingPerGram ?: 35.0) }
-    var purchaseDate by remember { mutableStateOf(editingItem?.purchaseDate ?: todayDateText()) }
-    var notes by remember { mutableStateOf(editingItem?.notes ?: "") }
+    var manufacturing by remember { mutableDoubleStateOf(initialValues?.manufacturingPerGram ?: 35.0) }
+    var purchaseDate by remember { mutableStateOf(initialValues?.purchaseDate ?: todayDateText()) }
+    var notes by remember { mutableStateOf(initialValues?.notes ?: "") }
     var showDatePicker by remember { mutableStateOf(false) }
 
     // الذهب الاستثماري عيار 24 (سبائك/عملات) معفى من ضريبة القيمة المضافة
@@ -3192,32 +3164,6 @@ private fun loadSavedGoldItems(): List<GoldItem> {
 
 private fun persistGoldItems(items: List<GoldItem>) {
     AppStorage.writeText(goldItemsStorageFile, Json.encodeToString(items))
-}
-
-// ==================== حفظ حسابات الآلة الحاسبة ====================
-// لقطة من نتيجة الحاسبة (عيار/وزن/بيع أو شراء/الإجمالي) يحفظها المستخدم
-// يدوياً من شاشة الحاسبة، منفصلة عن "الأسعار المحفوظة" الخاصة بعروض المحلات
-@Serializable
-internal data class SavedCalculation(
-    val karat: String,
-    val buyMode: Boolean,
-    val weight: Double,
-    val total: Double
-)
-
-private const val savedCalculationsStorageFile = "saved_calculations.json"
-
-private fun loadSavedCalculations(): List<SavedCalculation> {
-    val text = AppStorage.readText(savedCalculationsStorageFile) ?: return emptyList()
-    return try {
-        Json.decodeFromString<List<SavedCalculation>>(text)
-    } catch (e: Exception) {
-        emptyList()
-    }
-}
-
-private fun persistSavedCalculations(items: List<SavedCalculation>) {
-    AppStorage.writeText(savedCalculationsStorageFile, Json.encodeToString(items))
 }
 
 // يحسب القيمة الحالية لقطعة بسعر السوق الحي (ذهب + مصنعية + ضريبة، معفى لعيار 24)
@@ -5014,35 +4960,19 @@ private fun CountryTaxSelector(
     }
 }
 
-// صندوق حفظ نتيجة الحاسبة الحالية (عيار/وزن/بيع أو شراء/إجمالي)، يظهر
-// قبل زر "المحل أعطاك سعراً؟" في شاشة الحاسبة. لمسة واحدة تحفظ فوراً
-// (بلا حوار إدخال اسم، بعكس حفظ عروض المحلات) مع تأكيد بصري مؤقت
+// صندوق "حفظ في المحفظة" في شاشة الحاسبة، يظهر قبل زر "المحل أعطاك
+// سعراً؟". يفتح شاشة "إضافة قطعة" نفسها معبّأة بنتيجة الحساب الحالي
+// (عيار/وزن/إجمالي)، حتى يستفيد المستخدم من خيارات التعديل والتاريخ
+// والاسم الموجودة أصلاً هناك بدل قائمة حفظ منفصلة
 @Composable
-private fun SaveCalculationBox(
-    karat: String,
-    buyMode: Boolean,
-    weight: Double,
-    total: Double,
-    onSave: (SavedCalculation) -> Unit
-) {
-    var justSaved by remember { mutableStateOf(false) }
-    LaunchedEffect(justSaved) {
-        if (justSaved) {
-            delay(1800)
-            justSaved = false
-        }
-    }
-
+private fun SaveToPortfolioBox(onClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .height(44.dp)
             .clip(RoundedCornerShape(10.dp))
-            .border(1.dp, if (justSaved) Green else Border, RoundedCornerShape(10.dp))
-            .clickable {
-                onSave(SavedCalculation(karat = karat, buyMode = buyMode, weight = weight, total = total))
-                justSaved = true
-            },
+            .border(1.dp, Border, RoundedCornerShape(10.dp))
+            .clickable(onClick = onClick),
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -5051,17 +4981,12 @@ private fun SaveCalculationBox(
             horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             Icon(
-                imageVector = if (justSaved) Icons.Outlined.Check else Icons.Outlined.Calculate,
+                imageVector = Icons.Outlined.AccountBalanceWallet,
                 contentDescription = null,
-                tint = if (justSaved) Green else Gray,
+                tint = Gray,
                 modifier = Modifier.size(15.dp)
             )
-            Text(
-                if (justSaved) "تم حفظ الحساب" else "حفظ هذا الحساب",
-                color = if (justSaved) Green else White,
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Bold
-            )
+            Text("حفظ في المحفظة", color = White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
         }
     }
 }
