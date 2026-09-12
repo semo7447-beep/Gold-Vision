@@ -50,7 +50,7 @@ kotlin {
             // تسجيل الدخول بالإيميل (Firebase Authentication) — مجاني بالكامل
             // على خطة Spark بلا حد أقصى لعدد المستخدمين. BoM يضبط كل إصدارات
             // مكتبات Firebase معاً حتى تبقى متوافقة
-            implementation(platform(libs.firebase.bom))
+            implementation(platform("com.google.firebase:firebase-bom:33.7.0"))
             implementation("com.google.firebase:firebase-auth")
         }
         commonMain.dependencies {
