@@ -60,6 +60,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
@@ -340,6 +341,7 @@ fun App() {
 }
 
 // ==================== الشاشة الرئيسية للتطبيق (تحتوي على نظام التنقل) ====================
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun GoldVisionApp() {
     var selectedKarat by remember { mutableStateOf("21K") }
@@ -416,6 +418,35 @@ private fun GoldVisionApp() {
     val vat = if (isCalculatorTaxExempt) 0.0 else (beforeVat + manufacturingTotal) * (taxPercent / 100.0)
     val total = beforeVat + manufacturingTotal + vat
 
+    // يربط زر/إيماءة الرجوع في النظام بنفس تنقّل زر الرجوع داخل التطبيق:
+    // يقفل أي شاشة مفتوحة فوق التبويبات، أو يرجع لتبويب "الرئيسية" —
+    // بنفس ترتيب أولوية العرض أدناه بالضبط. لو ما فيه شيء مفتوح، الزر/
+    // الإيماءة تترك للنظام (يخرج من التطبيق كالمعتاد)
+    val hasOverlayScreen = showChartFull || showDealEvaluator || showAddGoldItem ||
+        showProfileScreen || showAuthScreen || showPrivacyPolicy || showNotificationSettings ||
+        selectedBottom != 0
+    BackHandler(enabled = hasOverlayScreen) {
+        when {
+            showChartFull -> showChartFull = false
+            showDealEvaluator -> showDealEvaluator = false
+            showAddGoldItem -> {
+                showAddGoldItem = false
+                editingGoldItemIndex = null
+                prefillGoldItem = null
+            }
+            showProfileScreen -> showProfileScreen = false
+            showAuthScreen -> showAuthScreen = false
+            showPrivacyPolicy -> showPrivacyPolicy = false
+            showNotificationSettings -> showNotificationSettings = false
+            selectedBottom != 0 -> selectedBottom = 0
+        }
+    }
+
+    // سحب للأسفل للتحديث، متاح في كل الصفحات لأنه يلفّ منطقة المحتوى
+    // المشتركة كلها — يحدّث نفس الأسعار الحية والتاريخية المستخدَمة في
+    // كامل التطبيق بغض النظر عن الصفحة المفتوحة حالياً
+    var isRefreshing by remember { mutableStateOf(false) }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -424,7 +455,18 @@ private fun GoldVisionApp() {
     ) {
         Header(onRefresh = { marketScope.launch { GoldMarket.refresh() } })
 
-        Box(modifier = Modifier.weight(1f)) {
+        PullToRefreshBox(
+            isRefreshing = isRefreshing,
+            onRefresh = {
+                isRefreshing = true
+                marketScope.launch {
+                    GoldMarket.refresh()
+                    GoldHistory.refresh(todayLocalDate())
+                    isRefreshing = false
+                }
+            },
+            modifier = Modifier.weight(1f)
+        ) {
             if (showChartFull) {
                 PriceChartFullScreen(
                     selectedPeriod = selectedPeriod,
