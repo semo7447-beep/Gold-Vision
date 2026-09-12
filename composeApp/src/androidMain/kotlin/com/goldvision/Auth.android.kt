@@ -14,6 +14,13 @@ internal actual object AuthService {
 
     actual suspend fun signUp(email: String, password: String): String? = try {
         auth.createUserWithEmailAndPassword(email, password).awaitResult()
+        // رابط تأكيد البريد يُرسل تلقائياً عند إنشاء الحساب — لا يمنع استخدام
+        // التطبيق إن فشل الإرسال لأي سبب (لا يوجد اتصال مثلاً)
+        try {
+            auth.currentUser?.sendEmailVerification()?.awaitResult()
+        } catch (e: Exception) {
+            // تجاهل: الحساب أُنشئ بنجاح بغض النظر عن نجاح إرسال رابط التأكيد
+        }
         null
     } catch (e: Exception) {
         e.message ?: "تعذر إنشاء الحساب"

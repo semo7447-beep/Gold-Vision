@@ -451,7 +451,11 @@ private fun GoldVisionApp() {
             .background(Black)
             .statusBarsPadding()
     ) {
-        Header(onRefresh = { marketScope.launch { GoldMarket.refresh() } })
+        Header(
+            onRefresh = { marketScope.launch { GoldMarket.refresh() } },
+            showNotificationBadge = !notificationSettings.dailyPriceEnabled,
+            onNotificationsClick = { showNotificationSettings = true }
+        )
 
         PullToRefreshBox(
             isRefreshing = isRefreshing,
@@ -4512,7 +4516,9 @@ private fun ProfileScreen(
 ) {
     var name by remember { mutableStateOf(profile.name) }
     var selectedAvatar by remember { mutableStateOf(profile.avatar) }
+    var showSignOutConfirm by remember { mutableStateOf(false) }
 
+    Box(modifier = Modifier.fillMaxSize()) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -4567,7 +4573,7 @@ private fun ProfileScreen(
                 modifier = Modifier
                     .clip(RoundedCornerShape(8.dp))
                     .border(1.dp, if (signedInEmail != null) Red else Gold, RoundedCornerShape(8.dp))
-                    .clickable { if (signedInEmail != null) onSignOut() else onNavigateAuth() }
+                    .clickable { if (signedInEmail != null) showSignOutConfirm = true else onNavigateAuth() }
                     .padding(horizontal = 12.dp, vertical = 8.dp)
             ) {
                 Text(
@@ -4643,6 +4649,89 @@ private fun ProfileScreen(
 
         Spacer(Modifier.height(16.dp))
     }
+
+    if (showSignOutConfirm) {
+        ConfirmDialog(
+            title = "تسجيل الخروج",
+            message = "هل أنت متأكد من تسجيل الخروج؟",
+            confirmLabel = "تسجيل الخروج",
+            confirmColor = Red,
+            onDismiss = { showSignOutConfirm = false },
+            onConfirm = {
+                showSignOutConfirm = false
+                onSignOut()
+            }
+        )
+    }
+    }
+}
+
+// نافذة تأكيد عامة (نعم/إلغاء) بنفس أسلوب نوافذ التطبيق الأخرى
+@Composable
+private fun ConfirmDialog(
+    title: String,
+    message: String,
+    confirmLabel: String,
+    confirmColor: Color,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.65f))
+            .clickable(
+                indication = null,
+                interactionSource = remember { MutableInteractionSource() }
+            ) { onDismiss() },
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            modifier = Modifier
+                .padding(horizontal = 28.dp)
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(14.dp))
+                .border(1.dp, Border, RoundedCornerShape(14.dp))
+                .background(CardBlack)
+                .clickable(
+                    indication = null,
+                    interactionSource = remember { MutableInteractionSource() }
+                ) { }
+                .padding(18.dp)
+        ) {
+            Text(title, color = White, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(8.dp))
+            Text(message, color = Gray, fontSize = 11.sp)
+            Spacer(Modifier.height(18.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(42.dp)
+                        .clip(RoundedCornerShape(9.dp))
+                        .border(1.dp, Border, RoundedCornerShape(9.dp))
+                        .clickable { onDismiss() },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text("إلغاء", color = Gray, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                }
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(42.dp)
+                        .clip(RoundedCornerShape(9.dp))
+                        .background(confirmColor)
+                        .clickable { onConfirm() },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(confirmLabel, color = White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+    }
 }
 
 // ==================== شاشة تسجيل الدخول / إنشاء حساب بالإيميل ====================
@@ -4683,6 +4772,12 @@ private fun AuthScreen(onBack: () -> Unit, onAuthSuccess: () -> Unit) {
             isLoading = false
             if (error != null) {
                 errorText = error
+            } else if (isSignUpMode) {
+                // نُبقي المستخدم لحظة على الشاشة ليرى تنبيه إرسال رابط
+                // تأكيد البريد قبل الانتقال لباقي التطبيق
+                infoText = "تم إنشاء حسابك بنجاح، وأُرسل رابط تأكيد إلى بريدك الإلكتروني"
+                delay(1600)
+                onAuthSuccess()
             } else {
                 onAuthSuccess()
             }
@@ -4981,7 +5076,11 @@ private fun NotificationSettingsScreen(
 
 // ==================== الشريط العلوي ====================
 @Composable
-private fun Header(onRefresh: () -> Unit) {
+private fun Header(
+    onRefresh: () -> Unit,
+    showNotificationBadge: Boolean,
+    onNotificationsClick: () -> Unit
+) {
     CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
         Row(
             modifier = Modifier
@@ -4995,7 +5094,7 @@ private fun Header(onRefresh: () -> Unit) {
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                NotificationBell(count = 3)
+                NotificationBell(showBadge = showNotificationBadge, onClick = onNotificationsClick)
 
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -5024,9 +5123,18 @@ private fun Header(onRefresh: () -> Unit) {
     }
 }
 
+// جرس الإشعارات يفتح شاشة إعدادات الإشعارات، مع نقطة حمراء تظهر فقط إذا
+// لم يُفعِّل المستخدم إشعار السعر اليومي بعد — لا رقم وهمي ثابت
 @Composable
-private fun NotificationBell(count: Int) {
-    Box(modifier = Modifier.size(28.dp)) {
+private fun NotificationBell(showBadge: Boolean, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .size(28.dp)
+            .clickable(
+                indication = null,
+                interactionSource = remember { MutableInteractionSource() }
+            ) { onClick() }
+    ) {
         Icon(
             imageVector = Icons.Outlined.Notifications,
             contentDescription = "الإشعارات",
@@ -5035,23 +5143,15 @@ private fun NotificationBell(count: Int) {
                 .size(24.dp)
                 .align(Alignment.Center)
         )
-        if (count > 0) {
+        if (showBadge) {
             Box(
                 modifier = Modifier
-                    .size(14.dp)
+                    .size(9.dp)
                     .align(Alignment.TopEnd)
-                    .offset(x = 3.dp, y = (-2).dp)
-                    .clip(RoundedCornerShape(7.dp))
-                    .background(Red),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = count.toString(),
-                    color = White,
-                    fontSize = 8.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            }
+                    .offset(x = 1.dp, y = 0.dp)
+                    .clip(RoundedCornerShape(4.5.dp))
+                    .background(Red)
+            )
         }
     }
 }
