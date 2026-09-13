@@ -912,6 +912,11 @@ private fun GoldVisionApp() {
                 showDealEvaluator = false
                 showAddGoldItem = false
                 editingGoldItemIndex = null
+                showProfileScreen = false
+                showAuthScreen = false
+                showPrivacyPolicy = false
+                showNotificationSettings = false
+                showFedSchedule = false
                 selectedBottom = index
             }
         )
