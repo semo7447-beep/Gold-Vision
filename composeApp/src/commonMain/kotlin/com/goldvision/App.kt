@@ -6764,15 +6764,6 @@ private fun SmallActionButton(text: String, onClick: () -> Unit) {
     }
 }
 
-// يوسّع أي تحديد جزئي (نتج مثلاً عن نقر مزدوج يحدّد كلمة واحدة فقط) ليشمل
-// النص كامل، حتى يسهل استبدال محتوى الحقل بالكامل بضغطة واحدة بدل تحديد
-// كل كلمة على حدة — يُستخدم في كل حقول الإدخال النصية والرقمية بالتطبيق
-private fun widenSelectionToFullText(new: TextFieldValue): TextFieldValue {
-    val isPartialSelection = new.selection.length > 0 &&
-        !(new.selection.start == 0 && new.selection.end == new.text.length)
-    return if (isPartialSelection) new.copy(selection = TextRange(0, new.text.length)) else new
-}
-
 // حقل رقمي عام قابل للكتابة المباشرة من الكيبورد (مستخدم للوزن والمصنعية)
 @Composable
 private fun NumericInputField(
@@ -6796,7 +6787,7 @@ private fun NumericInputField(
         value = fieldValue,
         onValueChange = { new ->
             if (new.text.isEmpty() || new.text.matches(Regex("^\\d*\\.?\\d*$"))) {
-                fieldValue = widenSelectionToFullText(new)
+                fieldValue = new
                 // يُبلَّغ بأي رقم صالح فوراً أثناء الكتابة، حتى لو كان أقل من
                 // minValue (مثل 0) — حتى يبقى المجموع المعروض مطابقاً دائماً
                 // لما يكتبه المستخدم فعلياً، بدل حساب صامت بقيمة قديمة مخفية.
@@ -6874,9 +6865,8 @@ private fun SelectableTextField(
         BasicTextField(
             value = fieldValue,
             onValueChange = { new ->
-                val adjusted = widenSelectionToFullText(new)
-                fieldValue = adjusted
-                if (adjusted.text != value) onValueChange(adjusted.text)
+                fieldValue = new
+                if (new.text != value) onValueChange(new.text)
             },
             singleLine = true,
             textStyle = TextStyle(color = White, fontSize = fontSize, textDirection = TextDirection.Content),
