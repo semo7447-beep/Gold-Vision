@@ -56,7 +56,7 @@ internal actual fun BiometricAuthGate(enabled: Boolean, content: @Composable () 
         } else {
             val manager = BiometricManager.from(activity)
             val result = manager.canAuthenticate(
-                BiometricManager.Authenticators.BIOMETRIC_STRONG or
+                BiometricManager.Authenticators.BIOMETRIC_WEAK or
                     BiometricManager.Authenticators.DEVICE_CREDENTIAL
             )
             result == BiometricManager.BIOMETRIC_SUCCESS
@@ -86,7 +86,7 @@ internal actual fun BiometricAuthGate(enabled: Boolean, content: @Composable () 
             .setTitle("فتح Gold Vision")
             .setSubtitle("استخدم بصمتك أو وجهك أو رمز الجهاز لفتح التطبيق")
             .setAllowedAuthenticators(
-                BiometricManager.Authenticators.BIOMETRIC_STRONG or
+                BiometricManager.Authenticators.BIOMETRIC_WEAK or
                     BiometricManager.Authenticators.DEVICE_CREDENTIAL
             )
             .build()
