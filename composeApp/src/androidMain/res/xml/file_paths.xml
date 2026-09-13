@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- تقارير PDF المُصدَّرة (PdfExport.android.kt) تُحفظ مؤقتاً في
+         cacheDir قبل مشاركتها عبر FileProvider -->
+    <cache-path name="reports" path="." />
+</paths>

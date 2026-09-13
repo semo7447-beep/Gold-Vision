@@ -13,6 +13,7 @@ class GoldVisionApplication : Application() {
         AppStorage.init(this)
         PriceNotificationScheduler.init(this)
         FedMeetingNotificationScheduler.init(this)
+        PdfExport.init(this)
         // إعادة جدولة العمل الدوري عند كل بدء تشغيل بناءً على التفضيل
         // المحفوظ — enqueueUniquePeriodicWork آمنة الاستدعاء المتكرر (KEEP)
         val notificationSettings = loadNotificationSettings()

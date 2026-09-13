@@ -56,6 +56,7 @@ import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.MoreHoriz
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Refresh
+import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.outlined.Store
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
@@ -3462,21 +3463,50 @@ private fun PortfolioScreen(
                 .fillMaxWidth()
                 .padding(horizontal = 12.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
+                    contentDescription = "رجوع",
+                    tint = Gold,
+                    modifier = Modifier
+                        .size(20.dp)
+                        .clickable { onBack() }
+                )
+                Text(
+                    "المحفظة",
+                    color = Gold,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
             Icon(
-                imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
-                contentDescription = "رجوع",
+                imageVector = Icons.Outlined.Share,
+                contentDescription = "تصدير PDF",
                 tint = Gold,
                 modifier = Modifier
                     .size(20.dp)
-                    .clickable { onBack() }
-            )
-            Text(
-                "المحفظة",
-                color = Gold,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold
+                    .clickable {
+                        PdfExport.exportReport(
+                            title = "تقرير المحفظة — Gold Vision",
+                            generatedAt = "تاريخ التصدير: ${todayDateText()}",
+                            summary = listOf(
+                                PdfReportRow("قيمة المحفظة", "${fmt(totalValue, 2, grouped = true)} ريال"),
+                                PdfReportRow("عدد المنتجات", "$itemCount منتجات"),
+                                PdfReportRow("إجمالي الوزن", "${fmt(totalWeight, 2)} جرام")
+                            ),
+                            rows = savedValues.map { (item, value) ->
+                                PdfReportRow(
+                                    "${item.name} (${karatLabel(item.karat)} • ${fmt(item.weightGrams, 2)} جم)${if (item.isSold) " — مباعة" else ""}",
+                                    "${fmt(value, 2, grouped = true)} ريال"
+                                )
+                            }
+                        )
+                    }
             )
         }
 
@@ -3675,14 +3705,50 @@ private fun ZakatScreen(
                 )
             }
             Text("الزكاة", color = White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-            Icon(
-                imageVector = Icons.Outlined.Info,
-                contentDescription = "معلومات عن زكاة الذهب",
-                tint = Gold,
-                modifier = Modifier
-                    .size(20.dp)
-                    .clickable { showZakatInfo = true }
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Share,
+                    contentDescription = "تصدير PDF",
+                    tint = Gold,
+                    modifier = Modifier
+                        .size(20.dp)
+                        .clickable {
+                            PdfExport.exportReport(
+                                title = "تقرير الزكاة — Gold Vision",
+                                generatedAt = "تاريخ التصدير: ${todayDateText()}",
+                                summary = listOf(
+                                    PdfReportRow("نصاب الزكاة", "${fmt(nisabValue, 2, grouped = true)} ريال"),
+                                    PdfReportRow("إجمالي قيمة الذهب", "${fmt(totalGoldValue, 2, grouped = true)} ريال"),
+                                    PdfReportRow("إجمالي الوزن", "${fmt(totalWeight, 2)} جرام"),
+                                    PdfReportRow(
+                                        "حالة الزكاة",
+                                        if (exceedsNisab) "واجبة" else "غير واجبة (أقل من النصاب)"
+                                    ),
+                                    PdfReportRow("مبلغ الزكاة (${fmt(zakatPercent, 1)}%)", "${fmt(totalZakat, 2, grouped = true)} ريال")
+                                ),
+                                rows = allZakatItems.map { item ->
+                                    val price = GoldMarket.prices.first { it.karat == item.karat }.price
+                                    val itemValue = price * item.weightGrams
+                                    PdfReportRow(
+                                        "${item.name} (${karatLabel(item.karat)} • ${fmt(item.weightGrams, 2)} جم)",
+                                        "${fmt(itemValue, 2, grouped = true)} ريال"
+                                    )
+                                }
+                            )
+                        }
+                )
+                Icon(
+                    imageVector = Icons.Outlined.Info,
+                    contentDescription = "معلومات عن زكاة الذهب",
+                    tint = Gold,
+                    modifier = Modifier
+                        .size(20.dp)
+                        .clickable { showZakatInfo = true }
+                )
+            }
         }
 
         Spacer(Modifier.height(10.dp))
