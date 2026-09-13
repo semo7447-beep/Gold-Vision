@@ -29,6 +29,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
@@ -346,12 +348,159 @@ fun App() {
             color = Black
         ) {
             CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
-                val lockEnabled = remember { loadAppLockSettings().enabled }
-                BiometricAuthGate(enabled = lockEnabled) {
-                    GoldVisionApp()
+                var showOnboarding by remember { mutableStateOf(!hasSeenOnboarding()) }
+                if (showOnboarding) {
+                    OnboardingScreen(
+                        onFinish = {
+                            markOnboardingSeen()
+                            showOnboarding = false
+                        }
+                    )
+                } else {
+                    val lockEnabled = remember { loadAppLockSettings().enabled }
+                    BiometricAuthGate(enabled = lockEnabled) {
+                        GoldVisionApp()
+                    }
                 }
             }
         }
+    }
+}
+
+// ==================== شاشة تعريفية عند أول فتح للتطبيق ====================
+private const val onboardingSeenStorageFile = "onboarding_seen.txt"
+
+private fun hasSeenOnboarding(): Boolean = AppStorage.readText(onboardingSeenStorageFile) == "true"
+
+private fun markOnboardingSeen() {
+    AppStorage.writeText(onboardingSeenStorageFile, "true")
+}
+
+private data class OnboardingPage(val title: String, val description: String, val icon: ImageVector)
+
+private val onboardingPages = listOf(
+    OnboardingPage(
+        "تتبع أسعار الذهب لحظياً",
+        "أسعار حقيقية تتحدث تلقائياً لكل الأعيرة (24، 22، 21، 18)، مع رسم بياني تاريخي لعدة فترات.",
+        Icons.AutoMirrored.Outlined.ShowChart
+    ),
+    OnboardingPage(
+        "محفظتك وزكاتك في مكان واحد",
+        "أضف قطعك الذهبية، وتابع قيمتها الحية، واحسب زكاتك تلقائياً وفق النصاب الشرعي.",
+        Icons.Outlined.AccountBalanceWallet
+    ),
+    OnboardingPage(
+        "قيّم عروض المحلات",
+        "قبل ما تشتري أو تبيع، قارن سعر المحل بالسعر العادل فوراً واعرف هل الصفقة ممتازة.",
+        Icons.Outlined.Store
+    ),
+    OnboardingPage(
+        "تنبيهات ذكية",
+        "نبّهك عند وصول السعر لهدفك، وعند اقتراب اجتماعات الفيدرالي المؤثرة على السوق.",
+        Icons.Outlined.Notifications
+    )
+)
+
+@Composable
+private fun OnboardingScreen(onFinish: () -> Unit) {
+    val pagerState = rememberPagerState(pageCount = { onboardingPages.size })
+    val scope = rememberCoroutineScope()
+    val isLastPage = pagerState.currentPage == onboardingPages.lastIndex
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Black)
+            .statusBarsPadding()
+            .navigationBarsPadding()
+            .padding(horizontal = 24.dp, vertical = 16.dp)
+    ) {
+        Spacer(Modifier.height(12.dp))
+        Row(horizontalArrangement = Arrangement.Center, modifier = Modifier.fillMaxWidth()) {
+            GoldLogo(size = 52.dp)
+        }
+
+        Spacer(Modifier.weight(1f))
+
+        HorizontalPager(state = pagerState, modifier = Modifier.fillMaxWidth()) { page ->
+            val item = onboardingPages[page]
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(84.dp)
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(GoldDark.copy(alpha = 0.2f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(imageVector = item.icon, contentDescription = null, tint = Gold, modifier = Modifier.size(38.dp))
+                }
+                Spacer(Modifier.height(24.dp))
+                Text(
+                    item.title,
+                    color = White,
+                    fontSize = 19.sp,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center
+                )
+                Spacer(Modifier.height(12.dp))
+                Text(
+                    item.description,
+                    color = Gray,
+                    fontSize = 13.sp,
+                    textAlign = TextAlign.Center,
+                    lineHeight = 20.sp
+                )
+            }
+        }
+
+        Spacer(Modifier.height(28.dp))
+        Row(horizontalArrangement = Arrangement.Center, modifier = Modifier.fillMaxWidth()) {
+            onboardingPages.indices.forEach { index ->
+                Box(
+                    modifier = Modifier
+                        .padding(horizontal = 4.dp)
+                        .size(if (index == pagerState.currentPage) 9.dp else 7.dp)
+                        .clip(RoundedCornerShape(5.dp))
+                        .background(if (index == pagerState.currentPage) Gold else Border)
+                )
+            }
+        }
+
+        Spacer(Modifier.weight(1f))
+
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(50.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(Gold)
+                .clickable {
+                    if (isLastPage) {
+                        onFinish()
+                    } else {
+                        scope.launch { pagerState.animateScrollToPage(pagerState.currentPage + 1) }
+                    }
+                },
+            contentAlignment = Alignment.Center
+        ) {
+            Text(if (isLastPage) "ابدأ" else "التالي", color = Black, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+        }
+
+        Spacer(Modifier.height(14.dp))
+        Text(
+            if (isLastPage) " " else "تخطي",
+            color = Gray,
+            fontSize = 12.sp,
+            textAlign = TextAlign.Center,
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(enabled = !isLastPage) { onFinish() }
+        )
     }
 }
 
