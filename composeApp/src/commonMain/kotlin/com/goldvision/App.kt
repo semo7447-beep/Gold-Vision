@@ -1171,10 +1171,40 @@ private fun CalculatorFullScreen(
             }
 
             Icon(
-                imageVector = Icons.Outlined.Info,
-                contentDescription = null,
-                tint = Gray,
-                modifier = Modifier.size(16.dp)
+                imageVector = Icons.Outlined.Share,
+                contentDescription = "تصدير PDF",
+                tint = Gold,
+                modifier = Modifier
+                    .size(18.dp)
+                    .clickable {
+                        val manufacturingTotal = if (buyMode) manufacturing * weight else 0.0
+                        PdfExport.exportReport(
+                            title = "تقرير الصفقة — Gold Vision",
+                            generatedAt = "تاريخ التصدير: ${todayDateText()}",
+                            summary = listOf(
+                                PdfReportRow("نوع العملية", if (buyMode) "شراء" else "بيع"),
+                                PdfReportRow("العيار", karatLabel(selectedKarat)),
+                                PdfReportRow("الوزن", "${fmt(weight, 2)} جرام"),
+                                PdfReportRow("الإجمالي (شامل الضريبة)", "${fmt(total, 2, grouped = true)} ريال")
+                            ),
+                            rows = buildList {
+                                add(PdfReportRow("سعر الذهب", "${fmt(beforeVat, 2, grouped = true)} ريال"))
+                                if (buyMode) {
+                                    add(PdfReportRow("المصنعية (للجرام)", "${fmt(manufacturing, 2)} ريال"))
+                                    add(PdfReportRow("إجمالي المصنعية", "${fmt(manufacturingTotal, 2, grouped = true)} ريال"))
+                                } else {
+                                    add(PdfReportRow("المصنعية", "0.00 ريال"))
+                                }
+                                add(
+                                    PdfReportRow(
+                                        if (isTaxExempt) "ضريبة القيمة المضافة (معفى)" else "ضريبة القيمة المضافة (${fmt(taxPercent, 0)}%)",
+                                        "${fmt(vat, 2, grouped = true)} ريال"
+                                    )
+                                )
+                                add(PdfReportRow("سعر الجرام النهائي", "${fmt(finalGramPrice, 2, grouped = true)} ريال"))
+                            }
+                        )
+                    }
             )
         }
 
