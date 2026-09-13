@@ -7,6 +7,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.gestures.drag
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -3031,7 +3032,9 @@ private fun KaratChartCard(
                 basePrice = price,
                 seed = seed,
                 period = period,
-                realPoints = realChartPointsFor(karat, period)
+                realPoints = realChartPointsFor(karat, period),
+                realBars = realBarsFor(period),
+                karat = karat
             )
         }
     }
@@ -3273,6 +3276,231 @@ private fun ChartTooltipCard(info: ChartTooltip) {
     }
 }
 
+private data class CandleTooltip(
+    val x: Float,
+    val label: String,
+    val open: Double,
+    val high: Double,
+    val low: Double,
+    val close: Double
+)
+
+@Composable
+private fun CandleTooltipCard(info: CandleTooltip) {
+    val isUp = info.close >= info.open
+    Column(
+        modifier = Modifier
+            .width(128.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .border(1.dp, Border, RoundedCornerShape(8.dp))
+            .background(CardBlack)
+            .padding(horizontal = 8.dp, vertical = 6.dp)
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.CalendarMonth,
+                contentDescription = null,
+                tint = Gray,
+                modifier = Modifier.size(11.dp)
+            )
+            Text(info.label, color = White, fontSize = 10.sp, maxLines = 1)
+            Spacer(Modifier.weight(1f))
+            Text(
+                if (isUp) "▲" else "▼",
+                color = if (isUp) Green else Red,
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
+        Spacer(Modifier.height(4.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text("افتتاح ${fmt(info.open, 2)}", color = Gray, fontSize = 8.5.sp, maxLines = 1)
+        }
+        Text("إغلاق ${fmt(info.close, 2)}", color = if (isUp) Green else Red, fontSize = 9.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text("أعلى ${fmt(info.high, 2)}", color = Gray, fontSize = 8.5.sp, maxLines = 1)
+        }
+        Text("أدنى ${fmt(info.low, 2)}", color = Gray, fontSize = 8.5.sp, maxLines = 1)
+    }
+}
+
+// رسم شموع يابانية (Candlestick) من بيانات OHLC حقيقية — يدعم التكبير
+// والتصغير بحركة القرص (Pinch) والسحب الأفقي للتنقل بين الفترات، وإصبع
+// واحد يعرض بطاقة تفاصيل الشمعة تحت اللمس (نفس فكرة الخط البسيط، لكن
+// بمعلومات OHLC كاملة). "إعادة ضبط" تظهر فقط أثناء التكبير الفعلي
+@Composable
+private fun CandlestickChart(modifier: Modifier, bars: List<HistoryBar>, karat: String) {
+    val textMeasurer = rememberTextMeasurer()
+    val density = LocalDensity.current
+    var scale by remember(bars) { mutableStateOf(1f) }
+    var startIndexFloat by remember(bars) { mutableStateOf(0f) }
+    var tooltip by remember(bars) { mutableStateOf<CandleTooltip?>(null) }
+
+    val totalCount = bars.size
+    val minVisible = 5.coerceAtMost(totalCount)
+
+    fun dateLabel(bar: HistoryBar): String =
+        "${bar.date.dayOfMonth.toString().padStart(2, '0')}/${bar.date.monthNumber.toString().padStart(2, '0')}"
+
+    Box(modifier = modifier) {
+        Canvas(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(top = 4.dp, bottom = 24.dp)
+                .pointerInput(bars) {
+                    detectTransformGestures(panZoomLock = false) { centroid, pan, zoom, _ ->
+                        val newScale = (scale * zoom).coerceIn(1f, 6f)
+                        val newVisibleCount = (totalCount / newScale).roundToInt().coerceIn(minVisible, totalCount)
+                        val newMaxStart = (totalCount - newVisibleCount).coerceAtLeast(0)
+                        val barsPerPixel = newVisibleCount.toFloat() / size.width.coerceAtLeast(1).toFloat()
+                        val newStart = (startIndexFloat - pan.x * barsPerPixel).coerceIn(0f, newMaxStart.toFloat())
+                        scale = newScale
+                        startIndexFloat = newStart
+
+                        // تحديث التلميح لموضع اللمس الحالي — يعمل بإصبع واحد
+                        // (سحب عادي) وأثناء التكبير بإصبعين معاً
+                        val startIdx = newStart.roundToInt().coerceIn(0, newMaxStart)
+                        val visible = bars.subList(startIdx, (startIdx + newVisibleCount).coerceAtMost(totalCount))
+                        if (visible.isNotEmpty()) {
+                            val left = 52f
+                            val right = size.width - 6f
+                            val w = (right - left).coerceAtLeast(1f)
+                            val clampedX = centroid.x.coerceIn(left, right)
+                            val idx = (((clampedX - left) / w) * (visible.size - 1))
+                                .roundToInt()
+                                .coerceIn(0, visible.size - 1)
+                            val bar = visible[idx]
+                            val barX = left + w * idx / (visible.size - 1).coerceAtLeast(1)
+                            tooltip = CandleTooltip(
+                                x = barX,
+                                label = dateLabel(bar),
+                                open = usdPerOunceToSarPerGram(bar.open, karat),
+                                high = usdPerOunceToSarPerGram(bar.high, karat),
+                                low = usdPerOunceToSarPerGram(bar.low, karat),
+                                close = usdPerOunceToSarPerGram(bar.close, karat)
+                            )
+                        }
+                    }
+                }
+        ) {
+            val visibleCount = (totalCount / scale).roundToInt().coerceIn(minVisible, totalCount)
+            val maxStart = (totalCount - visibleCount).coerceAtLeast(0)
+            val startIndex = startIndexFloat.roundToInt().coerceIn(0, maxStart)
+            val visibleBars = bars.subList(startIndex, (startIndex + visibleCount).coerceAtMost(totalCount))
+            if (visibleBars.isEmpty()) return@Canvas
+
+            val highs = visibleBars.map { usdPerOunceToSarPerGram(it.high, karat) }
+            val lows = visibleBars.map { usdPerOunceToSarPerGram(it.low, karat) }
+            val minPrice = lows.min()
+            val maxPriceRaw = highs.max()
+            val maxPrice = if (maxPriceRaw <= minPrice) minPrice * 1.001 else maxPriceRaw
+
+            val left = 52f
+            val right = size.width - 6f
+            val top = 6f
+            val bottom = size.height - 6f
+            val w = (right - left).coerceAtLeast(1f)
+            val h = (bottom - top).coerceAtLeast(1f)
+
+            val priceSteps = 5
+            for (i in 0..priceSteps) {
+                val y = top + h * i / priceSteps
+                drawLine(
+                    color = GoldDark.copy(alpha = 0.4f),
+                    start = Offset(left, y),
+                    end = Offset(right, y),
+                    strokeWidth = 1f
+                )
+                val labelValue = maxPrice - (maxPrice - minPrice) * i / priceSteps
+                drawAxisLabel(textMeasurer, fmt(labelValue, 0), x = 0f, y = y, centered = false)
+            }
+
+            fun priceToY(price: Double): Float =
+                (bottom - h * ((price - minPrice) / (maxPrice - minPrice))).toFloat()
+
+            val slotWidth = w / visibleBars.size
+            val candleWidth = (slotWidth * 0.6f).coerceAtLeast(1.5f)
+
+            visibleBars.forEachIndexed { index, bar ->
+                val centerX = left + slotWidth * index + slotWidth / 2f
+                val openPrice = usdPerOunceToSarPerGram(bar.open, karat)
+                val closePrice = usdPerOunceToSarPerGram(bar.close, karat)
+                val highPrice = usdPerOunceToSarPerGram(bar.high, karat)
+                val lowPrice = usdPerOunceToSarPerGram(bar.low, karat)
+                val isUp = closePrice >= openPrice
+                val color = if (isUp) Green else Red
+
+                drawLine(
+                    color = color,
+                    start = Offset(centerX, priceToY(highPrice)),
+                    end = Offset(centerX, priceToY(lowPrice)),
+                    strokeWidth = 1.5f
+                )
+
+                val bodyTop = priceToY(maxOf(openPrice, closePrice))
+                val bodyBottom = priceToY(minOf(openPrice, closePrice))
+                drawRect(
+                    color = color,
+                    topLeft = Offset(centerX - candleWidth / 2f, bodyTop),
+                    size = androidx.compose.ui.geometry.Size(candleWidth, (bodyBottom - bodyTop).coerceAtLeast(1.5f))
+                )
+            }
+
+            val labelCount = 6.coerceAtMost(visibleBars.size)
+            if (labelCount > 0) {
+                val step = (visibleBars.size - 1).coerceAtLeast(1) / labelCount.coerceAtLeast(1).toFloat()
+                for (i in 0 until labelCount) {
+                    val idx = (i * step).roundToInt().coerceIn(0, visibleBars.size - 1)
+                    val x = left + slotWidth * idx + slotWidth / 2f
+                    drawAxisLabel(textMeasurer, dateLabel(visibleBars[idx]), x = x, y = bottom + 18f, centered = true)
+                }
+            }
+
+            tooltip?.let { info ->
+                drawLine(
+                    color = White.copy(alpha = 0.4f),
+                    start = Offset(info.x, top),
+                    end = Offset(info.x, bottom),
+                    strokeWidth = 1f
+                )
+            }
+        }
+
+        tooltip?.let { info ->
+            val tooltipWidthPx = with(density) { 128.dp.toPx() }
+            val boxLeftX = (info.x - tooltipWidthPx / 2f).coerceAtLeast(0f)
+            Box(
+                modifier = Modifier
+                    .padding(top = 4.dp, bottom = 24.dp)
+                    .offset { IntOffset(boxLeftX.roundToInt(), 4) }
+            ) {
+                CandleTooltipCard(info)
+            }
+        }
+
+        if (scale > 1.01f) {
+            Row(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(top = 4.dp, end = 4.dp)
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(CardBlack)
+                    .border(1.dp, Border, RoundedCornerShape(6.dp))
+                    .clickable {
+                        scale = 1f
+                        startIndexFloat = 0f
+                    }
+                    .padding(horizontal = 8.dp, vertical = 4.dp)
+            ) {
+                Text("إعادة ضبط", color = Gold, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+            }
+        }
+    }
+}
+
 // رسم منحنى لعيار معيّن حول سعره الحالي، بمحور سعري مبني على basePrice
 // وتذبذب مختلف حسب seed لكل عيار وحسب الفترة المختارة — بنفس أسلوب
 // الرسم المرجعي: خط كريمي فاتح، تعبئة متدرجة تحت الخط، شبكة خطوط كاملة،
@@ -3286,8 +3514,16 @@ private fun KaratChartCanvas(
     period: String,
     // نقاط حقيقية (تسمية تاريخ، سعر الجرام بالريال) — عند توفرها تُرسم
     // بدل السلسلة التوضيحية، بنفس أسلوب الرسم وتجربة اللمس/السحب تماماً
-    realPoints: List<Pair<String, Double>>? = null
+    realPoints: List<Pair<String, Double>>? = null,
+    // شموع OHLC حقيقية — عند توفرها (فترة ≤ 30 يوماً ومزوّد البيانات
+    // متوفر)، تُرسم كرسم شموع يابانية تفاعلي (تكبير/تصغير وسحب) بدل الخط
+    realBars: List<HistoryBar>? = null,
+    karat: String = "24K"
 ) {
+    if (realBars != null && realBars.size >= 2) {
+        CandlestickChart(modifier = modifier, bars = realBars, karat = karat)
+        return
+    }
     val textMeasurer = rememberTextMeasurer()
     val density = LocalDensity.current
     val useReal = realPoints != null && realPoints.isNotEmpty()
