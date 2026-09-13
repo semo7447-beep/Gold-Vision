@@ -2807,14 +2807,14 @@ private fun TechnicalAnalysisContent(period: String, karat: String) {
                 verticalAlignment = Alignment.Top
             ) {
                 Text(
-                    "سعر الذهب (عيار ${karat.removeSuffix("K")})",
+                    t("سعر الذهب (عيار ${karat.removeSuffix("K")})", "Gold Price (${karat.removeSuffix("K")}K)"),
                     color = White,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold
                 )
                 Column(horizontalAlignment = Alignment.End) {
                     Text(
-                        fmt(karatPrice.price, 2) + " ريال",
+                        fmt(karatPrice.price, 2) + " " + t("ريال", "SAR"),
                         color = White,
                         fontSize = 17.sp,
                         fontWeight = FontWeight.Bold
@@ -2866,7 +2866,7 @@ private fun TechnicalAnalysisContent(period: String, karat: String) {
                         tint = Gray,
                         modifier = Modifier.size(12.dp)
                     )
-                    Text("الفترة", color = Gray, fontSize = 9.sp)
+                    Text(t("الفترة", "Period"), color = Gray, fontSize = 9.sp)
                 }
                 Text(periodRangeText(period), color = White, fontSize = 10.sp, fontWeight = FontWeight.Bold)
             }
@@ -2878,7 +2878,7 @@ private fun TechnicalAnalysisContent(period: String, karat: String) {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    if (stats.isReal) "⚡ بيانات تاريخية حقيقية" else "≈ تقدير مبني على زخم آخر 30 يوماً الحقيقية",
+                    if (stats.isReal) t("⚡ بيانات تاريخية حقيقية", "⚡ Real historical data") else t("≈ تقدير مبني على زخم آخر 30 يوماً الحقيقية", "≈ Estimate based on real last-30-day momentum"),
                     color = if (stats.isReal) Green else Yellow,
                     fontSize = 8.sp,
                     fontWeight = FontWeight.Bold
@@ -2887,8 +2887,8 @@ private fun TechnicalAnalysisContent(period: String, karat: String) {
 
             Spacer(Modifier.height(6.dp))
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                OpenCloseCard(title = "سعر الذهب عيار 24", stats = stats24, modifier = Modifier.weight(1f))
-                OpenCloseCard(title = "سعر الذهب عيار 21", stats = stats21, modifier = Modifier.weight(1f))
+                OpenCloseCard(title = t("سعر الذهب عيار 24", "24K Gold Price"), stats = stats24, modifier = Modifier.weight(1f))
+                OpenCloseCard(title = t("سعر الذهب عيار 21", "21K Gold Price"), stats = stats21, modifier = Modifier.weight(1f))
             }
         }
 
@@ -2904,7 +2904,7 @@ private fun TechnicalAnalysisContent(period: String, karat: String) {
                 .padding(14.dp)
         ) {
             Text(
-                "تحليل فني بالذكاء الاصطناعي",
+                t("تحليل فني بالذكاء الاصطناعي", "AI Technical Analysis"),
                 color = White,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Bold,
@@ -2932,7 +2932,7 @@ private fun TechnicalAnalysisContent(period: String, karat: String) {
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        "الاتجاه العام: ${if (trendUp) "صاعد" else "هابط"}",
+                        t("الاتجاه العام: ${if (trendUp) "صاعد" else "هابط"}", "Overall trend: ${if (trendUp) "Up" else "Down"}"),
                         color = Gold,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold
@@ -2940,8 +2940,12 @@ private fun TechnicalAnalysisContent(period: String, karat: String) {
                 }
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    "استمرار الزخم ${if (trendUp) "الإيجابي" else "السلبي"} طالما بقي سعر الإغلاق " +
-                            "${if (trendUp) "أعلى" else "أدنى"} من سعر الافتتاح لنفس الفترة.",
+                    t(
+                        "استمرار الزخم ${if (trendUp) "الإيجابي" else "السلبي"} طالما بقي سعر الإغلاق " +
+                                "${if (trendUp) "أعلى" else "أدنى"} من سعر الافتتاح لنفس الفترة.",
+                        "${if (trendUp) "Positive" else "Negative"} momentum continues as long as the closing " +
+                                "price stays ${if (trendUp) "above" else "below"} the opening price for the same period."
+                    ),
                     color = Gray,
                     fontSize = 10.sp,
                     lineHeight = 15.sp,
@@ -2952,7 +2956,7 @@ private fun TechnicalAnalysisContent(period: String, karat: String) {
 
             Spacer(Modifier.height(12.dp))
             Text(
-                "أهم النقاط (فترة: $period)",
+                t("أهم النقاط (فترة: $period)", "Key Points (period: ${periodLabel(period)})"),
                 color = White,
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Bold,
@@ -2962,23 +2966,36 @@ private fun TechnicalAnalysisContent(period: String, karat: String) {
             Spacer(Modifier.height(8.dp))
 
             AnalysisPoint(
-                "افتتح عند ${fmt(stats.openPrice, 2)} وأغلق عند ${fmt(stats.closePrice, 2)} ريال — " +
-                        "إغلاق ${if (trendUp) "أعلى" else "أدنى"} من الافتتاح بـ " +
-                        "${fmt(kotlin.math.abs(changePercent), 2)}%."
+                t(
+                    "افتتح عند ${fmt(stats.openPrice, 2)} وأغلق عند ${fmt(stats.closePrice, 2)} ريال — " +
+                            "إغلاق ${if (trendUp) "أعلى" else "أدنى"} من الافتتاح بـ " +
+                            "${fmt(kotlin.math.abs(changePercent), 2)}%.",
+                    "Opened at ${fmt(stats.openPrice, 2)} and closed at ${fmt(stats.closePrice, 2)} SAR — " +
+                            "closing ${if (trendUp) "above" else "below"} the open by " +
+                            "${fmt(kotlin.math.abs(changePercent), 2)}%."
+                )
             )
             if (topNews != null) {
-                AnalysisPoint("أهم خبر مؤثر الآن: ${topNews.text} (${topNews.time}).")
+                AnalysisPoint(t("أهم خبر مؤثر الآن: ${topNews.text} (${topNews.time}).", "Top influencing news now: ${topNews.text} (${topNews.time})."))
             }
             AnalysisPoint(
                 if (daysUntilFed != null)
-                    "اجتماع الفيدرالي القادم بعد $daysUntilFed يوماً (${fedDate!!.toPeriodDisplayText()}) — " +
-                            "قد يزيد التذبذب قرب الإعلان."
+                    t(
+                        "اجتماع الفيدرالي القادم بعد $daysUntilFed يوماً (${fedDate!!.toPeriodDisplayText()}) — " +
+                                "قد يزيد التذبذب قرب الإعلان.",
+                        "Next Fed meeting in $daysUntilFed days (${fedDate!!.toPeriodDisplayText()}) — " +
+                                "volatility may increase near the announcement."
+                    )
                 else
-                    "لا يوجد اجتماع فيدرالي مجدول قريباً ضمن التقويم الحالي."
+                    t("لا يوجد اجتماع فيدرالي مجدول قريباً ضمن التقويم الحالي.", "No Fed meeting scheduled soon in the current calendar.")
             )
             AnalysisPoint(
-                "أقرب دعم عند ${fmt(stats.periodLow, 2)} ريال، وأقرب مقاومة عند " +
-                        "${fmt(stats.periodHigh, 2)} ريال (أدنى وأعلى سعر خلال الفترة)."
+                t(
+                    "أقرب دعم عند ${fmt(stats.periodLow, 2)} ريال، وأقرب مقاومة عند " +
+                            "${fmt(stats.periodHigh, 2)} ريال (أدنى وأعلى سعر خلال الفترة).",
+                    "Nearest support at ${fmt(stats.periodLow, 2)} SAR, nearest resistance at " +
+                            "${fmt(stats.periodHigh, 2)} SAR (lowest and highest price during the period)."
+                )
             )
 
             Spacer(Modifier.height(6.dp))
@@ -2991,7 +3008,7 @@ private fun TechnicalAnalysisContent(period: String, karat: String) {
                     .padding(10.dp)
             ) {
                 Text(
-                    "توقعات الذكاء الاصطناعي",
+                    t("توقعات الذكاء الاصطناعي", "AI Forecast"),
                     color = Gold,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
@@ -3003,19 +3020,27 @@ private fun TechnicalAnalysisContent(period: String, karat: String) {
                     buildString {
                         if (trendUp) {
                             append(
-                                "في حال استمر الإغلاق فوق الافتتاح ونبرة الأخبار إيجابية، يُتوقع اختبار " +
-                                        "مستوى ${fmt(stats.periodHigh, 2)} ريال خلال الفترة القادمة. "
+                                t(
+                                    "في حال استمر الإغلاق فوق الافتتاح ونبرة الأخبار إيجابية، يُتوقع اختبار " +
+                                            "مستوى ${fmt(stats.periodHigh, 2)} ريال خلال الفترة القادمة. ",
+                                    "If the close stays above the open and the news tone remains positive, a test of " +
+                                            "the ${fmt(stats.periodHigh, 2)} SAR level is expected in the coming period. "
+                                )
                             )
                         } else {
                             append(
-                                "في حال استمر الإغلاق دون الافتتاح، فقد يتجه السعر لاختبار مستوى " +
-                                        "${fmt(stats.periodLow, 2)} ريال خلال الفترة القادمة. "
+                                t(
+                                    "في حال استمر الإغلاق دون الافتتاح، فقد يتجه السعر لاختبار مستوى " +
+                                            "${fmt(stats.periodLow, 2)} ريال خلال الفترة القادمة. ",
+                                    "If the close stays below the open, the price may head toward testing the " +
+                                            "${fmt(stats.periodLow, 2)} SAR level in the coming period. "
+                                )
                             )
                         }
                         if (daysUntilFed != null && daysUntilFed <= 14) {
-                            append("مع اقتراب اجتماع الفيدرالي بعد $daysUntilFed يوماً، يُتوقع ارتفاع التذبذب حول الإعلان.")
+                            append(t("مع اقتراب اجتماع الفيدرالي بعد $daysUntilFed يوماً، يُتوقع ارتفاع التذبذب حول الإعلان.", "With the Fed meeting approaching in $daysUntilFed days, volatility is expected to rise around the announcement."))
                         } else {
-                            append("لا يوجد حدث فيدرالي وشيك يُتوقع أن يزيد التذبذب حالياً.")
+                            append(t("لا يوجد حدث فيدرالي وشيك يُتوقع أن يزيد التذبذب حالياً.", "No upcoming Fed event is currently expected to increase volatility."))
                         }
                     },
                     color = Gray,
@@ -3040,7 +3065,7 @@ private fun TechnicalAnalysisContent(period: String, karat: String) {
                         .padding(top = 1.dp)
                 )
                 Text(
-                    "ملاحظة: هذا التحليل يعتمد على بيانات الأسعار والأخبار ومواعيد الفيدرالي، وليس توصية استثمارية ملزمة.",
+                    t("ملاحظة: هذا التحليل يعتمد على بيانات الأسعار والأخبار ومواعيد الفيدرالي، وليس توصية استثمارية ملزمة.", "Note: this analysis is based on price, news, and Fed meeting data, and is not binding investment advice."),
                     color = Gray,
                     fontSize = 9.sp,
                     lineHeight = 14.sp,
@@ -3073,13 +3098,13 @@ private fun OpenCloseCard(title: String, stats: KaratPeriodStats, modifier: Modi
         )
         Spacer(Modifier.height(6.dp))
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text(fmt(stats.openPrice, 2) + " ريال", color = White, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
-            Text("افتتاح", color = Gray, fontSize = 8.5.sp)
+            Text(fmt(stats.openPrice, 2) + " " + t("ريال", "SAR"), color = White, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
+            Text(t("افتتاح", "Open"), color = Gray, fontSize = 8.5.sp)
         }
         Spacer(Modifier.height(3.dp))
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text(fmt(stats.closePrice, 2) + " ريال", color = White, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
-            Text("إغلاق", color = Gray, fontSize = 8.5.sp)
+            Text(fmt(stats.closePrice, 2) + " " + t("ريال", "SAR"), color = White, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
+            Text(t("إغلاق", "Close"), color = Gray, fontSize = 8.5.sp)
         }
         Spacer(Modifier.height(7.dp))
         Box(
@@ -3138,7 +3163,8 @@ private fun KaratChartCard(
     seed: Int,
     period: String
 ) {
-    val title = "عيار ${karatLabel(karat).removeSuffix(" عيار")} - ريال سعودي"
+    val karatNumber = karat.removeSuffix("K")
+    val title = t("عيار $karatNumber - ريال سعودي", "${karatNumber}K - Saudi Riyal")
     AppCard(title = title, modifier = Modifier.fillMaxWidth().height(215.dp)) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -3146,7 +3172,7 @@ private fun KaratChartCard(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                fmt(price, 2) + " ريال",
+                fmt(price, 2) + " " + t("ريال", "SAR"),
                 color = White,
                 fontSize = 15.sp,
                 fontWeight = FontWeight.Bold
@@ -3334,11 +3360,14 @@ internal fun nextFedMeetingDate(): LocalDate? {
 // تسميات محور الوقت أسفل الرسم، حسب الفترة المختارة (زي فيديو المرجع)
 private fun xAxisLabelsFor(period: String): List<String> = when (period) {
     "24 ساعة" -> listOf("15:00", "18:00", "21:00", "00:00", "03:00", "06:00", "09:00", "12:00")
-    "أسبوع" -> listOf("سبت", "أحد", "اثنين", "ثلاثاء", "أربعاء", "خميس", "جمعة")
+    "أسبوع" -> if (AppLanguage.current == AppLang.EN) listOf("Sat", "Sun", "Mon", "Tue", "Wed", "Thu", "Fri")
+        else listOf("سبت", "أحد", "اثنين", "ثلاثاء", "أربعاء", "خميس", "جمعة")
     "شهر" -> listOf("1", "5", "10", "15", "20", "25", "30")
-    "3 شهور" -> listOf("الشهر 1", "الشهر 2", "الشهر 3")
+    "3 شهور" -> if (AppLanguage.current == AppLang.EN) listOf("Month 1", "Month 2", "Month 3")
+        else listOf("الشهر 1", "الشهر 2", "الشهر 3")
     "6 شهور" -> listOf("1", "2", "3", "4", "5", "6")
-    "سنة" -> listOf("يناير", "مارس", "مايو", "يوليو", "سبتمبر", "نوفمبر")
+    "سنة" -> if (AppLanguage.current == AppLang.EN) listOf("Jan", "Mar", "May", "Jul", "Sep", "Nov")
+        else listOf("يناير", "مارس", "مايو", "يوليو", "سبتمبر", "نوفمبر")
     "سنتان" -> listOf("2025", "2026")
     else -> listOf("2022", "2023", "2024", "2025", "2026")
 }
@@ -3397,7 +3426,7 @@ private fun ChartTooltipCard(info: ChartTooltip) {
         }
         Spacer(Modifier.height(3.dp))
         Text(
-            "${fmt(info.price, 2)} ريال",
+            "${fmt(info.price, 2)} ${t("ريال", "SAR")}",
             color = Gold,
             fontSize = 11.sp,
             fontWeight = FontWeight.Bold,
@@ -3447,13 +3476,13 @@ private fun CandleTooltipCard(info: CandleTooltip) {
         }
         Spacer(Modifier.height(4.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text("افتتاح ${fmt(info.open, 2)}", color = Gray, fontSize = 8.5.sp, maxLines = 1)
+            Text(t("افتتاح ${fmt(info.open, 2)}", "Open ${fmt(info.open, 2)}"), color = Gray, fontSize = 8.5.sp, maxLines = 1)
         }
-        Text("إغلاق ${fmt(info.close, 2)}", color = if (isUp) Green else Red, fontSize = 9.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+        Text(t("إغلاق ${fmt(info.close, 2)}", "Close ${fmt(info.close, 2)}"), color = if (isUp) Green else Red, fontSize = 9.sp, fontWeight = FontWeight.Bold, maxLines = 1)
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text("أعلى ${fmt(info.high, 2)}", color = Gray, fontSize = 8.5.sp, maxLines = 1)
+            Text(t("أعلى ${fmt(info.high, 2)}", "High ${fmt(info.high, 2)}"), color = Gray, fontSize = 8.5.sp, maxLines = 1)
         }
-        Text("أدنى ${fmt(info.low, 2)}", color = Gray, fontSize = 8.5.sp, maxLines = 1)
+        Text(t("أدنى ${fmt(info.low, 2)}", "Low ${fmt(info.low, 2)}"), color = Gray, fontSize = 8.5.sp, maxLines = 1)
     }
 }
 
@@ -3635,7 +3664,7 @@ private fun CandlestickChart(modifier: Modifier, bars: List<HistoryBar>, karat: 
                     }
                     .padding(horizontal = 8.dp, vertical = 4.dp)
             ) {
-                Text("إعادة ضبط", color = Gold, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                Text(t("إعادة ضبط", "Reset"), color = Gold, fontSize = 9.sp, fontWeight = FontWeight.Bold)
             }
         }
     }
