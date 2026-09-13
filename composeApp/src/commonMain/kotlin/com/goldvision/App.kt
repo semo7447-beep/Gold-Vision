@@ -6959,7 +6959,7 @@ private fun PriceChart(
         titleIcon = Icons.AutoMirrored.Outlined.ShowChart,
         modifier = Modifier.fillMaxSize()
     ) {
-        val periods = listOf("اليوم", "أسبوع", "شهر", "سنة", "10 سنوات", "20 سنة")
+        val periods = listOf("24 ساعة", "أسبوع", "شهر", "3 شهور", "6 شهور", "سنة", "سنتان")
 
         Row(
             modifier = Modifier
@@ -7002,7 +7002,13 @@ private fun PriceChart(
                 .weight(1f)
                 .clickable { onChartClick() }
         ) {
-            PriceChartCanvas(modifier = Modifier.fillMaxSize(), basePrice = basePrice)
+            KaratChartCanvas(
+                modifier = Modifier.fillMaxSize(),
+                basePrice = basePrice,
+                seed = karatChartSeeds[selectedKarat] ?: 1,
+                period = selectedPeriod,
+                realPoints = realChartPointsFor(selectedKarat, selectedPeriod)
+            )
 
             Column(
                 modifier = Modifier
@@ -7030,98 +7036,6 @@ private fun PriceChart(
                 )
                 Text("ريال", color = Gray, fontSize = 8.sp)
             }
-        }
-    }
-}
-
-@Composable
-private fun PriceChartCanvas(modifier: Modifier, basePrice: Double) {
-    val textMeasurer = rememberTextMeasurer()
-    val minPrice = basePrice * 0.94
-    val maxPrice = basePrice * 1.06
-    val points = remember {
-        val count = 60
-        (0 until count).map { i ->
-            val t = i / (count - 1).toFloat()
-            val trend = 0.14f + t * 0.80f
-            val ripple = (kotlin.math.sin(t * 14f) * 0.025f) + (kotlin.math.sin(t * 5f + 1f) * 0.035f)
-            (trend + ripple).coerceIn(0.05f, 0.98f)
-        }
-    }
-    val dateLabels = listOf("٣ يوليو", "٥ يوليو", "٧ يوليو", "٩ يوليو")
-
-    Canvas(modifier = modifier.padding(top = 5.dp, bottom = 12.dp)) {
-        val left = 40f
-        val right = size.width - 8f
-        val top = 8f
-        val bottom = size.height - 30f
-        val w = right - left
-        val h = bottom - top
-
-        for (i in 0..4) {
-            val y = top + h * i / 4f
-            drawLine(
-                color = GoldDark.copy(alpha = 0.45f),
-                start = Offset(left, y),
-                end = Offset(right, y),
-                strokeWidth = 1f
-            )
-        }
-
-        for (i in 0..4) {
-            val x = left + w * i / 4f
-            drawLine(
-                color = GoldDark.copy(alpha = 0.35f),
-                start = Offset(x, top),
-                end = Offset(x, bottom),
-                strokeWidth = 1f
-            )
-        }
-
-        val screenPoints = points.mapIndexed { index, value ->
-            Offset(
-                x = left + w * index / (points.size - 1),
-                y = bottom - h * value
-            )
-        }
-
-        val line = Path().apply {
-            moveTo(screenPoints.first().x, screenPoints.first().y)
-            for (i in 0 until screenPoints.size - 1) {
-                val p0 = screenPoints[i]
-                val p1 = screenPoints[i + 1]
-                val midX = (p0.x + p1.x) / 2f
-                cubicTo(midX, p0.y, midX, p1.y, p1.x, p1.y)
-            }
-        }
-
-        val fill = Path().apply {
-            addPath(line)
-            lineTo(right, bottom)
-            lineTo(left, bottom)
-            close()
-        }
-
-        drawPath(
-            path = fill,
-            color = Green.copy(alpha = 0.28f)
-        )
-
-        drawPath(
-            path = line,
-            color = Green,
-            style = Stroke(width = 2.4f, cap = StrokeCap.Round)
-        )
-
-        val priceLabels = (0..5).map { i -> fmt(maxPrice - (maxPrice - minPrice) * i / 5, 0) }
-        priceLabels.forEachIndexed { index, label ->
-            val y = bottom - h * index / 5f
-            drawAxisLabel(textMeasurer, label, x = 0f, y = y, centered = false)
-        }
-
-        dateLabels.forEachIndexed { index, label ->
-            val x = left + w * index / (dateLabels.size - 1)
-            drawAxisLabel(textMeasurer, label, x = x, y = bottom + 22f, centered = true)
         }
     }
 }
