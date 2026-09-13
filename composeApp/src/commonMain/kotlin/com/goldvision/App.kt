@@ -43,9 +43,9 @@ import androidx.compose.material.icons.automirrored.outlined.Article
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.outlined.ShowChart
 import androidx.compose.material.icons.outlined.AccountBalanceWallet
+import androidx.compose.material.icons.outlined.AccountCircle
 import androidx.compose.material.icons.outlined.AttachMoney
 import androidx.compose.material.icons.outlined.Balance
-import androidx.compose.material.icons.outlined.Bolt
 import androidx.compose.material.icons.outlined.Calculate
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Close
@@ -706,7 +706,8 @@ private fun GoldVisionApp() {
         Header(
             onRefresh = { marketScope.launch { GoldMarket.refresh() } },
             showNotificationBadge = !notificationSettings.dailyPriceEnabled,
-            onNotificationsClick = { showNotificationSettings = true }
+            onNotificationsClick = { showNotificationSettings = true },
+            onAccountClick = { if (signedInEmail != null) showProfileScreen = true else showAuthScreen = true }
         )
 
         PullToRefreshBox(
@@ -5378,66 +5379,70 @@ private fun ProfileScreen(
             }
         }
 
-        Spacer(Modifier.height(16.dp))
-        Text(
-            "الاسم والصورة الرمزية أدناه محليان على جهازك فقط، بغض النظر عن تسجيل الدخول",
-            color = Gray,
-            fontSize = 10.sp
-        )
+        // الاسم والصورة الرمزية يظهران بعد تسجيل الدخول فقط — قبله ما فيه
+        // حساب فعلي يُربط به الاسم، فيبقى الملف الشخصي بس بطاقة تسجيل الدخول
+        if (signedInEmail != null) {
+            Spacer(Modifier.height(16.dp))
+            Text(
+                "الاسم والصورة الرمزية أدناه محليان على جهازك فقط",
+                color = Gray,
+                fontSize = 10.sp
+            )
 
-        Spacer(Modifier.height(20.dp))
+            Spacer(Modifier.height(20.dp))
 
-        Text("الاسم", color = Gray, fontSize = 10.sp)
-        Spacer(Modifier.height(6.dp))
-        SelectableTextField(
-            value = name,
-            onValueChange = { name = it },
-            placeholder = "مثال: محمد العتيبي",
-            modifier = Modifier.fillMaxWidth().height(42.dp)
-        )
+            Text("الاسم", color = Gray, fontSize = 10.sp)
+            Spacer(Modifier.height(6.dp))
+            SelectableTextField(
+                value = name,
+                onValueChange = { name = it },
+                placeholder = "مثال: محمد العتيبي",
+                modifier = Modifier.fillMaxWidth().height(42.dp)
+            )
 
-        Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(16.dp))
 
-        Text("الصورة الرمزية", color = Gray, fontSize = 10.sp)
-        Spacer(Modifier.height(6.dp))
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            profileAvatarOptions.forEach { avatar ->
-                val selected = avatar == selectedAvatar
-                Box(
-                    modifier = Modifier
-                        .size(48.dp)
-                        .clip(RoundedCornerShape(24.dp))
-                        .border(
-                            width = if (selected) 1.5.dp else 1.dp,
-                            color = if (selected) Gold else Border,
-                            shape = RoundedCornerShape(24.dp)
-                        )
-                        .background(if (selected) GoldDark.copy(alpha = 0.2f) else Color.Transparent)
-                        .clickable { selectedAvatar = avatar },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(avatar, fontSize = 20.sp)
+            Text("الصورة الرمزية", color = Gray, fontSize = 10.sp)
+            Spacer(Modifier.height(6.dp))
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                profileAvatarOptions.forEach { avatar ->
+                    val selected = avatar == selectedAvatar
+                    Box(
+                        modifier = Modifier
+                            .size(48.dp)
+                            .clip(RoundedCornerShape(24.dp))
+                            .border(
+                                width = if (selected) 1.5.dp else 1.dp,
+                                color = if (selected) Gold else Border,
+                                shape = RoundedCornerShape(24.dp)
+                            )
+                            .background(if (selected) GoldDark.copy(alpha = 0.2f) else Color.Transparent)
+                            .clickable { selectedAvatar = avatar },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(avatar, fontSize = 20.sp)
+                    }
                 }
             }
-        }
 
-        Spacer(Modifier.height(24.dp))
+            Spacer(Modifier.height(24.dp))
 
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(48.dp)
-                .clip(RoundedCornerShape(10.dp))
-                .background(Gold)
-                .clickable { onSave(UserProfile(name = name.trim(), avatar = selectedAvatar)) },
-            contentAlignment = Alignment.Center
-        ) {
-            Text("حفظ", color = Black, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(Gold)
+                    .clickable { onSave(UserProfile(name = name.trim(), avatar = selectedAvatar)) },
+                contentAlignment = Alignment.Center
+            ) {
+                Text("حفظ", color = Black, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+            }
         }
 
         Spacer(Modifier.height(16.dp))
@@ -6133,7 +6138,8 @@ private fun AddPriceAlertDialog(
 private fun Header(
     onRefresh: () -> Unit,
     showNotificationBadge: Boolean,
-    onNotificationsClick: () -> Unit
+    onNotificationsClick: () -> Unit,
+    onAccountClick: () -> Unit
 ) {
     CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
         Row(
@@ -6171,7 +6177,7 @@ private fun Header(
             ) {
                 CircleButton(Icons.Outlined.Refresh, onClick = onRefresh)
                 SmallGoldButton("SAR")
-                CircleButton(Icons.Outlined.Bolt)
+                CircleButton(Icons.Outlined.AccountCircle, onClick = onAccountClick)
             }
         }
     }
