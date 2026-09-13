@@ -48,10 +48,14 @@
                 android:resource="@xml/file_paths" />
         </provider>
 
-        <!-- ويدجت الشاشة الرئيسية لعرض السعر الحي (GoldPriceWidgetProvider.kt) -->
+        <!-- ويدجت الشاشة الرئيسية لعرض السعر الحي (GoldPriceWidgetProvider.kt).
+             exported="true" ضروري هنا (رغم أنه عادة يُفضَّل false للأمان)
+             لأن شاشة "إضافة ويدجت" في الهاتف تنتمي لتطبيق آخر (الـ Launcher)،
+             ولازم يكون هذا المكوّن ظاهراً له حتى يقدر يكتشف وجود الويدجت
+             ويعرضه في قائمة الويدجتات المتاحة -->
         <receiver
             android:name=".GoldPriceWidgetProvider"
-            android:exported="false">
+            android:exported="true">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
             </intent-filter>
