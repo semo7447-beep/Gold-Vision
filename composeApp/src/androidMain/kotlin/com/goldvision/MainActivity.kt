@@ -5,14 +5,16 @@ import android.content.pm.PackageManager
 import android.graphics.Color as AndroidColor
 import android.os.Build
 import android.os.Bundle
-import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
+import androidx.fragment.app.FragmentActivity
 
-class MainActivity : ComponentActivity() {
+// FragmentActivity (بدل ComponentActivity العادية) مطلوبة لعمل BiometricPrompt
+// (قفل التطبيق ببصمة/وجه) — هي نفسها ComponentActivity مع دعم إضافي للـ Fragments
+class MainActivity : FragmentActivity() {
     // مطلوبة من أندرويد 13 فأعلى فقط حتى تظهر إشعارات سعر الذهب اليومي
     // (إن فعّلها المستخدم من "المزيد ← الإشعارات")؛ تُطلب مرة واحدة عند
     // بدء التطبيق، ولا تمنع استخدامه لو رُفضت

@@ -346,7 +346,10 @@ fun App() {
             color = Black
         ) {
             CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
-                GoldVisionApp()
+                val lockEnabled = remember { loadAppLockSettings().enabled }
+                BiometricAuthGate(enabled = lockEnabled) {
+                    GoldVisionApp()
+                }
             }
         }
     }
@@ -4672,6 +4675,47 @@ private fun MoreScreen(
                 icon = Icons.Outlined.Balance,
                 label = "سياسة الخصوصية",
                 onClick = onNavigatePrivacyPolicy
+            )
+        }
+
+        Spacer(Modifier.height(16.dp))
+
+        Text("الأمان", color = Gray, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+        Spacer(Modifier.height(6.dp))
+
+        var appLockEnabled by remember { mutableStateOf(loadAppLockSettings().enabled) }
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(9.dp))
+                .border(1.dp, Border, RoundedCornerShape(9.dp))
+                .background(CardBlack)
+                .padding(12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text("قفل التطبيق ببصمة/وجه", color = White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    "يطلب بصمتك أو وجهك أو رمز الجهاز عند كل فتح للتطبيق",
+                    color = Gray,
+                    fontSize = 9.5.sp,
+                    lineHeight = 14.sp
+                )
+            }
+            Switch(
+                checked = appLockEnabled,
+                onCheckedChange = { enabled ->
+                    appLockEnabled = enabled
+                    persistAppLockSettings(AppLockSettings(enabled = enabled))
+                },
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = Black,
+                    checkedTrackColor = Gold,
+                    uncheckedThumbColor = Gray,
+                    uncheckedTrackColor = CardBlack
+                )
             )
         }
 
