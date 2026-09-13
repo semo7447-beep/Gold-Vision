@@ -399,10 +399,66 @@ private val onboardingPages = listOf(
     ),
     OnboardingPage(
         "تنبيهات ذكية",
-        "نبّهك عند وصول السعر لهدفك، وعند اقتراب اجتماعات الفيدرالي المؤثرة على السوق.",
+        "نبّهك عند وصول السعر لهدفك، وعند اقتراب اجتماعات الفيدرالي المؤثرة على السوق. " +
+            "وحتى تجرّب الميزة فوراً، نضيف لك تلقائياً تنبيهين جاهزين على عيار 24 (ارتفاع 5 ريال وانخفاض 5 ريال) تقدر تعدّلهم أو تحذفهم متى ما أردت.",
         Icons.Outlined.Notifications
     )
 )
+
+// معاينة مصغّرة لبطاقات التنبيهات الحقيقية (نفس تصميم شاشة الإشعارات
+// الفعلية) — تُعرض فقط بصفحة "تنبيهات ذكية" التعريفية، حتى يشوف المستخدم
+// شكل التنبيهين الافتراضيين بصرياً بدل مجرد وصف نصي
+@Composable
+private fun OnboardingAlertsPreview() {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .border(1.dp, Border, RoundedCornerShape(12.dp))
+            .background(CardBlack)
+            .padding(10.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        listOf(
+            Triple(true, "24 عيار", "عند الارتفاع 5 ريال"),
+            Triple(false, "24 عيار", "عند الانخفاض 5 ريال")
+        ).forEach { (isUpward, karat, subtitle) ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Outlined.ShowChart,
+                        contentDescription = null,
+                        tint = if (isUpward) Green else Red,
+                        modifier = Modifier.size(14.dp)
+                    )
+                    Column {
+                        Text(karat, color = White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        Text(subtitle, color = Gray, fontSize = 9.sp)
+                    }
+                }
+                Switch(
+                    checked = true,
+                    onCheckedChange = {},
+                    enabled = false,
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = Black,
+                        checkedTrackColor = Gold,
+                        disabledCheckedThumbColor = Black,
+                        disabledCheckedTrackColor = Gold
+                    ),
+                    modifier = Modifier.scale(0.6f)
+                )
+            }
+        }
+    }
+}
 
 @Composable
 private fun OnboardingScreen(onFinish: () -> Unit) {
@@ -458,6 +514,10 @@ private fun OnboardingScreen(onFinish: () -> Unit) {
                     textAlign = TextAlign.Center,
                     lineHeight = 20.sp
                 )
+                if (page == onboardingPages.lastIndex) {
+                    Spacer(Modifier.height(16.dp))
+                    OnboardingAlertsPreview()
+                }
             }
         }
 
