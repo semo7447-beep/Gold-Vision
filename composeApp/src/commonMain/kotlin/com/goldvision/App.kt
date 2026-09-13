@@ -332,14 +332,17 @@ private fun upcomingFedMeetings(): List<FedMeetingRow> {
 private fun currentDateTimeText(): String {
     val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
     val hour24 = now.hour
-    val period = if (hour24 < 12) "ص" else "م"
+    val period = if (hour24 < 12) t("ص", "AM") else t("م", "PM")
     val hour12 = when {
         hour24 == 0 -> 12
         hour24 > 12 -> hour24 - 12
         else -> hour24
     }
     val minute = now.minute.toString().padStart(2, '0')
-    return "آخر تحديث: ${now.year}/${now.monthNumber}/${now.dayOfMonth} الساعة $hour12:$minute $period"
+    return t(
+        "آخر تحديث: ${now.year}/${now.monthNumber}/${now.dayOfMonth} الساعة $hour12:$minute $period",
+        "Last updated: ${now.year}/${now.monthNumber}/${now.dayOfMonth} at $hour12:$minute $period"
+    )
 }
 
 // نقطة الدخول المشتركة بين أندرويد و iOS — كل منصة تستدعيها من نقطة دخولها الخاصة
@@ -2625,6 +2628,21 @@ private fun AddGoldItemScreen(
 // ==================== شاشة الرسم البياني الكاملة ====================
 private val chartPeriods = listOf("24 ساعة", "أسبوع", "شهر", "3 شهور", "6 شهور", "سنة", "سنتان", "5 سنين")
 
+// النصوص أعلاه تُستخدم كمفاتيح مقارنة في كل مكان (periodDaysFor، اختيار
+// الفترة الحالية...) فتبقى كما هي؛ هذه الدالة فقط تُترجم النص المعروض
+// على الزر دون المساس بالمفتاح نفسه
+private fun periodLabel(period: String): String = when (period) {
+    "24 ساعة" -> t("24 ساعة", "24H")
+    "أسبوع" -> t("أسبوع", "1W")
+    "شهر" -> t("شهر", "1M")
+    "3 شهور" -> t("3 شهور", "3M")
+    "6 شهور" -> t("6 شهور", "6M")
+    "سنة" -> t("سنة", "1Y")
+    "سنتان" -> t("سنتان", "2Y")
+    "5 سنين" -> t("5 سنين", "5Y")
+    else -> period
+}
+
 @Composable
 private fun PriceChartFullScreen(
     selectedPeriod: String,
@@ -2646,14 +2664,14 @@ private fun PriceChartFullScreen(
         ) {
             Icon(
                 imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
-                contentDescription = "رجوع",
+                contentDescription = t("رجوع", "Back"),
                 tint = Gold,
                 modifier = Modifier
                     .size(22.dp)
                     .clickable { onBack() }
             )
             Text(
-                if (showAnalysis) "التحليل الفني" else "تتبع الأسعار",
+                if (showAnalysis) t("التحليل الفني", "Technical Analysis") else t("تتبع الأسعار", "Price Tracking"),
                 color = Gold,
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold
@@ -2670,7 +2688,7 @@ private fun PriceChartFullScreen(
                 .border(1.dp, Border, RoundedCornerShape(9.dp))
                 .padding(2.dp)
         ) {
-            listOf(false to "تتبع الأسعار", true to "التحليل الفني").forEach { (analysisMode, label) ->
+            listOf(false to t("تتبع الأسعار", "Price Tracking"), true to t("التحليل الفني", "Technical Analysis")).forEach { (analysisMode, label) ->
                 Box(
                     modifier = Modifier
                         .weight(1f)
@@ -2711,7 +2729,7 @@ private fun PriceChartFullScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        period,
+                        periodLabel(period),
                         color = if (selectedPeriod == period) Black else White,
                         fontSize = 12.sp,
                         fontWeight = if (selectedPeriod == period) FontWeight.Bold else FontWeight.Normal
@@ -6434,9 +6452,9 @@ private fun LiveStatus(updateText: String) {
     val hasError = GoldMarket.lastError != null
     val statusColor = if (hasError) Red else Green
     val statusLabel = when {
-        GoldMarket.isLoading -> "يحدّث..."
-        hasError -> "غير محدث"
-        else -> "مباشر"
+        GoldMarket.isLoading -> t("يحدّث...", "Updating...")
+        hasError -> t("غير محدث", "Not updated")
+        else -> t("مباشر", "Live")
     }
 
     Row(
@@ -6447,7 +6465,7 @@ private fun LiveStatus(updateText: String) {
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
-            text = "أسعار الذهب الآن  ⓘ",
+            text = t("أسعار الذهب الآن  ⓘ", "Gold Prices Now  ⓘ"),
             color = White,
             fontSize = 13.sp,
             fontWeight = FontWeight.Bold
@@ -6522,7 +6540,7 @@ private fun PriceCards(
                             fontSize = 17.sp,
                             fontWeight = FontWeight.Bold
                         )
-                        Text("ريال / جرام", color = Gray, fontSize = 10.sp)
+                        Text(t("ريال / جرام", "SAR / gram"), color = Gray, fontSize = 10.sp)
                         Text(
                             "▲ ${fmt(item.change, 2)} (${fmt(item.percent, 2)}%)",
                             color = Green,
@@ -6540,7 +6558,7 @@ private fun PriceCards(
                             .padding(horizontal = 6.dp, vertical = 2.dp)
                     ) {
                         Text(
-                            "الأكثر استخداماً",
+                            t("الأكثر استخداماً", "Most used"),
                             color = Black,
                             fontSize = 7.sp,
                             fontWeight = FontWeight.Bold,
@@ -6569,7 +6587,7 @@ private fun GoldCalculator(
     onManufacturingChanged: (Double) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    AppCard(title = "حاسبة الذهب", modifier = modifier) {
+    AppCard(title = t("حاسبة الذهب", "Gold Calculator"), modifier = modifier) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -6577,20 +6595,20 @@ private fun GoldCalculator(
                 .border(1.dp, Border, RoundedCornerShape(5.dp))
         ) {
             CalculatorMode(
-                text = "شراء",
+                text = t("شراء", "Buy"),
                 selected = buyMode,
                 modifier = Modifier.weight(1f)
             ) { onBuyModeChanged(true) }
 
             CalculatorMode(
-                text = "بيع",
+                text = t("بيع", "Sell"),
                 selected = !buyMode,
                 modifier = Modifier.weight(1f)
             ) { onBuyModeChanged(false) }
         }
 
         Spacer(Modifier.height(3.dp))
-        Text("اختر العيار", color = White, fontSize = 10.sp)
+        Text(t("اختر العيار", "Choose karat"), color = White, fontSize = 10.sp)
 
         Row(
             modifier = Modifier
@@ -6607,7 +6625,7 @@ private fun GoldCalculator(
             }
         }
 
-        Text("الوزن (جرام)", color = White, fontSize = 10.sp)
+        Text(t("الوزن (جرام)", "Weight (grams)"), color = White, fontSize = 10.sp)
 
         Row(
             modifier = Modifier
@@ -6632,10 +6650,10 @@ private fun GoldCalculator(
         }
 
         Spacer(Modifier.height(3.dp))
-        CalculatorRow("سعر الجرام", "${fmt(selectedPrice(selectedKarat), 2)} ريال")
+        CalculatorRow(t("سعر الجرام", "Price per gram"), "${fmt(selectedPrice(selectedKarat), 2)} ${t("ريال", "SAR")}")
         CalculatorRow(
-            "السعر قبل الضريبة ⓘ",
-            "${fmt(beforeVat, 2, grouped = true)} ريال",
+            t("السعر قبل الضريبة ⓘ", "Price before tax ⓘ"),
+            "${fmt(beforeVat, 2, grouped = true)} ${t("ريال", "SAR")}",
             valueColor = Gold
         )
 
@@ -6644,12 +6662,12 @@ private fun GoldCalculator(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("المصنعية (للجرام) ✎", color = White, fontSize = 10.sp)
+            Text(t("المصنعية (للجرام) ✎", "Workmanship (per gram) ✎"), color = White, fontSize = 10.sp)
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(3.dp)
             ) {
-                Text("ريال", color = Gray, fontSize = 9.sp)
+                Text(t("ريال", "SAR"), color = Gray, fontSize = 9.sp)
                 NumericInputField(
                     value = manufacturing,
                     onValueChanged = { onManufacturingChanged(it.coerceAtMost(500.0)) },
@@ -6663,8 +6681,8 @@ private fun GoldCalculator(
         }
 
         CalculatorRow(
-            "الضريبة (15%)",
-            "${fmt(vat, 2, grouped = true)} ريال"
+            t("الضريبة (15%)", "Tax (15%)"),
+            "${fmt(vat, 2, grouped = true)} ${t("ريال", "SAR")}"
         )
 
         Spacer(Modifier.height(2.dp))
@@ -6681,9 +6699,9 @@ private fun GoldCalculator(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.Bottom
         ) {
-            Text("الإجمالي", color = Gold, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+            Text(t("الإجمالي", "Total"), color = Gold, fontSize = 11.sp, fontWeight = FontWeight.Bold)
             Text(
-                "ريال ${fmt(total, 2, grouped = true)}",
+                "${t("ريال", "SAR")} ${fmt(total, 2, grouped = true)}",
                 color = Gold,
                 fontSize = 15.sp,
                 fontWeight = FontWeight.Bold
@@ -7086,7 +7104,7 @@ private fun PriceChart(
     var showAnalysis by remember { mutableStateOf(false) }
 
     AppCard(
-        title = "تتبع أسعار الذهب",
+        title = t("تتبع أسعار الذهب", "Gold Price Tracking"),
         titleIcon = Icons.AutoMirrored.Outlined.ShowChart,
         modifier = Modifier.fillMaxSize()
     ) {
@@ -7099,7 +7117,7 @@ private fun PriceChart(
                 .border(1.dp, Border, RoundedCornerShape(8.dp))
                 .padding(2.dp)
         ) {
-            listOf(false to "تتبع الأسعار", true to "التحليل الفني").forEach { (analysisMode, label) ->
+            listOf(false to t("تتبع الأسعار", "Price Tracking"), true to t("التحليل الفني", "Technical Analysis")).forEach { (analysisMode, label) ->
                 Box(
                     modifier = Modifier
                         .weight(1f)
@@ -7141,7 +7159,7 @@ private fun PriceChart(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        period,
+                        periodLabel(period),
                         color = if (selectedPeriod == period) Black else White,
                         fontSize = 10.sp,
                         fontWeight = if (selectedPeriod == period) FontWeight.Bold else FontWeight.Normal
@@ -7188,25 +7206,25 @@ private fun PriceChart(
                         .padding(top = 2.dp, end = 2.dp),
                     horizontalAlignment = Alignment.End
                 ) {
-                    Text("أعلى سعر", color = Gray, fontSize = 8.5.sp)
+                    Text(t("أعلى سعر", "High"), color = Gray, fontSize = 8.5.sp)
                     Text(
                         fmt(maxPrice, 2),
                         color = White,
                         fontSize = 10.5.sp,
                         fontWeight = FontWeight.Bold
                     )
-                    Text("ريال", color = Gray, fontSize = 8.sp)
+                    Text(t("ريال", "SAR"), color = Gray, fontSize = 8.sp)
 
                     Spacer(Modifier.height(6.dp))
 
-                    Text("أدنى سعر", color = Gray, fontSize = 8.5.sp)
+                    Text(t("أدنى سعر", "Low"), color = Gray, fontSize = 8.5.sp)
                     Text(
                         fmt(minPrice, 2),
                         color = White,
                         fontSize = 10.5.sp,
                         fontWeight = FontWeight.Bold
                     )
-                    Text("ريال", color = Gray, fontSize = 8.sp)
+                    Text(t("ريال", "SAR"), color = Gray, fontSize = 8.sp)
                 }
             }
         }
@@ -7217,10 +7235,10 @@ private fun PriceChart(
 @Composable
 private fun ImportantNews() {
     val topThree = GoldNews.articles.take(3)
-    AppCard(title = "أهم الأخبار المؤثرة", modifier = Modifier.fillMaxSize()) {
+    AppCard(title = t("أهم الأخبار المؤثرة", "Top News"), modifier = Modifier.fillMaxSize()) {
         if (topThree.isEmpty()) {
             Text(
-                if (GoldNews.isLoading) "جارٍ تحميل الأخبار..." else "لا توجد أخبار متوفرة حالياً",
+                if (GoldNews.isLoading) t("جارٍ تحميل الأخبار...", "Loading news...") else t("لا توجد أخبار متوفرة حالياً", "No news available right now"),
                 color = Gray,
                 fontSize = 10.sp
             )
@@ -7231,7 +7249,7 @@ private fun ImportantNews() {
         }
         Spacer(Modifier.weight(1f))
         Text(
-            "عرض المزيد",
+            t("عرض المزيد", "View more"),
             color = White,
             fontSize = 11.sp,
             fontWeight = FontWeight.Bold,
@@ -7278,7 +7296,7 @@ private fun NewsRow(dot: Color, text: String, time: String) {
 @Composable
 private fun FedSchedule(rows: List<FedMeetingRow>) {
     AppCard(
-        title = "مواعيد اجتماعات الفيدرالي",
+        title = t("مواعيد اجتماعات الفيدرالي", "Fed Meeting Dates"),
         titleIcon = Icons.Outlined.CalendarMonth,
         modifier = Modifier.fillMaxSize()
     ) {
@@ -7289,7 +7307,7 @@ private fun FedSchedule(rows: List<FedMeetingRow>) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = "اليوم",
+                text = t("اليوم", "Day"),
                 color = Gray,
                 fontSize = 9.sp,
                 fontWeight = FontWeight.Bold,
@@ -7299,7 +7317,7 @@ private fun FedSchedule(rows: List<FedMeetingRow>) {
             )
 
             Text(
-                text = "التاريخ",
+                text = t("التاريخ", "Date"),
                 color = Gray,
                 fontSize = 9.sp,
                 fontWeight = FontWeight.Bold,
@@ -7309,7 +7327,7 @@ private fun FedSchedule(rows: List<FedMeetingRow>) {
             )
 
             Text(
-                text = "الوقت",
+                text = t("الوقت", "Time"),
                 color = Gray,
                 fontSize = 9.sp,
                 fontWeight = FontWeight.Bold,
@@ -7319,7 +7337,7 @@ private fun FedSchedule(rows: List<FedMeetingRow>) {
             )
 
             Text(
-                text = "العدّ التنازلي",
+                text = t("العدّ التنازلي", "Countdown"),
                 color = Gray,
                 fontSize = 9.sp,
                 fontWeight = FontWeight.Bold,
@@ -7382,7 +7400,7 @@ private fun FedSchedule(rows: List<FedMeetingRow>) {
                             .padding(horizontal = 6.dp, vertical = 3.dp)
                     ) {
                         Text(
-                            text = if (row.daysLeft == 0) "اليوم" else "بعد ${row.daysLeft} يوم",
+                            text = if (row.daysLeft == 0) t("اليوم", "Today") else t("بعد ${row.daysLeft} يوم", "In ${row.daysLeft}d"),
                             color = if (row.daysLeft <= 3) Red else Gold,
                             fontSize = 8.5.sp,
                             fontWeight = FontWeight.Bold,
@@ -7396,7 +7414,7 @@ private fun FedSchedule(rows: List<FedMeetingRow>) {
         Spacer(modifier = Modifier.weight(1f))
 
         Text(
-            text = "عرض الجدول الكامل",
+            text = t("عرض الجدول الكامل", "View full schedule"),
             color = White,
             fontSize = 11.sp,
             fontWeight = FontWeight.Bold,
@@ -7430,7 +7448,7 @@ private fun FedMeetingsScreen(onBack: () -> Unit) {
                     .clickable { onBack() }
             )
             Text(
-                "مواعيد اجتماعات الفيدرالي",
+                t("مواعيد اجتماعات الفيدرالي", "Fed Meeting Dates"),
                 color = Gold,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold
@@ -7456,8 +7474,12 @@ private fun FedMeetingsScreen(onBack: () -> Unit) {
                     .padding(top = 1.dp)
             )
             Text(
-                "قرار الفائدة الأمريكية يُعلن عادة الساعة 9:00 مساءً بتوقيت مكة المكرمة " +
-                    "(2:00 ظهراً بتوقيت واشنطن)",
+                t(
+                    "قرار الفائدة الأمريكية يُعلن عادة الساعة 9:00 مساءً بتوقيت مكة المكرمة " +
+                        "(2:00 ظهراً بتوقيت واشنطن)",
+                    "The US interest rate decision is usually announced at 9:00 PM Makkah time " +
+                        "(2:00 PM Washington time)"
+                ),
                 color = Gray,
                 fontSize = 10.sp,
                 lineHeight = 15.sp
@@ -7468,7 +7490,7 @@ private fun FedMeetingsScreen(onBack: () -> Unit) {
 
         if (rows.isEmpty()) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text("لا توجد اجتماعات مجدولة قريباً", color = Gray, fontSize = 12.sp)
+                Text(t("لا توجد اجتماعات مجدولة قريباً", "No meetings scheduled soon"), color = Gray, fontSize = 12.sp)
             }
             return
         }
@@ -7499,7 +7521,7 @@ private fun FedMeetingsScreen(onBack: () -> Unit) {
                         )
                         Spacer(Modifier.height(3.dp))
                         Text(
-                            "الساعة ${row.time} بتوقيت مكة المكرمة",
+                            t("الساعة ${row.time} بتوقيت مكة المكرمة", "${row.time} Makkah time"),
                             color = Gray,
                             fontSize = 9.5.sp
                         )
@@ -7511,7 +7533,7 @@ private fun FedMeetingsScreen(onBack: () -> Unit) {
                             .padding(horizontal = 8.dp, vertical = 5.dp)
                     ) {
                         Text(
-                            text = if (row.daysLeft == 0) "اليوم" else "بعد ${row.daysLeft} يوم",
+                            text = if (row.daysLeft == 0) t("اليوم", "Today") else t("بعد ${row.daysLeft} يوم", "In ${row.daysLeft}d"),
                             color = if (row.daysLeft <= 3) Red else Gold,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Bold
@@ -7530,7 +7552,7 @@ private fun PortfolioSummary(totalValue: Double, itemCount: Int, totalWeight: Do
     val profitLoss = totalValue - totalCost
     val profitLossPercent = if (totalCost > 0) (profitLoss / totalCost) * 100.0 else 0.0
     val profitLossText = if (totalCost > 0) {
-        "${if (profitLoss >= 0) "+" else ""}${fmt(profitLoss, 2, grouped = true)} ريال (${fmt(profitLossPercent, 2)}%)"
+        "${if (profitLoss >= 0) "+" else ""}${fmt(profitLoss, 2, grouped = true)} ${t("ريال", "SAR")} (${fmt(profitLossPercent, 2)}%)"
     } else ""
 
     Row(
@@ -7543,23 +7565,23 @@ private fun PortfolioSummary(totalValue: Double, itemCount: Int, totalWeight: Do
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         SummaryItem(
-            title = "قيمة المحفظة",
-            value = "${fmt(totalValue, 2, grouped = true)} ريال",
+            title = t("قيمة المحفظة", "Portfolio Value"),
+            value = "${fmt(totalValue, 2, grouped = true)} ${t("ريال", "SAR")}",
             extra = profitLossText,
             extraColor = if (profitLoss >= 0) Green else Red,
             valueColor = Gold
         )
         DividerVertical()
         SummaryItem(
-            title = "عدد المنتجات",
-            value = "$itemCount منتجات",
+            title = t("عدد المنتجات", "Item Count"),
+            value = t("$itemCount منتجات", "$itemCount items"),
             extra = "",
             valueColor = White
         )
         DividerVertical()
         SummaryItem(
-            title = "إجمالي الوزن",
-            value = "${fmt(totalWeight, 2)} جرام",
+            title = t("إجمالي الوزن", "Total Weight"),
+            value = "${fmt(totalWeight, 2)} ${t("جرام", "g")}",
             extra = "",
             valueColor = White
         )
@@ -7575,7 +7597,7 @@ private fun PortfolioSummary(totalValue: Double, itemCount: Int, totalWeight: Do
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                Text("عرض المحفظة", color = Gold, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                Text(t("عرض المحفظة", "View Portfolio"), color = Gold, fontSize = 10.sp, fontWeight = FontWeight.Bold)
                 Icon(
                     imageVector = Icons.Outlined.AccountBalanceWallet,
                     contentDescription = null,
