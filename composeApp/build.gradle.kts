@@ -52,6 +52,9 @@ kotlin {
             // مكتبات Firebase معاً حتى تبقى متوافقة
             implementation(platform("com.google.firebase:firebase-bom:33.7.0"))
             implementation("com.google.firebase:firebase-auth")
+            // تسجيل الدخول بحساب جوجل (GoogleSignInLauncher.android.kt) —
+            // مكتبة "Google Sign-In" الكلاسيكية والمستقرة منذ سنوات طويلة
+            implementation("com.google.android.gms:play-services-auth:21.2.0")
             // مزامنة المحفظة السحابية للمستخدمين المسجَّلين دخول (PortfolioSync.android.kt)
             implementation("com.google.firebase:firebase-firestore")
             // قفل التطبيق ببصمة/وجه/رمز الجهاز (BiometricLock.android.kt)

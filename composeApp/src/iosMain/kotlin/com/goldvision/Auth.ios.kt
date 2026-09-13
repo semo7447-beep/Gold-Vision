@@ -14,6 +14,15 @@ internal actual object AuthService {
     actual suspend fun sendPasswordReset(email: String): String? =
         "غير مفعّل على iOS بعد"
 
+    actual suspend fun completeGoogleSignIn(idToken: String): String? =
+        "تسجيل الدخول غير مفعّل على iOS بعد"
+
     actual fun signOut() {
     }
+}
+
+internal actual object GoogleSignInLauncher {
+    @androidx.compose.runtime.Composable
+    actual fun rememberLauncher(onResult: (idToken: String?, error: String?) -> Unit): () -> Unit =
+        { onResult(null, "تسجيل الدخول بحساب جوجل غير مفعّل على iOS بعد") }
 }

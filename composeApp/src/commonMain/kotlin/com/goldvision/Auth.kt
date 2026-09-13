@@ -13,7 +13,19 @@ internal expect object AuthService {
     suspend fun signUp(email: String, password: String): String?
     suspend fun signIn(email: String, password: String): String?
     suspend fun sendPasswordReset(email: String): String?
+    // تُستدعى بعد نجاح شاشة اختيار حساب جوجل نفسها (يديرها GoogleSignInLauncher)،
+    // بالرمز (idToken) الناتج، لإكمال تسجيل الدخول فعلياً عبر Firebase
+    suspend fun completeGoogleSignIn(idToken: String): String?
     fun signOut()
+}
+
+// يبني ويطلق واجهة "الدخول بحساب جوجل" الأصلية للمنصة (نافذة اختيار
+// حساب جوجل)، ويُعيد رمز الدخول (idToken) عند النجاح لتمريره لاحقاً إلى
+// AuthService.completeGoogleSignIn — منفصل عن AuthService لأنه يحتاج
+// سياق واجهة (Activity/Composable)، بعكس بقية دوال المصادقة النصية البحتة
+internal expect object GoogleSignInLauncher {
+    @androidx.compose.runtime.Composable
+    fun rememberLauncher(onResult: (idToken: String?, error: String?) -> Unit): () -> Unit
 }
 
 private val emailRegex = Regex("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$")

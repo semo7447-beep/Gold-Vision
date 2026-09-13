@@ -5544,6 +5544,21 @@ private fun AuthScreen(onBack: () -> Unit, onAuthSuccess: () -> Unit) {
     var isLoading by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
+    val triggerGoogleSignIn = GoogleSignInLauncher.rememberLauncher { idToken, error ->
+        when {
+            idToken != null -> {
+                isLoading = true
+                scope.launch {
+                    val err = AuthService.completeGoogleSignIn(idToken)
+                    isLoading = false
+                    if (err != null) errorText = err else onAuthSuccess()
+                }
+            }
+            error != null -> errorText = error
+            // else: المستخدم أغلق نافذة اختيار الحساب بنفسه، بلا أي إجراء
+        }
+    }
+
     fun submit() {
         errorText = null
         infoText = null
@@ -5722,6 +5737,29 @@ private fun AuthScreen(onBack: () -> Unit, onAuthSuccess: () -> Unit) {
                 },
             textAlign = TextAlign.Center
         )
+
+        Spacer(Modifier.height(22.dp))
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+            Box(modifier = Modifier.weight(1f).height(1.dp).background(Border))
+            Text("أو", color = Gray, fontSize = 10.sp, modifier = Modifier.padding(horizontal = 10.dp))
+            Box(modifier = Modifier.weight(1f).height(1.dp).background(Border))
+        }
+        Spacer(Modifier.height(16.dp))
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(48.dp)
+                .clip(RoundedCornerShape(10.dp))
+                .border(1.dp, Border, RoundedCornerShape(10.dp))
+                .clickable(enabled = !isLoading) { triggerGoogleSignIn() },
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text("G", color = Gold, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.width(8.dp))
+            Text("الدخول بحساب جوجل", color = White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+        }
 
         Spacer(Modifier.height(16.dp))
     }

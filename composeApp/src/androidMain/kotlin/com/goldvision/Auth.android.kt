@@ -2,6 +2,7 @@ package com.goldvision
 
 import com.google.android.gms.tasks.Task
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.GoogleAuthProvider
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
@@ -38,6 +39,14 @@ internal actual object AuthService {
         null
     } catch (e: Exception) {
         e.message ?: "تعذر إرسال رابط استعادة كلمة المرور"
+    }
+
+    actual suspend fun completeGoogleSignIn(idToken: String): String? = try {
+        val credential = GoogleAuthProvider.getCredential(idToken, null)
+        auth.signInWithCredential(credential).awaitResult()
+        null
+    } catch (e: Exception) {
+        e.message ?: "تعذر تسجيل الدخول بحساب جوجل"
     }
 
     actual fun signOut() {
