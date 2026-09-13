@@ -19,6 +19,10 @@ class MainActivity : ComponentActivity() {
     private val notificationPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
 
+    // ⏳ تذكير: بعد الانتهاء من تصميم التطبيق (حسب طلب صاحب الحساب)، فعّل
+    // FLAG_SECURE هنا (window.setFlags(WindowManager.LayoutParams.FLAG_SECURE, ...))
+    // لمنع لقطات الشاشة وتسجيلها نهائياً — إجراء أمان بنكي معياري، لكنه
+    // يمنع أيضاً أخذ لقطات شاشة للتطبيق نفسه لأي غرض (حتى الإبلاغ عن مشاكل)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge(
