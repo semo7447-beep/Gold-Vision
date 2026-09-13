@@ -21,6 +21,19 @@ private const val WIDGET_UPDATE_WORK_NAME = "gold_vision_widget_update"
 // القياسيين في أندرويد (بلا مكتبة Compose إضافية للويدجتات)، حتى تبقى
 // موثوقية الواجهة عالية بغض النظر عن إصدار أي مكتبة خارجية
 internal class GoldPriceWidgetProvider : AppWidgetProvider() {
+    companion object {
+        // إجراء مخصّص لزر "تحديث يدوي" داخل الويدجت نفسه، بالإضافة للتحديث
+        // التلقائي الدوري — يُرسَل كـ broadcast صريح لهذا المكوّن نفسه
+        const val ACTION_REFRESH = "com.goldvision.widget.ACTION_REFRESH"
+    }
+
+    override fun onReceive(context: Context, intent: Intent) {
+        super.onReceive(context, intent)
+        if (intent.action == ACTION_REFRESH) {
+            WorkManager.getInstance(context).enqueue(OneTimeWorkRequestBuilder<GoldPriceWidgetWorker>().build())
+        }
+    }
+
     override fun onUpdate(context: Context, appWidgetManager: AppWidgetManager, appWidgetIds: IntArray) {
         // عرض فوري بآخر سعر موجود بالذاكرة (حتى لو قديم) بدل شاشة فارغة،
         // ثم يُستبدل بالسعر الفعلي الجديد بعد اكتمال عامل التحديث أدناه
@@ -70,6 +83,20 @@ internal fun buildWidgetRemoteViews(context: Context): RemoteViews {
         PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
     )
     views.setOnClickPendingIntent(R.id.widget_root, pendingIntent)
+
+    // زر تحديث يدوي فوري — منطقة ضغط منفصلة عن باقي الويدجت (فتح التطبيق)،
+    // يرسل broadcast صريح لهذا المزوّد نفسه فيشغّل تحديث سعر فوري بالخلفية
+    val refreshIntent = Intent(context, GoldPriceWidgetProvider::class.java).apply {
+        action = GoldPriceWidgetProvider.ACTION_REFRESH
+    }
+    val refreshPendingIntent = PendingIntent.getBroadcast(
+        context,
+        0,
+        refreshIntent,
+        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+    )
+    views.setOnClickPendingIntent(R.id.widget_refresh, refreshPendingIntent)
+
     return views
 }
 
