@@ -95,6 +95,22 @@ android {
         res.srcDirs("src/androidMain/res")
     }
 
+    // تصغير وتعمية الكود (R8) في نسخة الإصدار (release) فقط — لا يؤثر على
+    // بناء التجربة العادي (debug) الذي تستخدمه الآن من Android Studio.
+    // يجعل هندسة الكود العكسية أصعب بكثير (أسماء أصناف/دوال بلا معنى،
+    // وحذف أي كود غير مستخدم)، وهذا معيار أمان قياسي في التطبيقات
+    // الاحترافية (البنكية وغيرها)
+    buildTypes {
+        release {
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
+        }
+    }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
