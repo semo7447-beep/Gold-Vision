@@ -990,12 +990,12 @@ private fun HomeScreen(
                 modifier = Modifier
                     .weight(1f)
                     .height(315.dp)
-                    .clickable { onNavigateChart() }
             ) {
                 PriceChart(
                     selectedPeriod = selectedPeriod,
                     onPeriodSelected = onPeriodSelected,
-                    selectedKarat = selectedKarat
+                    selectedKarat = selectedKarat,
+                    onChartClick = onNavigateChart
                 )
             }
         }
@@ -2799,14 +2799,16 @@ private fun TechnicalAnalysisContent(period: String, karat: String) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(130.dp)
+                    .height(190.dp)
             ) {
                 KaratChartCanvas(
                     modifier = Modifier.fillMaxSize(),
                     basePrice = karatPrice.price,
                     seed = karatChartSeeds[karat] ?: 1,
                     period = period,
-                    realPoints = realChartPointsFor(karat, period)
+                    realPoints = realChartPointsFor(karat, period),
+                    realBars = realBarsFor(period),
+                    karat = karat
                 )
             }
 
@@ -3129,9 +3131,7 @@ private fun KaratChartCard(
                 basePrice = price,
                 seed = seed,
                 period = period,
-                realPoints = realChartPointsFor(karat, period),
-                realBars = realBarsFor(period),
-                karat = karat
+                realPoints = realChartPointsFor(karat, period)
             )
         }
     }
@@ -3569,9 +3569,12 @@ private fun CandlestickChart(modifier: Modifier, bars: List<HistoryBar>, karat: 
         tooltip?.let { info ->
             val tooltipWidthPx = with(density) { 128.dp.toPx() }
             val boxLeftX = (info.x - tooltipWidthPx / 2f).coerceAtLeast(0f)
+            // لما يكون زر "إعادة ضبط" ظاهراً (أثناء التكبير)، ننزل بطاقة
+            // التلميح لتحت شوي حتى لا تتراكب معه (الزر ثابت أعلى يمين الرسم)
+            val topPadding = if (scale > 1.01f) 30.dp else 4.dp
             Box(
                 modifier = Modifier
-                    .padding(top = 4.dp, bottom = 24.dp)
+                    .padding(top = topPadding, bottom = 24.dp)
                     .offset { IntOffset(boxLeftX.roundToInt(), 4) }
             ) {
                 CandleTooltipCard(info)
@@ -6909,7 +6912,8 @@ private fun CalculatorRow(
 private fun PriceChart(
     selectedPeriod: String,
     onPeriodSelected: (String) -> Unit,
-    selectedKarat: String
+    selectedKarat: String,
+    onChartClick: () -> Unit = {}
 ) {
     val basePrice = selectedPrice(selectedKarat)
     val karatPercent = GoldMarket.prices.first { it.karat == selectedKarat }.percent
@@ -6962,6 +6966,7 @@ private fun PriceChart(
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f)
+                .clickable { onChartClick() }
         ) {
             PriceChartCanvas(modifier = Modifier.fillMaxSize(), basePrice = basePrice)
 
