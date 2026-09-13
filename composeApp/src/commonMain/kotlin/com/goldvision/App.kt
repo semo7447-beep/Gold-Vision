@@ -6294,10 +6294,12 @@ private fun NumericInputField(
         onValueChange = { new ->
             if (new.text.isEmpty() || new.text.matches(Regex("^\\d*\\.?\\d*$"))) {
                 fieldValue = widenSelectionToFullText(new)
+                // يُبلَّغ بأي رقم صالح فوراً أثناء الكتابة، حتى لو كان أقل من
+                // minValue (مثل 0) — حتى يبقى المجموع المعروض مطابقاً دائماً
+                // لما يكتبه المستخدم فعلياً، بدل حساب صامت بقيمة قديمة مخفية.
+                // الحد الأدنى يُفرض فقط عند مغادرة الحقل (onFocusChanged أدناه)
                 new.text.toDoubleOrNull()?.let { parsedValue ->
-                    if (parsedValue >= minValue) {
-                        onValueChanged(parsedValue)
-                    }
+                    onValueChanged(parsedValue)
                 }
             }
         },
@@ -6310,12 +6312,14 @@ private fun NumericInputField(
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
         cursorBrush = SolidColor(Gold),
         modifier = modifier.onFocusChanged { focusState ->
-            // إذا ترك المستخدم الحقل فارغاً أو برقم غير صالح عند الخروج منه،
-            // يرجع تلقائياً لآخر قيمة معتمدة (صفر افتراضياً) بدل أن يبقى فارغاً
+            // إذا ترك المستخدم الحقل فارغاً أو برقم أقل من الحد الأدنى عند
+            // الخروج منه، يُصحَّح تلقائياً للحد الأدنى — في العرض وفي القيمة
+            // الفعلية المستخدَمة بالحساب معاً، حتى لا يختلفا
             if (!focusState.isFocused) {
                 val parsed = fieldValue.text.toDoubleOrNull()
                 if (parsed == null || parsed < minValue) {
-                    val newText = fmt(value, 2)
+                    onValueChanged(minValue)
+                    val newText = fmt(minValue, 2)
                     fieldValue = TextFieldValue(newText, selection = TextRange(newText.length))
                 }
             }
