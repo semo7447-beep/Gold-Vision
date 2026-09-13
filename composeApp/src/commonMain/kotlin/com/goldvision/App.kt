@@ -1048,7 +1048,10 @@ private fun HomeScreen(
 }
 
 // ==================== شاشة حاسبة الذهب الكاملة ====================
-internal fun karatLabel(karat: String): String = karat.removeSuffix("K") + " عيار"
+internal fun karatLabel(karat: String): String {
+    val number = karat.removeSuffix("K")
+    return t("$number عيار", "${number}K")
+}
 
 @Composable
 private fun CalculatorFullScreen(
@@ -1086,7 +1089,7 @@ private fun CalculatorFullScreen(
         Box(modifier = Modifier.fillMaxWidth()) {
             Icon(
                 imageVector = Icons.Outlined.Refresh,
-                contentDescription = "تحديث",
+                contentDescription = t("تحديث", "Refresh"),
                 tint = Gold,
                 modifier = Modifier
                     .size(22.dp)
@@ -1094,7 +1097,7 @@ private fun CalculatorFullScreen(
                     .clickable { marketScope.launch { GoldMarket.refresh() } }
             )
             Text(
-                "الحاسبة",
+                t("الحاسبة", "Calculator"),
                 color = White,
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
@@ -1102,7 +1105,7 @@ private fun CalculatorFullScreen(
             )
             Icon(
                 imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
-                contentDescription = "رجوع",
+                contentDescription = t("رجوع", "Back"),
                 tint = Gold,
                 modifier = Modifier
                     .size(22.dp)
@@ -1121,13 +1124,13 @@ private fun CalculatorFullScreen(
                 .border(1.dp, Border, RoundedCornerShape(10.dp))
         ) {
             CalculatorMode(
-                text = "بيع",
+                text = t("بيع", "Sell"),
                 selected = !buyMode,
                 modifier = Modifier.weight(1f)
             ) { onBuyModeChanged(false) }
 
             CalculatorMode(
-                text = "شراء",
+                text = t("شراء", "Buy"),
                 selected = buyMode,
                 modifier = Modifier.weight(1f)
             ) { onBuyModeChanged(true) }
@@ -1164,11 +1167,11 @@ private fun CalculatorFullScreen(
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold
                 )
-                Text("تحديث منذ دقائق", color = Gray, fontSize = 9.sp)
+                Text(t("تحديث منذ دقائق", "Updated minutes ago"), color = Gray, fontSize = 9.sp)
             }
 
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("سعر جرام الذهب", color = Gray, fontSize = 10.sp)
+                Text(t("سعر جرام الذهب", "Gold price per gram"), color = Gray, fontSize = 10.sp)
                 Text(
                     fmt(selectedPrice.price, 2),
                     color = Gold,
@@ -1179,36 +1182,36 @@ private fun CalculatorFullScreen(
 
             Icon(
                 imageVector = Icons.Outlined.Share,
-                contentDescription = "تصدير PDF",
+                contentDescription = t("تصدير PDF", "Export PDF"),
                 tint = Gold,
                 modifier = Modifier
                     .size(18.dp)
                     .clickable {
                         val manufacturingTotal = if (buyMode) manufacturing * weight else 0.0
                         PdfExport.exportReport(
-                            title = "تقرير الصفقة — Gold Vision",
-                            generatedAt = "تاريخ التصدير: ${todayDateText()}",
+                            title = t("تقرير الصفقة — Gold Vision", "Deal Report — Gold Vision"),
+                            generatedAt = t("تاريخ التصدير: ${todayDateText()}", "Export date: ${todayDateText()}"),
                             summary = listOf(
-                                PdfReportRow("نوع العملية", if (buyMode) "شراء" else "بيع"),
-                                PdfReportRow("العيار", karatLabel(selectedKarat)),
-                                PdfReportRow("الوزن", "${fmt(weight, 2)} جرام"),
-                                PdfReportRow("الإجمالي (شامل الضريبة)", "${fmt(total, 2, grouped = true)} ريال")
+                                PdfReportRow(t("نوع العملية", "Transaction type"), if (buyMode) t("شراء", "Buy") else t("بيع", "Sell")),
+                                PdfReportRow(t("العيار", "Karat"), karatLabel(selectedKarat)),
+                                PdfReportRow(t("الوزن", "Weight"), "${fmt(weight, 2)} ${t("جرام", "g")}"),
+                                PdfReportRow(t("الإجمالي (شامل الضريبة)", "Total (incl. tax)"), "${fmt(total, 2, grouped = true)} ${t("ريال", "SAR")}")
                             ),
                             rows = buildList {
-                                add(PdfReportRow("سعر الذهب", "${fmt(beforeVat, 2, grouped = true)} ريال"))
+                                add(PdfReportRow(t("سعر الذهب", "Gold price"), "${fmt(beforeVat, 2, grouped = true)} ${t("ريال", "SAR")}"))
                                 if (buyMode) {
-                                    add(PdfReportRow("المصنعية (للجرام)", "${fmt(manufacturing, 2)} ريال"))
-                                    add(PdfReportRow("إجمالي المصنعية", "${fmt(manufacturingTotal, 2, grouped = true)} ريال"))
+                                    add(PdfReportRow(t("المصنعية (للجرام)", "Workmanship (per gram)"), "${fmt(manufacturing, 2)} ${t("ريال", "SAR")}"))
+                                    add(PdfReportRow(t("إجمالي المصنعية", "Total workmanship"), "${fmt(manufacturingTotal, 2, grouped = true)} ${t("ريال", "SAR")}"))
                                 } else {
-                                    add(PdfReportRow("المصنعية", "0.00 ريال"))
+                                    add(PdfReportRow(t("المصنعية", "Workmanship"), "0.00 ${t("ريال", "SAR")}"))
                                 }
                                 add(
                                     PdfReportRow(
-                                        if (isTaxExempt) "ضريبة القيمة المضافة (معفى)" else "ضريبة القيمة المضافة (${fmt(taxPercent, 0)}%)",
-                                        "${fmt(vat, 2, grouped = true)} ريال"
+                                        if (isTaxExempt) t("ضريبة القيمة المضافة (معفى)", "VAT (exempt)") else t("ضريبة القيمة المضافة (${fmt(taxPercent, 0)}%)", "VAT (${fmt(taxPercent, 0)}%)"),
+                                        "${fmt(vat, 2, grouped = true)} ${t("ريال", "SAR")}"
                                     )
                                 )
-                                add(PdfReportRow("سعر الجرام النهائي", "${fmt(finalGramPrice, 2, grouped = true)} ريال"))
+                                add(PdfReportRow(t("سعر الجرام النهائي", "Final price per gram"), "${fmt(finalGramPrice, 2, grouped = true)} ${t("ريال", "SAR")}"))
                             }
                         )
                     }
@@ -1225,7 +1228,7 @@ private fun CalculatorFullScreen(
                 .padding(10.dp)
         ) {
             Text(
-                "الوزن (جرام)",
+                t("الوزن (جرام)", "Weight (grams)"),
                 color = Gray,
                 fontSize = 10.sp,
                 modifier = Modifier.fillMaxWidth(),
@@ -1258,7 +1261,7 @@ private fun CalculatorFullScreen(
         if (!buyMode) {
             Spacer(Modifier.height(6.dp))
             Text(
-                "سعر البيع للمحل: قيمة الذهب فقط - بدون مصنعية أو ضريبة",
+                t("سعر البيع للمحل: قيمة الذهب فقط - بدون مصنعية أو ضريبة", "Sell price to shop: gold value only - no workmanship or tax"),
                 color = Gray,
                 fontSize = 10.sp,
                 modifier = Modifier.fillMaxWidth(),
@@ -1267,7 +1270,7 @@ private fun CalculatorFullScreen(
         } else if (manufacturing <= 0.0) {
             Spacer(Modifier.height(6.dp))
             Text(
-                "ذهب خالص - بدون مصنعية أو ضريبة",
+                t("ذهب خالص - بدون مصنعية أو ضريبة", "Pure gold - no workmanship or tax"),
                 color = Gray,
                 fontSize = 10.sp,
                 modifier = Modifier.fillMaxWidth(),
@@ -1310,7 +1313,7 @@ private fun CalculatorFullScreen(
                             .clip(RoundedCornerShape(4.dp))
                             .background(Green)
                     )
-                    Text("مباشر", color = White, fontSize = 11.sp)
+                    Text(t("مباشر", "Live"), color = White, fontSize = 11.sp)
                 }
 
                 Row(
@@ -1321,7 +1324,7 @@ private fun CalculatorFullScreen(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    Text("صفقة ممتازة", color = Green, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                    Text(t("صفقة ممتازة", "Great deal"), color = Green, fontSize = 10.sp, fontWeight = FontWeight.Bold)
                 }
             }
 
@@ -1331,9 +1334,9 @@ private fun CalculatorFullScreen(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text("الإجمالي (شامل الضريبة)", color = Gray, fontSize = 11.sp)
+                Text(t("الإجمالي (شامل الضريبة)", "Total (incl. tax)"), color = Gray, fontSize = 11.sp)
                 Text(
-                    "${fmt(total, 2, grouped = true)} ريال",
+                    "${fmt(total, 2, grouped = true)} ${t("ريال", "SAR")}",
                     color = Gold,
                     fontSize = 26.sp,
                     fontWeight = FontWeight.Bold
@@ -1348,7 +1351,7 @@ private fun CalculatorFullScreen(
                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     Text(
-                        if (isTaxExempt) "معفى من الضريبة" else "${selectedCountryTax.name} · ${fmt(taxPercent, 0)}%",
+                        if (isTaxExempt) t("معفى من الضريبة", "Tax exempt") else "${countryDisplayName(selectedCountryTax)} · ${fmt(taxPercent, 0)}%",
                         color = Gray,
                         fontSize = 9.sp
                     )
@@ -1370,7 +1373,7 @@ private fun CalculatorFullScreen(
             )
             Spacer(Modifier.height(10.dp))
 
-            CalculatorRow("سعر الذهب", "${fmt(beforeVat, 2, grouped = true)} ريال")
+            CalculatorRow(t("سعر الذهب", "Gold price"), "${fmt(beforeVat, 2, grouped = true)} ${t("ريال", "SAR")}")
             if (buyMode) {
                 Row(
                     modifier = Modifier
@@ -1379,7 +1382,7 @@ private fun CalculatorFullScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("المصنعية (للجرام) ✎", color = White, fontSize = 10.sp)
+                    Text(t("المصنعية (للجرام) ✎", "Workmanship (per gram) ✎"), color = White, fontSize = 10.sp)
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(4.dp)
@@ -1395,18 +1398,18 @@ private fun CalculatorFullScreen(
                                 .clip(RoundedCornerShape(5.dp))
                                 .border(1.dp, Border, RoundedCornerShape(5.dp))
                         )
-                        Text("ريال", color = Gray, fontSize = 9.sp)
+                        Text(t("ريال", "SAR"), color = Gray, fontSize = 9.sp)
                     }
                 }
-                CalculatorRow("إجمالي المصنعية", "${fmt(manufacturing * weight, 2, grouped = true)} ريال")
+                CalculatorRow(t("إجمالي المصنعية", "Total workmanship"), "${fmt(manufacturing * weight, 2, grouped = true)} ${t("ريال", "SAR")}")
             } else {
-                CalculatorRow("المصنعية", "0.00 ريال")
+                CalculatorRow(t("المصنعية", "Workmanship"), "0.00 ${t("ريال", "SAR")}")
             }
             CalculatorRow(
-                if (isTaxExempt) "ضريبة القيمة المضافة (معفى)" else "ضريبة القيمة المضافة (${fmt(taxPercent, 0)}%)",
-                "${fmt(vat, 2, grouped = true)} ريال"
+                if (isTaxExempt) t("ضريبة القيمة المضافة (معفى)", "VAT (exempt)") else t("ضريبة القيمة المضافة (${fmt(taxPercent, 0)}%)", "VAT (${fmt(taxPercent, 0)}%)"),
+                "${fmt(vat, 2, grouped = true)} ${t("ريال", "SAR")}"
             )
-            CalculatorRow("سعر الجرام النهائي", "${fmt(finalGramPrice, 2, grouped = true)} ريال")
+            CalculatorRow(t("سعر الجرام النهائي", "Final price per gram"), "${fmt(finalGramPrice, 2, grouped = true)} ${t("ريال", "SAR")}")
         }
 
         Spacer(Modifier.height(14.dp))
@@ -1444,7 +1447,7 @@ private fun CalculatorFullScreen(
                 horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 Text(
-                    if (buyMode) "المحل أعطاك سعراً؟" else "المحل أعطاك سعراً للشراء؟",
+                    if (buyMode) t("المحل أعطاك سعراً؟", "Shop gave you a price?") else t("المحل أعطاك سعراً للشراء؟", "Shop gave you a buy price?"),
                     color = Gold,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Bold
@@ -1460,7 +1463,7 @@ private fun CalculatorFullScreen(
 
         if (savedDeals.isNotEmpty()) {
             Spacer(Modifier.height(14.dp))
-            Text("الأسعار المحفوظة", color = Gray, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+            Text(t("الأسعار المحفوظة", "Saved Prices"), color = Gray, fontSize = 11.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(6.dp))
             Column(
                 modifier = Modifier
@@ -1493,7 +1496,7 @@ private fun CalculatorFullScreen(
                             }
                         }
                         Text(
-                            "${fmt(deal.totalPrice, 2, grouped = true)} ريال",
+                            "${fmt(deal.totalPrice, 2, grouped = true)} ${t("ريال", "SAR")}",
                             color = Gold,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold
@@ -1548,9 +1551,9 @@ private fun DealEvaluatorScreen(
     val ratio = if (fairTotal > 0) (shopPriceWithTax / fairTotal).toFloat() else 1f
 
     val (tierLabel, tierColor) = when {
-        ratio <= 1.0f -> "صفقة ممتازة" to Green
-        ratio <= 1.05f -> "سعر عادل" to Yellow
-        else -> "سعر مرتفع" to Red
+        ratio <= 1.0f -> t("صفقة ممتازة", "Great deal") to Green
+        ratio <= 1.05f -> t("سعر عادل", "Fair price") to Yellow
+        else -> t("سعر مرتفع", "High price") to Red
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -1566,14 +1569,14 @@ private fun DealEvaluatorScreen(
             ) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
-                    contentDescription = "رجوع",
+                    contentDescription = t("رجوع", "Back"),
                     tint = Gold,
                     modifier = Modifier
                         .size(22.dp)
                         .clickable { onBack() }
                 )
                 Text(
-                    "المحل أعطاك سعراً؟",
+                    t("المحل أعطاك سعراً؟", "Shop gave you a price?"),
                     color = White,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
@@ -1592,7 +1595,7 @@ private fun DealEvaluatorScreen(
 
             Spacer(Modifier.height(16.dp))
 
-            Text("العيار", color = Gray, fontSize = 10.sp)
+            Text(t("العيار", "Karat"), color = Gray, fontSize = 10.sp)
             Spacer(Modifier.height(4.dp))
             Row(
                 modifier = Modifier
@@ -1611,7 +1614,7 @@ private fun DealEvaluatorScreen(
 
             Spacer(Modifier.height(12.dp))
 
-            Text("الوزن (جرام)", color = Gray, fontSize = 10.sp)
+            Text(t("الوزن (جرام)", "Weight (grams)"), color = Gray, fontSize = 10.sp)
             Spacer(Modifier.height(4.dp))
             Row(
                 modifier = Modifier
@@ -1645,7 +1648,7 @@ private fun DealEvaluatorScreen(
 
             Spacer(Modifier.height(6.dp))
             Text(
-                "إظهار المزيد",
+                t("إظهار المزيد", "Show more"),
                 color = Gray,
                 fontSize = 10.sp,
                 modifier = Modifier.clickable { showMore = !showMore }
@@ -1654,7 +1657,7 @@ private fun DealEvaluatorScreen(
             if (showMore) {
                 Spacer(Modifier.height(6.dp))
                 Text(
-                    "بيانات إضافية عن الحلية ستظهر هنا قريباً",
+                    t("بيانات إضافية عن الحلية ستظهر هنا قريباً", "More details about the item will appear here soon"),
                     color = Gray,
                     fontSize = 10.sp
                 )
@@ -1669,7 +1672,7 @@ private fun DealEvaluatorScreen(
             )
             Spacer(Modifier.height(14.dp))
 
-            Text("عرض المحل (ريال)", color = Gray, fontSize = 10.sp)
+            Text(t("عرض المحل (ريال)", "Shop offer (SAR)"), color = Gray, fontSize = 10.sp)
             Spacer(Modifier.height(6.dp))
             NumericInputField(
                 value = shopPrice,
@@ -1700,7 +1703,7 @@ private fun DealEvaluatorScreen(
                         uncheckedTrackColor = CardBlack
                     )
                 )
-                Text("شامل الضريبة؟", color = White, fontSize = 12.sp)
+                Text(t("شامل الضريبة؟", "Tax included?"), color = White, fontSize = 12.sp)
             }
 
             Spacer(Modifier.height(16.dp))
@@ -1726,9 +1729,9 @@ private fun DealEvaluatorScreen(
 
                 Spacer(Modifier.height(10.dp))
 
-                Text("السعر العادل (شامل الضريبة)", color = Gray, fontSize = 11.sp)
+                Text(t("السعر العادل (شامل الضريبة)", "Fair price (incl. tax)"), color = Gray, fontSize = 11.sp)
                 Text(
-                    "${fmt(fairTotal, 2, grouped = true)} ريال",
+                    "${fmt(fairTotal, 2, grouped = true)} ${t("ريال", "SAR")}",
                     color = Gold,
                     fontSize = 24.sp,
                     fontWeight = FontWeight.Bold
@@ -1736,16 +1739,16 @@ private fun DealEvaluatorScreen(
 
                 Spacer(Modifier.height(4.dp))
                 if (savings >= 0) {
-                    Text("تدفع أقل من العادل", color = Green, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                    Text(t("تدفع أقل من العادل", "You pay less than fair"), color = Green, fontSize = 10.sp, fontWeight = FontWeight.Bold)
                     Text(
-                        "وفرت ${fmt(savings, 2, grouped = true)} ريال",
+                        t("وفرت ${fmt(savings, 2, grouped = true)} ريال", "You saved ${fmt(savings, 2, grouped = true)} SAR"),
                         color = Green,
                         fontSize = 10.sp
                     )
                 } else {
-                    Text("تدفع أكثر من العادل", color = Red, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                    Text(t("تدفع أكثر من العادل", "You pay more than fair"), color = Red, fontSize = 10.sp, fontWeight = FontWeight.Bold)
                     Text(
-                        "زيادة ${fmt(-savings, 2, grouped = true)} ريال",
+                        t("زيادة ${fmt(-savings, 2, grouped = true)} ريال", "Extra ${fmt(-savings, 2, grouped = true)} SAR"),
                         color = Red,
                         fontSize = 10.sp
                     )
@@ -1764,19 +1767,19 @@ private fun DealEvaluatorScreen(
                 )
                 Spacer(Modifier.height(10.dp))
 
-                CalculatorRow("الإجمالي (بدون ضريبة)", "${fmt(fairSubtotal, 2, grouped = true)} ريال")
-                CalculatorRow("الإجمالي (شامل الضريبة)", "${fmt(fairTotal, 2, grouped = true)} ريال")
-                CalculatorRow("سعر الذهب", "${fmt(fairBeforeVat, 2, grouped = true)} ريال")
-                CalculatorRow("المصنعية", "${fmt(fairManufacturing, 2, grouped = true)} ريال")
+                CalculatorRow(t("الإجمالي (بدون ضريبة)", "Total (excl. tax)"), "${fmt(fairSubtotal, 2, grouped = true)} ${t("ريال", "SAR")}")
+                CalculatorRow(t("الإجمالي (شامل الضريبة)", "Total (incl. tax)"), "${fmt(fairTotal, 2, grouped = true)} ${t("ريال", "SAR")}")
+                CalculatorRow(t("سعر الذهب", "Gold price"), "${fmt(fairBeforeVat, 2, grouped = true)} ${t("ريال", "SAR")}")
+                CalculatorRow(t("المصنعية", "Workmanship"), "${fmt(fairManufacturing, 2, grouped = true)} ${t("ريال", "SAR")}")
                 val shopMargin = shopPriceWithTax - fairTotal
                 val shopMarginPerGram = if (weight > 0) shopMargin / weight else 0.0
                 CalculatorRow(
-                    "ريع المحل",
-                    "${fmt(shopMargin, 2, grouped = true)} ريال (${fmt(shopMarginPerGram, 2)} /جم)"
+                    t("ريع المحل", "Shop margin"),
+                    "${fmt(shopMargin, 2, grouped = true)} ${t("ريال", "SAR")} (${fmt(shopMarginPerGram, 2)} ${t("/جم", "/g")})"
                 )
                 CalculatorRow(
-                    if (isDealTaxExempt) "ضريبة القيمة المضافة (معفى)" else "ضريبة القيمة المضافة (${fmt(dealTaxPercent, 0)}%)",
-                    "${fmt(fairVat, 2, grouped = true)} ريال"
+                    if (isDealTaxExempt) t("ضريبة القيمة المضافة (معفى)", "VAT (exempt)") else t("ضريبة القيمة المضافة (${fmt(dealTaxPercent, 0)}%)", "VAT (${fmt(dealTaxPercent, 0)}%)"),
+                    "${fmt(fairVat, 2, grouped = true)} ${t("ريال", "SAR")}"
                 )
             }
 
@@ -1790,12 +1793,12 @@ private fun DealEvaluatorScreen(
                     .background(CardBlack)
                     .padding(14.dp)
             ) {
-                Text("أسعار للتفاوض (شامل الضريبة)", color = White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                Text(t("أسعار للتفاوض (شامل الضريبة)", "Negotiation prices (incl. tax)"), color = White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(10.dp))
 
-                NegotiationRow("صفقة ممتازة", fairTotal, shopPriceWithTax, Green)
-                NegotiationRow("سعر عادل", fairTotal * 1.05, shopPriceWithTax, Yellow)
-                NegotiationRow("الحد الأقصى", fairTotal * 1.10, shopPriceWithTax, Red)
+                NegotiationRow(t("صفقة ممتازة", "Great deal"), fairTotal, shopPriceWithTax, Green)
+                NegotiationRow(t("سعر عادل", "Fair price"), fairTotal * 1.05, shopPriceWithTax, Yellow)
+                NegotiationRow(t("الحد الأقصى", "Maximum"), fairTotal * 1.10, shopPriceWithTax, Red)
             }
 
             Spacer(Modifier.height(14.dp))
@@ -1809,7 +1812,7 @@ private fun DealEvaluatorScreen(
                     .clickable { showSaveDialog = true },
                 contentAlignment = Alignment.Center
             ) {
-                Text("حفظ في المجموعة", color = Black, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                Text(t("حفظ في المجموعة", "Save to collection"), color = Black, fontSize = 13.sp, fontWeight = FontWeight.Bold)
             }
 
             Spacer(Modifier.height(16.dp))
@@ -1860,7 +1863,7 @@ private fun DealEvaluatorScreen(
                         .padding(vertical = 8.dp)
                 ) {
                     Text(
-                        "اختر العيار",
+                        t("اختر العيار", "Choose karat"),
                         color = White,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Bold,
@@ -1937,10 +1940,10 @@ private fun SaveDealDialog(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("حفظ السعر", color = White, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                Text(t("حفظ السعر", "Save Price"), color = White, fontSize = 15.sp, fontWeight = FontWeight.Bold)
                 Icon(
                     imageVector = Icons.Outlined.Close,
-                    contentDescription = "إغلاق",
+                    contentDescription = t("إغلاق", "Close"),
                     tint = Gray,
                     modifier = Modifier
                         .size(18.dp)
@@ -1950,20 +1953,20 @@ private fun SaveDealDialog(
 
             Spacer(Modifier.height(6.dp))
             Text(
-                "${fmt(totalPrice, 2, grouped = true)} ريال • $tierLabel",
+                "${fmt(totalPrice, 2, grouped = true)} ${t("ريال", "SAR")} • $tierLabel",
                 color = tierColor,
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Bold
             )
 
             Spacer(Modifier.height(14.dp))
-            Text("اسم المحل", color = Gray, fontSize = 10.sp)
+            Text(t("اسم المحل", "Shop name"), color = Gray, fontSize = 10.sp)
             Spacer(Modifier.height(6.dp))
 
             SelectableTextField(
                 value = shopName,
                 onValueChange = { shopName = it },
-                placeholder = "مثال: مجوهرات الأصيل",
+                placeholder = t("مثال: مجوهرات الأصيل", "e.g. Al-Asil Jewelry"),
                 modifier = Modifier.fillMaxWidth().height(42.dp)
             )
 
@@ -1982,7 +1985,7 @@ private fun SaveDealDialog(
                         .clickable { onDismiss() },
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("إلغاء", color = Gray, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    Text(t("إلغاء", "Cancel"), color = Gray, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                 }
                 Box(
                     modifier = Modifier
@@ -1991,12 +1994,12 @@ private fun SaveDealDialog(
                         .clip(RoundedCornerShape(9.dp))
                         .background(Gold)
                         .clickable {
-                            val finalName = shopName.trim().ifEmpty { "محل بدون اسم" }
+                            val finalName = shopName.trim().ifEmpty { t("محل بدون اسم", "Unnamed shop") }
                             onConfirm(finalName)
                         },
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("حفظ", color = Black, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    Text(t("حفظ", "Save"), color = Black, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -2011,9 +2014,9 @@ private fun DealGauge(ratio: Float) {
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Text("ممتاز", color = Green, fontSize = 9.sp)
-            Text("عادل", color = Yellow, fontSize = 9.sp)
-            Text("مرتفع", color = Red, fontSize = 9.sp)
+            Text(t("ممتاز", "Great"), color = Green, fontSize = 9.sp)
+            Text(t("عادل", "Fair"), color = Yellow, fontSize = 9.sp)
+            Text(t("مرتفع", "High"), color = Red, fontSize = 9.sp)
         }
         Spacer(Modifier.height(4.dp))
         Canvas(
@@ -2083,13 +2086,13 @@ private fun NegotiationRow(label: String, price: Double, shopPriceWithTax: Doubl
         }
         Column(horizontalAlignment = Alignment.End) {
             Text(
-                "${fmt(price, 2, grouped = true)} ريال",
+                "${fmt(price, 2, grouped = true)} ${t("ريال", "SAR")}",
                 color = White,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold
             )
             if (savings > 0) {
-                Text("وفر ${fmt(savings, 2, grouped = true)}", color = Green, fontSize = 9.sp)
+                Text(t("وفر ${fmt(savings, 2, grouped = true)}", "Save ${fmt(savings, 2, grouped = true)}"), color = Green, fontSize = 9.sp)
             }
         }
     }
@@ -6780,6 +6783,19 @@ private val countryTaxOptions = listOf(
     CountryTaxOption("🌍", "دولة أخرى", 0.0)
 )
 
+// اسم country.name يبقى بالعربي كمعرّف ثابت للخيار (مقارنات/تخزين)؛
+// هذه الدالة فقط تُترجم الاسم المعروض في الواجهة
+private fun countryDisplayName(country: CountryTaxOption): String = when (country.name) {
+    "السعودية" -> t("السعودية", "Saudi Arabia")
+    "الإمارات" -> t("الإمارات", "UAE")
+    "البحرين" -> t("البحرين", "Bahrain")
+    "عُمان" -> t("عُمان", "Oman")
+    "قطر" -> t("قطر", "Qatar")
+    "الكويت" -> t("الكويت", "Kuwait")
+    "مصر" -> t("مصر", "Egypt")
+    else -> t("دولة أخرى", "Other country")
+}
+
 // صندوق اختيار الدولة (بعلمها) مع نسبة الضريبة — تُملأ تلقائياً حسب
 // الدولة المختارة، ويمكن تعديلها يدوياً بعد ذلك بشكل مستقل. عند إعفاء
 // عيار 24 من الضريبة (isTaxExempt) يظهر ذلك بدل حقل النسبة
@@ -6793,7 +6809,7 @@ private fun CountryTaxSelector(
 ) {
     var showPicker by remember { mutableStateOf(false) }
 
-    Text("الدولة ونسبة الضريبة", color = Gray, fontSize = 10.sp)
+    Text(t("الدولة ونسبة الضريبة", "Country & tax rate"), color = Gray, fontSize = 10.sp)
     Spacer(Modifier.height(6.dp))
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -6812,7 +6828,7 @@ private fun CountryTaxSelector(
         ) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(selectedCountry.flag, fontSize = 15.sp)
-                Text(selectedCountry.name, color = White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                Text(countryDisplayName(selectedCountry), color = White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
             }
             Text("˅", color = Gold, fontSize = 11.sp)
         }
@@ -6826,7 +6842,7 @@ private fun CountryTaxSelector(
                     .border(1.dp, Border, RoundedCornerShape(9.dp)),
                 contentAlignment = Alignment.Center
             ) {
-                Text("معفى", color = Gray, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                Text(t("معفى", "Exempt"), color = Gray, fontSize = 11.sp, fontWeight = FontWeight.Bold)
             }
         } else {
             Row(
@@ -6876,7 +6892,7 @@ private fun CountryTaxSelector(
                     .padding(vertical = 8.dp)
             ) {
                 Text(
-                    "اختر الدولة",
+                    t("اختر الدولة", "Choose country"),
                     color = White,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Bold,
@@ -6899,9 +6915,9 @@ private fun CountryTaxSelector(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(option.flag, fontSize = 15.sp)
-                        Text(option.name, color = White, fontSize = 12.sp, modifier = Modifier.weight(1f))
+                        Text(countryDisplayName(option), color = White, fontSize = 12.sp, modifier = Modifier.weight(1f))
                         Text(
-                            if (option.vatPercent == 0.0) "بدون ضريبة" else "${fmt(option.vatPercent, 0)}%",
+                            if (option.vatPercent == 0.0) t("بدون ضريبة", "No tax") else "${fmt(option.vatPercent, 0)}%",
                             color = Gray,
                             fontSize = 10.sp
                         )
@@ -6938,7 +6954,7 @@ private fun SaveToPortfolioBox(onClick: () -> Unit) {
                 tint = Gray,
                 modifier = Modifier.size(15.dp)
             )
-            Text("حفظ في المحفظة", color = White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+            Text(t("حفظ في المحفظة", "Save to Portfolio"), color = White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
         }
     }
 }
