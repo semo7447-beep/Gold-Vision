@@ -216,6 +216,18 @@ private val pieceEmojiOptions = listOf(
     "🪙" to "عملة"
 )
 
+// نصوص pieceEmojiOptions تبقى عربية كمعرّف عرض ثابت؛ هذه الدالة تُترجم
+// النص المعروض فقط (الإيموجي نفسه هو الذي يُحفظ فعلياً في GoldItem)
+private fun pieceShapeLabel(label: String): String = when (label) {
+    "خاتم" -> t("خاتم", "Ring")
+    "سوار" -> t("سوار", "Bracelet")
+    "سلسلة" -> t("سلسلة", "Necklace")
+    "سبيكة" -> t("سبيكة", "Bar")
+    "حلق" -> t("حلق", "Earring")
+    "عملة" -> t("عملة", "Coin")
+    else -> label
+}
+
 private fun GoldItem.toZakatItem(): ZakatItem = ZakatItem(
     name = name,
     emoji = emoji,
@@ -2155,14 +2167,14 @@ private fun AddGoldItemScreen(
         ) {
             Icon(
                 imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
-                contentDescription = "رجوع",
+                contentDescription = t("رجوع", "Back"),
                 tint = Gold,
                 modifier = Modifier
                     .size(22.dp)
                     .clickable { onBack() }
             )
             Text(
-                if (isEditing) "تعديل القطعة" else "إضافة قطعة",
+                if (isEditing) t("تعديل القطعة", "Edit Item") else t("إضافة قطعة", "Add Item"),
                 color = White,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,
@@ -2172,7 +2184,7 @@ private fun AddGoldItemScreen(
             if (isEditing && onDelete != null) {
                 Icon(
                     imageVector = Icons.Outlined.Delete,
-                    contentDescription = "حذف القطعة",
+                    contentDescription = t("حذف القطعة", "Delete Item"),
                     tint = Red,
                     modifier = Modifier
                         .size(22.dp)
@@ -2185,18 +2197,18 @@ private fun AddGoldItemScreen(
 
         Spacer(Modifier.height(16.dp))
 
-        Text("اسم القطعة", color = Gray, fontSize = 10.sp)
+        Text(t("اسم القطعة", "Item Name"), color = Gray, fontSize = 10.sp)
         Spacer(Modifier.height(6.dp))
         SelectableTextField(
             value = name,
             onValueChange = { name = it },
-            placeholder = "مثال: خاتم - سوار - سبيكة",
+            placeholder = t("مثال: خاتم - سوار - سبيكة", "e.g. Ring - Bracelet - Bar"),
             modifier = Modifier.fillMaxWidth().height(42.dp)
         )
 
         Spacer(Modifier.height(12.dp))
 
-        Text("شكل القطعة", color = Gray, fontSize = 10.sp)
+        Text(t("شكل القطعة", "Item Shape"), color = Gray, fontSize = 10.sp)
         Spacer(Modifier.height(6.dp))
         Row(
             modifier = Modifier
@@ -2222,14 +2234,14 @@ private fun AddGoldItemScreen(
                 ) {
                     Text(emoji, fontSize = 18.sp)
                     Spacer(Modifier.height(2.dp))
-                    Text(label, color = if (selected) Gold else Gray, fontSize = 8.sp, maxLines = 1)
+                    Text(pieceShapeLabel(label), color = if (selected) Gold else Gray, fontSize = 8.sp, maxLines = 1)
                 }
             }
         }
 
         Spacer(Modifier.height(12.dp))
 
-        Text("العيار", color = Gray, fontSize = 10.sp)
+        Text(t("العيار", "Karat"), color = Gray, fontSize = 10.sp)
         Spacer(Modifier.height(6.dp))
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -2248,7 +2260,7 @@ private fun AddGoldItemScreen(
 
         Spacer(Modifier.height(12.dp))
 
-        Text("الوزن (جرام)", color = Gray, fontSize = 10.sp)
+        Text(t("الوزن (جرام)", "Weight (grams)"), color = Gray, fontSize = 10.sp)
         Spacer(Modifier.height(6.dp))
         Row(
             modifier = Modifier
@@ -2275,7 +2287,7 @@ private fun AddGoldItemScreen(
         // بلد الصنع مرتبط بالمشغولات فقط (22/21/18)؛ ذهب 24 عيار الاستثماري
         // معفى من الضريبة أصلاً فلا داعي له
         if (!isTaxExempt) {
-            Text("بلد الصنع", color = Gray, fontSize = 10.sp)
+            Text(t("بلد الصنع", "Country of origin"), color = Gray, fontSize = 10.sp)
             Spacer(Modifier.height(6.dp))
             Row(
                 modifier = Modifier
@@ -2287,7 +2299,7 @@ private fun AddGoldItemScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("السعودية", color = White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                Text(t("السعودية", "Saudi Arabia"), color = White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                 Icon(
                     imageVector = Icons.Outlined.Language,
                     contentDescription = null,
@@ -2298,7 +2310,7 @@ private fun AddGoldItemScreen(
             Spacer(Modifier.height(12.dp))
         }
 
-        Text("سعر الشراء (ريال)", color = Gray, fontSize = 10.sp)
+        Text(t("سعر الشراء (ريال)", "Purchase Price (SAR)"), color = Gray, fontSize = 10.sp)
         Spacer(Modifier.height(6.dp))
         NumericInputField(
             value = purchasePrice,
@@ -2329,11 +2341,11 @@ private fun AddGoldItemScreen(
                         uncheckedTrackColor = CardBlack
                     )
                 )
-                Text("السعر شامل الضريبة؟", color = White, fontSize = 12.sp)
+                Text(t("السعر شامل الضريبة؟", "Price includes tax?"), color = White, fontSize = 12.sp)
             }
         } else {
             Spacer(Modifier.height(6.dp))
-            Text("ذهب استثماري 24 عيار — معفى من الضريبة", color = Gray, fontSize = 9.sp)
+            Text(t("ذهب استثماري 24 عيار — معفى من الضريبة", "Investment 24K gold — tax exempt"), color = Gray, fontSize = 9.sp)
         }
 
         Spacer(Modifier.height(12.dp))
@@ -2343,7 +2355,7 @@ private fun AddGoldItemScreen(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("المصنعية (للجرام) ريال", color = White, fontSize = 10.sp)
+            Text(t("المصنعية (للجرام) ريال", "Workmanship (per gram) SAR"), color = White, fontSize = 10.sp)
             NumericInputField(
                 value = manufacturing,
                 onValueChanged = { manufacturing = it.coerceAtMost(500.0) },
@@ -2359,7 +2371,7 @@ private fun AddGoldItemScreen(
 
         Spacer(Modifier.height(12.dp))
 
-        Text("تاريخ الشراء", color = Gray, fontSize = 10.sp)
+        Text(t("تاريخ الشراء", "Purchase Date"), color = Gray, fontSize = 10.sp)
         Spacer(Modifier.height(6.dp))
         Row(
             modifier = Modifier
@@ -2399,19 +2411,19 @@ private fun AddGoldItemScreen(
                 )
             )
             Column(horizontalAlignment = Alignment.End) {
-                Text("قطعة مباعة", color = White, fontSize = 12.sp)
-                Text("لا تُحسب ضمن إجمالي الزكاة", color = Gray, fontSize = 9.sp)
+                Text(t("قطعة مباعة", "Item sold"), color = White, fontSize = 12.sp)
+                Text(t("لا تُحسب ضمن إجمالي الزكاة", "Not counted in Zakat total"), color = Gray, fontSize = 9.sp)
             }
         }
 
         Spacer(Modifier.height(12.dp))
 
-        Text("ملاحظات (اختياري)", color = Gray, fontSize = 10.sp)
+        Text(t("ملاحظات (اختياري)", "Notes (optional)"), color = Gray, fontSize = 10.sp)
         Spacer(Modifier.height(6.dp))
         SelectableTextField(
             value = notes,
             onValueChange = { notes = it },
-            placeholder = "اكتب ملاحظة...",
+            placeholder = t("اكتب ملاحظة...", "Write a note..."),
             modifier = Modifier.fillMaxWidth().height(42.dp)
         )
 
@@ -2426,13 +2438,13 @@ private fun AddGoldItemScreen(
                 .background(CardBlack)
                 .padding(14.dp)
         ) {
-            Text("معاينة القيمة الحالية", color = White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            Text(t("معاينة القيمة الحالية", "Current Value Preview"), color = White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(10.dp))
 
             Column {
-                Text("سعر جرام الذهب (${karatLabel(karat)})", color = Gray, fontSize = 9.sp)
+                Text(t("سعر جرام الذهب (${karatLabel(karat)})", "Gold price per gram (${karatLabel(karat)})"), color = Gray, fontSize = 9.sp)
                 Text(
-                    "${fmt(karatPrice, 2)} ريال",
+                    "${fmt(karatPrice, 2)} ${t("ريال", "SAR")}",
                     color = Gold,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold
@@ -2440,12 +2452,12 @@ private fun AddGoldItemScreen(
             }
 
             Spacer(Modifier.height(10.dp))
-            CalculatorRow("قيمة الذهب (بدون مصنعية)", "${fmt(currentBeforeVat, 2, grouped = true)} ريال")
-            CalculatorRow("قيمة المصنعية", "${fmt(currentManufacturing, 2, grouped = true)} ريال")
+            CalculatorRow(t("قيمة الذهب (بدون مصنعية)", "Gold value (excl. workmanship)"), "${fmt(currentBeforeVat, 2, grouped = true)} ${t("ريال", "SAR")}")
+            CalculatorRow(t("قيمة المصنعية", "Workmanship value"), "${fmt(currentManufacturing, 2, grouped = true)} ${t("ريال", "SAR")}")
             if (isTaxExempt) {
-                CalculatorRow("ضريبة القيمة المضافة", "معفى")
+                CalculatorRow(t("ضريبة القيمة المضافة", "VAT"), t("معفى", "Exempt"))
             } else {
-                CalculatorRow("ضريبة القيمة المضافة (15%)", "${fmt(currentVat, 2, grouped = true)} ريال")
+                CalculatorRow(t("ضريبة القيمة المضافة (15%)", "VAT (15%)"), "${fmt(currentVat, 2, grouped = true)} ${t("ريال", "SAR")}")
             }
 
             Spacer(Modifier.height(6.dp))
@@ -2462,9 +2474,9 @@ private fun AddGoldItemScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("القيمة الحالية للقطعة", color = Gold, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                Text(t("القيمة الحالية للقطعة", "Item's Current Value"), color = Gold, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                 Text(
-                    "${fmt(currentTotal, 2, grouped = true)} ريال",
+                    "${fmt(currentTotal, 2, grouped = true)} ${t("ريال", "SAR")}",
                     color = Gold,
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold
@@ -2478,9 +2490,9 @@ private fun AddGoldItemScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("الربح / الخسارة الحالية", color = Gray, fontSize = 10.sp)
+                Text(t("الربح / الخسارة الحالية", "Current Profit / Loss"), color = Gray, fontSize = 10.sp)
                 Text(
-                    "${if (profit >= 0) "+" else ""}${fmt(profit, 2, grouped = true)} ريال (${fmt(profitPercent, 2)}%)",
+                    "${if (profit >= 0) "+" else ""}${fmt(profit, 2, grouped = true)} ${t("ريال", "SAR")} (${fmt(profitPercent, 2)}%)",
                     color = if (profit >= 0) Green else Red,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold
@@ -2503,7 +2515,7 @@ private fun AddGoldItemScreen(
                     .clickable { onBack() },
                 contentAlignment = Alignment.Center
             ) {
-                Text("إلغاء", color = Gray, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                Text(t("إلغاء", "Cancel"), color = Gray, fontSize = 13.sp, fontWeight = FontWeight.Bold)
             }
             Box(
                 modifier = Modifier
@@ -2512,7 +2524,7 @@ private fun AddGoldItemScreen(
                     .clip(RoundedCornerShape(10.dp))
                     .background(Gold)
                     .clickable {
-                        val finalName = name.trim().ifEmpty { "قطعة ذهب" }
+                        val finalName = name.trim().ifEmpty { t("قطعة ذهب", "Gold item") }
                         onSave(
                             GoldItem(
                                 name = finalName,
@@ -2530,7 +2542,7 @@ private fun AddGoldItemScreen(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    if (isEditing) "حفظ التعديلات" else "حفظ في المحفظة",
+                    if (isEditing) t("حفظ التعديلات", "Save Changes") else t("حفظ في المحفظة", "Save to Portfolio"),
                     color = Black,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Bold
@@ -2552,12 +2564,12 @@ private fun AddGoldItemScreen(
                     }
                     showDatePicker = false
                 }) {
-                    Text("موافق")
+                    Text(t("موافق", "OK"))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showDatePicker = false }) {
-                    Text("إلغاء")
+                    Text(t("إلغاء", "Cancel"))
                 }
             }
         ) {
@@ -2589,9 +2601,9 @@ private fun AddGoldItemScreen(
                     ) { }
                     .padding(18.dp)
             ) {
-                Text("حذف القطعة؟", color = White, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                Text(t("حذف القطعة؟", "Delete Item?"), color = White, fontSize = 15.sp, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(6.dp))
-                Text("لا يمكن التراجع عن هذا الإجراء.", color = Gray, fontSize = 11.sp)
+                Text(t("لا يمكن التراجع عن هذا الإجراء.", "This action cannot be undone."), color = Gray, fontSize = 11.sp)
                 Spacer(Modifier.height(16.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -2606,7 +2618,7 @@ private fun AddGoldItemScreen(
                             .clickable { showDeleteConfirm = false },
                         contentAlignment = Alignment.Center
                     ) {
-                        Text("إلغاء", color = Gray, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        Text(t("إلغاء", "Cancel"), color = Gray, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                     }
                     Box(
                         modifier = Modifier
@@ -2617,7 +2629,7 @@ private fun AddGoldItemScreen(
                             .clickable { onDelete() },
                         contentAlignment = Alignment.Center
                     ) {
-                        Text("حذف نهائياً", color = White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        Text(t("حذف نهائياً", "Delete Permanently"), color = White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                     }
                 }
             }
@@ -4046,14 +4058,14 @@ private fun PortfolioScreen(
             ) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
-                    contentDescription = "رجوع",
+                    contentDescription = t("رجوع", "Back"),
                     tint = Gold,
                     modifier = Modifier
                         .size(20.dp)
                         .clickable { onBack() }
                 )
                 Text(
-                    "المحفظة",
+                    t("المحفظة", "Portfolio"),
                     color = Gold,
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold
@@ -4061,23 +4073,23 @@ private fun PortfolioScreen(
             }
             Icon(
                 imageVector = Icons.Outlined.Share,
-                contentDescription = "تصدير PDF",
+                contentDescription = t("تصدير PDF", "Export PDF"),
                 tint = Gold,
                 modifier = Modifier
                     .size(20.dp)
                     .clickable {
                         PdfExport.exportReport(
-                            title = "تقرير المحفظة — Gold Vision",
-                            generatedAt = "تاريخ التصدير: ${todayDateText()}",
+                            title = t("تقرير المحفظة — Gold Vision", "Portfolio Report — Gold Vision"),
+                            generatedAt = t("تاريخ التصدير: ${todayDateText()}", "Export date: ${todayDateText()}"),
                             summary = listOf(
-                                PdfReportRow("قيمة المحفظة", "${fmt(totalValue, 2, grouped = true)} ريال"),
-                                PdfReportRow("عدد المنتجات", "$itemCount منتجات"),
-                                PdfReportRow("إجمالي الوزن", "${fmt(totalWeight, 2)} جرام")
+                                PdfReportRow(t("قيمة المحفظة", "Portfolio Value"), "${fmt(totalValue, 2, grouped = true)} ${t("ريال", "SAR")}"),
+                                PdfReportRow(t("عدد المنتجات", "Item Count"), t("$itemCount منتجات", "$itemCount items")),
+                                PdfReportRow(t("إجمالي الوزن", "Total Weight"), "${fmt(totalWeight, 2)} ${t("جرام", "g")}")
                             ),
                             rows = savedValues.map { (item, value) ->
                                 PdfReportRow(
-                                    "${item.name} (${karatLabel(item.karat)} • ${fmt(item.weightGrams, 2)} جم)${if (item.isSold) " — مباعة" else ""}",
-                                    "${fmt(value, 2, grouped = true)} ريال"
+                                    "${item.name} (${karatLabel(item.karat)} • ${fmt(item.weightGrams, 2)} ${t("جم", "g")})${if (item.isSold) t(" — مباعة", " — sold") else ""}",
+                                    "${fmt(value, 2, grouped = true)} ${t("ريال", "SAR")}"
                                 )
                             }
                         )
@@ -4106,7 +4118,7 @@ private fun PortfolioScreen(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    Text("إضافة قطعة", color = Gold, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    Text(t("إضافة قطعة", "Add Item"), color = Gold, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                     Text("+", color = Gold, fontSize = 16.sp, fontWeight = FontWeight.Bold)
                 }
             }
@@ -4152,12 +4164,12 @@ private fun PortfolioScreen(
                                             .background(Red.copy(alpha = 0.15f))
                                             .padding(horizontal = 5.dp, vertical = 1.dp)
                                     ) {
-                                        Text("مباع", color = Red, fontSize = 8.sp, fontWeight = FontWeight.Bold)
+                                        Text(t("مباع", "Sold"), color = Red, fontSize = 8.sp, fontWeight = FontWeight.Bold)
                                     }
                                 }
                             }
                             Text(
-                                "${item.karat} • ${fmt(item.weightGrams, 2)} جرام",
+                                "${item.karat} • ${fmt(item.weightGrams, 2)} ${t("جرام", "g")}",
                                 color = Gray,
                                 fontSize = 10.sp
                             )
@@ -4165,7 +4177,7 @@ private fun PortfolioScreen(
                     }
                     Column(horizontalAlignment = Alignment.End) {
                         Text(
-                            "${fmt(value, 2, grouped = true)} ريال",
+                            "${fmt(value, 2, grouped = true)} ${t("ريال", "SAR")}",
                             color = if (item.isSold) Red else Gold,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold
@@ -4176,7 +4188,7 @@ private fun PortfolioScreen(
                             val itemProfit = value - item.purchasePriceWithTax
                             val itemProfitPercent = (itemProfit / item.purchasePriceWithTax) * 100.0
                             Text(
-                                "${if (itemProfit >= 0) "+" else ""}${fmt(itemProfit, 2, grouped = true)} ريال (${fmt(itemProfitPercent, 2)}%)",
+                                "${if (itemProfit >= 0) "+" else ""}${fmt(itemProfit, 2, grouped = true)} ${t("ريال", "SAR")} (${fmt(itemProfitPercent, 2)}%)",
                                 color = if (itemProfit >= 0) Green else Red,
                                 fontSize = 9.sp,
                                 fontWeight = FontWeight.Bold
