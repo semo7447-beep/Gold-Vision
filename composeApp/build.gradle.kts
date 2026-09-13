@@ -56,6 +56,13 @@ kotlin {
             implementation("com.google.firebase:firebase-firestore")
             // قفل التطبيق ببصمة/وجه/رمز الجهاز (BiometricLock.android.kt)
             implementation("androidx.biometric:biometric:1.1.0")
+            // نسخة أحدث من Fragment صراحة، لأن androidx.biometric:1.1.0 يجرّ
+            // نسخة قديمة منها بالخلفية فيها خلل معروف (IllegalArgumentException:
+            // "Can only use lower 16 bits for requestCode") يتعارض مع نظام طلب
+            // الأذونات الحديث (ActivityResultRegistry) على أي FragmentActivity —
+            // تم إصلاح الخلل رسمياً في Fragment 1.3.5، فنجبر المشروع يستخدم
+            // نسخة أحدث بدل القديمة المجرورة تلقائياً
+            implementation("androidx.fragment:fragment-ktx:1.6.2")
         }
         commonMain.dependencies {
             implementation(compose.runtime)
