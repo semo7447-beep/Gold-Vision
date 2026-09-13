@@ -8,7 +8,7 @@
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:background="@color/ic_launcher_background"
-    android:padding="12dp">
+    android:padding="16dp">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -17,9 +17,9 @@
         android:gravity="center_vertical">
         <ImageView
             android:id="@+id/widget_logo"
-            android:layout_width="18dp"
-            android:layout_height="18dp"
-            android:layout_marginEnd="6dp"
+            android:layout_width="26dp"
+            android:layout_height="26dp"
+            android:layout_marginEnd="8dp"
             android:src="@mipmap/ic_launcher"
             android:contentDescription="@null" />
         <TextView
@@ -29,24 +29,24 @@
             android:layout_weight="1"
             android:text="GOLD VISION"
             android:textColor="@color/widget_gold"
-            android:textSize="12sp"
+            android:textSize="16sp"
             android:textStyle="bold" />
         <!-- زر تحديث يدوي فوري — منفصل عن باقي الويدجت (يفتح التطبيق) -->
         <TextView
             android:id="@+id/widget_refresh"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:padding="4dp"
+            android:padding="6dp"
             android:text="⟳"
             android:textColor="@color/widget_gold"
-            android:textSize="15sp"
+            android:textSize="20sp"
             android:textStyle="bold" />
     </LinearLayout>
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="6dp"
+        android:layout_marginTop="10dp"
         android:orientation="horizontal">
         <TextView
             android:id="@+id/widget_label_24"
@@ -55,21 +55,21 @@
             android:layout_weight="1"
             android:text="24 عيار"
             android:textColor="#B8B8B8"
-            android:textSize="10sp" />
+            android:textSize="14sp" />
         <TextView
             android:id="@+id/widget_price_24"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="--"
             android:textColor="#F4F4F4"
-            android:textSize="11sp"
+            android:textSize="16sp"
             android:textStyle="bold" />
     </LinearLayout>
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="3dp"
+        android:layout_marginTop="6dp"
         android:orientation="horizontal">
         <TextView
             android:id="@+id/widget_label_22"
@@ -78,21 +78,21 @@
             android:layout_weight="1"
             android:text="22 عيار"
             android:textColor="#B8B8B8"
-            android:textSize="10sp" />
+            android:textSize="14sp" />
         <TextView
             android:id="@+id/widget_price_22"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="--"
             android:textColor="#F4F4F4"
-            android:textSize="11sp"
+            android:textSize="16sp"
             android:textStyle="bold" />
     </LinearLayout>
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="3dp"
+        android:layout_marginTop="6dp"
         android:orientation="horizontal">
         <TextView
             android:id="@+id/widget_label_21"
@@ -101,21 +101,21 @@
             android:layout_weight="1"
             android:text="21 عيار"
             android:textColor="#B8B8B8"
-            android:textSize="10sp" />
+            android:textSize="14sp" />
         <TextView
             android:id="@+id/widget_price_21"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="--"
             android:textColor="@color/widget_gold"
-            android:textSize="11sp"
+            android:textSize="16sp"
             android:textStyle="bold" />
     </LinearLayout>
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="3dp"
+        android:layout_marginTop="6dp"
         android:orientation="horizontal">
         <TextView
             android:id="@+id/widget_label_18"
@@ -124,14 +124,14 @@
             android:layout_weight="1"
             android:text="18 عيار"
             android:textColor="#B8B8B8"
-            android:textSize="10sp" />
+            android:textSize="14sp" />
         <TextView
             android:id="@+id/widget_price_18"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="--"
             android:textColor="#F4F4F4"
-            android:textSize="11sp"
+            android:textSize="16sp"
             android:textStyle="bold" />
     </LinearLayout>
 
@@ -139,9 +139,9 @@
         android:id="@+id/widget_updated_at"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="6dp"
+        android:layout_marginTop="10dp"
         android:text=""
         android:textColor="#777777"
-        android:textSize="8sp" />
+        android:textSize="10sp" />
 
 </LinearLayout>

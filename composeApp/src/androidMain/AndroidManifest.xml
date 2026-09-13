@@ -64,6 +64,18 @@
                 android:resource="@xml/gold_price_widget_info" />
         </receiver>
 
+        <!-- ويدجت ثانٍ منفصل لعرض قيمة المحفظة الحية (GoldPortfolioWidgetProvider.kt) -->
+        <receiver
+            android:name=".GoldPortfolioWidgetProvider"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/gold_portfolio_widget_info" />
+        </receiver>
+
     </application>
 
 </manifest>

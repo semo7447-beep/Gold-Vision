@@ -1,4 +1,5 @@
 <resources>
     <string name="app_name">Gold Vision</string>
     <string name="widget_description">عرض سعر الذهب الحي</string>
+    <string name="portfolio_widget_description">عرض قيمة محفظتك الحية</string>
 </resources>

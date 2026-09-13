@@ -100,7 +100,7 @@ internal fun buildWidgetRemoteViews(context: Context): RemoteViews {
     return views
 }
 
-private fun widgetUpdatedAtText(): String {
+internal fun widgetUpdatedAtText(): String {
     val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
     val hour = now.hour.toString().padStart(2, '0')
     val minute = now.minute.toString().padStart(2, '0')
