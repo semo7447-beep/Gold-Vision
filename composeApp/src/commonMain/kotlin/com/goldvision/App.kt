@@ -48,6 +48,7 @@ import androidx.compose.material.icons.outlined.AttachMoney
 import androidx.compose.material.icons.outlined.Balance
 import androidx.compose.material.icons.outlined.Calculate
 import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Home
@@ -350,7 +351,8 @@ fun App() {
             modifier = Modifier.fillMaxSize(),
             color = Black
         ) {
-            CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+            val layoutDirection = if (AppLanguage.current == AppLang.EN) LayoutDirection.Ltr else LayoutDirection.Rtl
+            CompositionLocalProvider(LocalLayoutDirection provides layoutDirection) {
                 LaunchedEffect(Unit) { seedDefaultPriceAlertsIfNeeded() }
                 var showOnboarding by remember { mutableStateOf(!hasSeenOnboarding()) }
                 if (showOnboarding) {
@@ -5142,6 +5144,8 @@ private fun MoreScreen(
     onNavigateNotifications: () -> Unit,
     onBack: () -> Unit
 ) {
+    var showLanguageDialog by remember { mutableStateOf(false) }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -5154,14 +5158,14 @@ private fun MoreScreen(
         ) {
             Icon(
                 imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
-                contentDescription = "رجوع",
+                contentDescription = t("رجوع", "Back"),
                 tint = Gold,
                 modifier = Modifier
                     .size(20.dp)
                     .clickable { onBack() }
             )
             Text(
-                "المزيد",
+                t("المزيد", "More"),
                 color = Gold,
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold
@@ -5196,13 +5200,13 @@ private fun MoreScreen(
                 }
                 Column {
                     Text(
-                        profile.name.ifBlank { "أضف اسمك" },
+                        profile.name.ifBlank { t("أضف اسمك", "Add your name") },
                         color = White,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        signedInEmail ?: "تعديل الملف الشخصي - سجّل دخولك",
+                        signedInEmail ?: t("تعديل الملف الشخصي - سجّل دخولك", "Edit profile - sign in"),
                         color = Gray,
                         fontSize = 10.sp
                     )
@@ -5218,7 +5222,7 @@ private fun MoreScreen(
 
         Spacer(Modifier.height(16.dp))
 
-        Text("الإعدادات", color = Gray, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+        Text(t("الإعدادات", "Settings"), color = Gray, fontSize = 11.sp, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(6.dp))
 
         Column(
@@ -5230,24 +5234,31 @@ private fun MoreScreen(
         ) {
             SettingsRow(
                 icon = Icons.Outlined.Notifications,
-                label = "الإشعارات",
+                label = t("الإشعارات", "Notifications"),
                 onClick = onNavigateNotifications
             )
             SettingsDivider()
-            SettingsRow(icon = Icons.Outlined.AttachMoney, label = "العملة")
+            SettingsRow(
+                icon = Icons.Outlined.Language,
+                label = t("اللغة", "Language"),
+                value = if (AppLanguage.current == AppLang.EN) "English" else "العربية",
+                onClick = { showLanguageDialog = true }
+            )
             SettingsDivider()
-            SettingsRow(icon = Icons.Outlined.Info, label = "عن التطبيق")
+            SettingsRow(icon = Icons.Outlined.AttachMoney, label = t("العملة", "Currency"))
+            SettingsDivider()
+            SettingsRow(icon = Icons.Outlined.Info, label = t("عن التطبيق", "About"))
             SettingsDivider()
             SettingsRow(
                 icon = Icons.Outlined.Balance,
-                label = "سياسة الخصوصية",
+                label = t("سياسة الخصوصية", "Privacy Policy"),
                 onClick = onNavigatePrivacyPolicy
             )
         }
 
         Spacer(Modifier.height(16.dp))
 
-        Text("الأمان", color = Gray, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+        Text(t("الأمان", "Security"), color = Gray, fontSize = 11.sp, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(6.dp))
 
         var appLockEnabled by remember { mutableStateOf(loadAppLockSettings().enabled) }
@@ -5262,10 +5273,13 @@ private fun MoreScreen(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Text("قفل التطبيق ببصمة/وجه", color = White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                Text(t("قفل التطبيق ببصمة/وجه", "App lock with fingerprint/face"), color = White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    "يطلب بصمتك أو وجهك أو رمز الجهاز عند كل فتح للتطبيق",
+                    t(
+                        "يطلب بصمتك أو وجهك أو رمز الجهاز عند كل فتح للتطبيق",
+                        "Requires your fingerprint, face, or device code every time you open the app"
+                    ),
                     color = Gray,
                     fontSize = 9.5.sp,
                     lineHeight = 14.sp
@@ -5288,10 +5302,14 @@ private fun MoreScreen(
 
         Spacer(Modifier.height(16.dp))
     }
+
+    if (showLanguageDialog) {
+        LanguagePickerDialog(onDismiss = { showLanguageDialog = false })
+    }
 }
 
 @Composable
-private fun SettingsRow(icon: ImageVector, label: String, tint: Color = Gold, onClick: () -> Unit = {}) {
+private fun SettingsRow(icon: ImageVector, label: String, tint: Color = Gold, value: String? = null, onClick: () -> Unit = {}) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -5307,12 +5325,20 @@ private fun SettingsRow(icon: ImageVector, label: String, tint: Color = Gold, on
             Icon(imageVector = icon, contentDescription = null, tint = tint, modifier = Modifier.size(18.dp))
             Text(label, color = if (tint == Red) Red else White, fontSize = 12.sp)
         }
-        Icon(
-            imageVector = Icons.AutoMirrored.Outlined.KeyboardArrowLeft,
-            contentDescription = null,
-            tint = Gray,
-            modifier = Modifier.size(16.dp)
-        )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            if (value != null) {
+                Text(value, color = Gray, fontSize = 11.sp)
+            }
+            Icon(
+                imageVector = Icons.AutoMirrored.Outlined.KeyboardArrowLeft,
+                contentDescription = null,
+                tint = Gray,
+                modifier = Modifier.size(16.dp)
+            )
+        }
     }
 }
 
@@ -5490,6 +5516,81 @@ private fun ProfileScreen(
             }
         )
     }
+    }
+}
+
+// نافذة اختيار لغة التطبيق — تُطبَّق فوراً وتُحفظ محلياً، تشمل اتجاه
+// الواجهة كاملة (RTL/LTR) بجانب النصوص المُترجَمة عبر t()
+@Composable
+private fun LanguagePickerDialog(onDismiss: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.65f))
+            .clickable(
+                indication = null,
+                interactionSource = remember { MutableInteractionSource() }
+            ) { onDismiss() },
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            modifier = Modifier
+                .padding(horizontal = 28.dp)
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(14.dp))
+                .border(1.dp, Border, RoundedCornerShape(14.dp))
+                .background(CardBlack)
+                .clickable(
+                    indication = null,
+                    interactionSource = remember { MutableInteractionSource() }
+                ) { }
+                .padding(18.dp)
+        ) {
+            Text(t("اللغة", "Language"), color = White, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(14.dp))
+
+            LanguageOptionRow(
+                label = "العربية",
+                selected = AppLanguage.current == AppLang.AR,
+                onClick = {
+                    AppLanguage.set(AppLang.AR)
+                    onDismiss()
+                }
+            )
+            Spacer(Modifier.height(8.dp))
+            LanguageOptionRow(
+                label = "English",
+                selected = AppLanguage.current == AppLang.EN,
+                onClick = {
+                    AppLanguage.set(AppLang.EN)
+                    onDismiss()
+                }
+            )
+        }
+    }
+}
+
+@Composable
+private fun LanguageOptionRow(label: String, selected: Boolean, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(9.dp))
+            .border(1.dp, if (selected) Gold else Border, RoundedCornerShape(9.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 12.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(label, color = if (selected) Gold else White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+        if (selected) {
+            Icon(
+                imageVector = Icons.Outlined.Check,
+                contentDescription = null,
+                tint = Gold,
+                modifier = Modifier.size(18.dp)
+            )
+        }
     }
 }
 
@@ -7523,12 +7624,12 @@ private fun BottomNav(
     onSelected: (Int) -> Unit
 ) {
     val tabs: List<Pair<String, ImageVector>> = listOf(
-        "الرئيسية" to Icons.Outlined.Home,
-        "حاسبة الذهب" to Icons.Outlined.Calculate,
-        "الأخبار" to Icons.AutoMirrored.Outlined.Article,
-        "المحفظة" to Icons.Outlined.AccountBalanceWallet,
-        "الزكاة" to Icons.Outlined.Balance,
-        "المزيد" to Icons.Outlined.MoreHoriz
+        t("الرئيسية", "Home") to Icons.Outlined.Home,
+        t("حاسبة الذهب", "Calculator") to Icons.Outlined.Calculate,
+        t("الأخبار", "News") to Icons.AutoMirrored.Outlined.Article,
+        t("المحفظة", "Portfolio") to Icons.Outlined.AccountBalanceWallet,
+        t("الزكاة", "Zakat") to Icons.Outlined.Balance,
+        t("المزيد", "More") to Icons.Outlined.MoreHoriz
     )
 
     Row(
