@@ -6960,12 +6960,44 @@ private fun PriceChart(
     val karatPercent = GoldMarket.prices.first { it.karat == selectedKarat }.percent
     val minPrice = basePrice * 0.94
     val maxPrice = basePrice * 1.06
+    var showAnalysis by remember { mutableStateOf(false) }
 
     AppCard(
         title = "تتبع أسعار الذهب",
         titleIcon = Icons.AutoMirrored.Outlined.ShowChart,
         modifier = Modifier.fillMaxSize()
     ) {
+        // مفتاح التبديل بين تتبع الأسعار (رسم بسيط) والتحليل الفني
+        // (شموع يابانية) — نفس مفتاح شاشة الرسم البياني الكاملة بالضبط
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(8.dp))
+                .border(1.dp, Border, RoundedCornerShape(8.dp))
+                .padding(2.dp)
+        ) {
+            listOf(false to "تتبع الأسعار", true to "التحليل الفني").forEach { (analysisMode, label) ->
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(if (showAnalysis == analysisMode) Gold else Color.Transparent)
+                        .clickable { showAnalysis = analysisMode }
+                        .padding(vertical = 6.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        label,
+                        color = if (showAnalysis == analysisMode) Black else Gray,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+        }
+
+        Spacer(Modifier.height(8.dp))
+
         val periods = chartPeriods
 
         Row(
@@ -7007,41 +7039,52 @@ private fun PriceChart(
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f)
-                .clickable { onChartClick() }
+                // بوضع التحليل الفني، رسم الشموع يتعامل مع اللمس بنفسه
+                // (تكبير/سحب/تلميح) — تفعيل النقر للتنقل هنا كان يتعارض
+                // مع تلك الإيماءات، فنعطّله في هذا الوضع تحديداً فقط
+                .then(if (!showAnalysis) Modifier.clickable { onChartClick() } else Modifier)
         ) {
             KaratChartCanvas(
                 modifier = Modifier.fillMaxSize(),
                 basePrice = basePrice,
                 seed = karatChartSeeds[selectedKarat] ?: 1,
                 period = selectedPeriod,
-                realPoints = realChartPointsFor(selectedKarat, selectedPeriod)
+                realPoints = realChartPointsFor(selectedKarat, selectedPeriod),
+                realBars = if (showAnalysis) realBarsFor(selectedPeriod) else null,
+                karat = selectedKarat
             )
 
-            Column(
-                modifier = Modifier
-                    .align(Alignment.TopStart)
-                    .padding(top = 2.dp, end = 2.dp),
-                horizontalAlignment = Alignment.End
-            ) {
-                Text("أعلى سعر", color = Gray, fontSize = 8.5.sp)
-                Text(
-                    fmt(maxPrice, 2),
-                    color = White,
-                    fontSize = 10.5.sp,
-                    fontWeight = FontWeight.Bold
-                )
-                Text("ريال", color = Gray, fontSize = 8.sp)
+            // تُخفى بوضع التحليل الفني (الشموع) لأنها تتشارك نفس الركن
+            // (أعلى يمين بالـ RTL) مع زر "إعادة ضبط" التكبير داخل رسم
+            // الشموع، والشموع أصلاً توفّر أعلى/أدنى سعر بتفصيل أدق عبر
+            // بطاقة التلميح عند اللمس
+            if (!showAnalysis) {
+                Column(
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .padding(top = 2.dp, end = 2.dp),
+                    horizontalAlignment = Alignment.End
+                ) {
+                    Text("أعلى سعر", color = Gray, fontSize = 8.5.sp)
+                    Text(
+                        fmt(maxPrice, 2),
+                        color = White,
+                        fontSize = 10.5.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text("ريال", color = Gray, fontSize = 8.sp)
 
-                Spacer(Modifier.height(6.dp))
+                    Spacer(Modifier.height(6.dp))
 
-                Text("أدنى سعر", color = Gray, fontSize = 8.5.sp)
-                Text(
-                    fmt(minPrice, 2),
-                    color = White,
-                    fontSize = 10.5.sp,
-                    fontWeight = FontWeight.Bold
-                )
-                Text("ريال", color = Gray, fontSize = 8.sp)
+                    Text("أدنى سعر", color = Gray, fontSize = 8.5.sp)
+                    Text(
+                        fmt(minPrice, 2),
+                        color = White,
+                        fontSize = 10.5.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text("ريال", color = Gray, fontSize = 8.sp)
+                }
             }
         }
     }
