@@ -6959,7 +6959,7 @@ private fun PriceChart(
         titleIcon = Icons.AutoMirrored.Outlined.ShowChart,
         modifier = Modifier.fillMaxSize()
     ) {
-        val periods = listOf("24 ساعة", "أسبوع", "شهر", "3 شهور", "6 شهور", "سنة", "سنتان")
+        val periods = chartPeriods
 
         Row(
             modifier = Modifier
