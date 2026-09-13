@@ -1,0 +1,81 @@
+package com.goldvision
+
+import android.app.PendingIntent
+import android.appwidget.AppWidgetManager
+import android.appwidget.AppWidgetProvider
+import android.content.Context
+import android.content.Intent
+import android.widget.RemoteViews
+import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.PeriodicWorkRequestBuilder
+import androidx.work.WorkManager
+import kotlinx.datetime.Clock
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
+import java.util.concurrent.TimeUnit
+
+private const val WIDGET_UPDATE_WORK_NAME = "gold_vision_widget_update"
+
+// ويدجت الشاشة الرئيسية لعرض السعر الحي — يستخدم AppWidgetProvider/RemoteViews
+// القياسيين في أندرويد (بلا مكتبة Compose إضافية للويدجتات)، حتى تبقى
+// موثوقية الواجهة عالية بغض النظر عن إصدار أي مكتبة خارجية
+internal class GoldPriceWidgetProvider : AppWidgetProvider() {
+    override fun onUpdate(context: Context, appWidgetManager: AppWidgetManager, appWidgetIds: IntArray) {
+        // عرض فوري بآخر سعر موجود بالذاكرة (حتى لو قديم) بدل شاشة فارغة،
+        // ثم يُستبدل بالسعر الفعلي الجديد بعد اكتمال عامل التحديث أدناه
+        appWidgetIds.forEach { appWidgetId ->
+            appWidgetManager.updateAppWidget(appWidgetId, buildWidgetRemoteViews(context))
+        }
+        WorkManager.getInstance(context).enqueue(OneTimeWorkRequestBuilder<GoldPriceWidgetWorker>().build())
+    }
+
+    // أول ويدجت يُضاف للشاشة الرئيسية: يبدأ تحديثاً دورياً كل 30 دقيقة
+    override fun onEnabled(context: Context) {
+        val request = PeriodicWorkRequestBuilder<GoldPriceWidgetWorker>(30, TimeUnit.MINUTES).build()
+        WorkManager.getInstance(context).enqueueUniquePeriodicWork(
+            WIDGET_UPDATE_WORK_NAME,
+            ExistingPeriodicWorkPolicy.KEEP,
+            request
+        )
+    }
+
+    // آخر ويدجت يُحذف من الشاشة الرئيسية: يوقف التحديث الدوري توفيراً للبطارية
+    override fun onDisabled(context: Context) {
+        WorkManager.getInstance(context).cancelUniqueWork(WIDGET_UPDATE_WORK_NAME)
+    }
+}
+
+// يبني محتوى الويدجت من آخر أسعار متوفرة في الذاكرة (GoldMarket.prices) —
+// مشتركة بين onUpdate (عرض فوري) وGoldPriceWidgetWorker (بعد تحديث حقيقي)
+internal fun buildWidgetRemoteViews(context: Context): RemoteViews {
+    val views = RemoteViews(context.packageName, R.layout.gold_price_widget)
+    GoldMarket.prices.forEach { price ->
+        val priceId = when (price.karat) {
+            "24K" -> R.id.widget_price_24
+            "22K" -> R.id.widget_price_22
+            "21K" -> R.id.widget_price_21
+            "18K" -> R.id.widget_price_18
+            else -> return@forEach
+        }
+        views.setTextViewText(priceId, "${fmt(price.price, 2)} ريال")
+    }
+    views.setTextViewText(R.id.widget_updated_at, widgetUpdatedAtText())
+
+    val openAppIntent = Intent(context, MainActivity::class.java)
+    val pendingIntent = PendingIntent.getActivity(
+        context,
+        0,
+        openAppIntent,
+        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+    )
+    views.setOnClickPendingIntent(R.id.widget_root, pendingIntent)
+    return views
+}
+
+private fun widgetUpdatedAtText(): String {
+    val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
+    val hour = now.hour.toString().padStart(2, '0')
+    val minute = now.minute.toString().padStart(2, '0')
+    return "آخر تحديث: $hour:$minute"
+}
