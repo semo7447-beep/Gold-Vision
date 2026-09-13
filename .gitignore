@@ -13,3 +13,6 @@ iosApp/build/
 iosApp/Pods/
 *.xcuserstate
 DerivedData/
+
+# ملفات مسودة مؤقتة (مثل صفحات تُنشر كـ Artifact) — ليست جزءاً من التطبيق
+scratch/
