@@ -87,6 +87,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.focus.FocusRequester
@@ -3185,7 +3186,6 @@ internal fun usdPerOunceToSarPerGram(usdPerOunce: Double, karat: String): Double
 // لم تتوفر (الفترة أطول من سقف الخطة المجانية 30 يوماً، أو لم يجلب
 // التطبيق بيانات بعد)
 private fun realBarsFor(period: String): List<HistoryBar>? {
-    if (periodDaysFor(period) > 30) return null
     val bars = GoldHistory.dailyBarsUsdPerOunce
     if (bars.isEmpty()) return null
     val cutoff = todayLocalDate().minus((periodDaysFor(period) - 1).coerceAtLeast(0), DateTimeUnit.DAY)
@@ -3443,7 +3443,10 @@ private fun CandlestickChart(modifier: Modifier, bars: List<HistoryBar>, karat: 
     fun dateLabel(bar: HistoryBar): String =
         "${bar.date.dayOfMonth.toString().padStart(2, '0')}/${bar.date.monthNumber.toString().padStart(2, '0')}"
 
-    Box(modifier = modifier) {
+    // clipToBounds تضمن عدم تجاوز أي عنصر داخلي (بطاقة التلميح أو زر
+    // إعادة الضبط) للمساحة المخصَّصة للرسم البياني بصرياً مهما كان
+    // موضعه أو حجمه
+    Box(modifier = modifier.clipToBounds()) {
         Canvas(
             modifier = Modifier
                 .fillMaxSize()
@@ -3585,8 +3588,12 @@ private fun CandlestickChart(modifier: Modifier, bars: List<HistoryBar>, karat: 
         if (scale > 1.01f) {
             Row(
                 modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(top = 4.dp, end = 4.dp)
+                    // TopStart (يمين الشاشة فعلياً بما إن التطبيق RTL) بدل
+                    // TopEnd — تسميات المحور السعري الأعلى تُرسم داخل الـ
+                    // Canvas عند x=0 (يسار فعلي دائماً بغض النظر عن اتجاه
+                    // الواجهة)، فلو حطينا الزر بنفس الجهة يتصادمان بصرياً
+                    .align(Alignment.TopStart)
+                    .padding(top = 4.dp, start = 4.dp)
                     .clip(RoundedCornerShape(6.dp))
                     .background(CardBlack)
                     .border(1.dp, Border, RoundedCornerShape(6.dp))
