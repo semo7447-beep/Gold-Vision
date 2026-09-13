@@ -3919,14 +3919,14 @@ private fun NewsScreen(onBack: () -> Unit) {
         ) {
             Icon(
                 imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
-                contentDescription = "رجوع",
+                contentDescription = t("رجوع", "Back"),
                 tint = Gold,
                 modifier = Modifier
                     .size(20.dp)
                     .clickable { onBack() }
             )
             Text(
-                "الأخبار",
+                t("الأخبار", "News"),
                 color = Gold,
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold
@@ -3935,7 +3935,7 @@ private fun NewsScreen(onBack: () -> Unit) {
         if (newsList.isEmpty()) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Text(
-                    if (isLoading) "جارٍ تحميل الأخبار..." else (error ?: "لا توجد أخبار متوفرة حالياً"),
+                    if (isLoading) t("جارٍ تحميل الأخبار...", "Loading news...") else (error ?: t("لا توجد أخبار متوفرة حالياً", "No news available right now")),
                     color = Gray,
                     fontSize = 12.sp
                 )
@@ -7541,7 +7541,7 @@ private fun FedMeetingsScreen(onBack: () -> Unit) {
         ) {
             Icon(
                 imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
-                contentDescription = "رجوع",
+                contentDescription = t("رجوع", "Back"),
                 tint = Gold,
                 modifier = Modifier
                     .size(20.dp)

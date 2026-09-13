@@ -58,7 +58,7 @@ internal object GoldNews {
             if (lastError == null) {
                 reportSilentError("GoldNews.refresh failed: ${e.message} | body: ${rawBody.take(500)}")
             }
-            lastError = "تعذر تحديث الأخبار، يتم عرض آخر الأخبار المتوفرة"
+            lastError = t("تعذر تحديث الأخبار، يتم عرض آخر الأخبار المتوفرة", "Couldn't refresh news, showing the last available news")
         } finally {
             isLoading = false
         }
@@ -110,10 +110,10 @@ private fun relativeTimeFromRfc822(rfc822: String): String {
             .toInstant(TimeZone.UTC)
         val minutesAgo = (Clock.System.now() - published).inWholeMinutes.coerceAtLeast(0)
         when {
-            minutesAgo < 1 -> "الآن"
-            minutesAgo < 60 -> "منذ $minutesAgo دقيقة"
-            minutesAgo < 60 * 24 -> "منذ ${minutesAgo / 60} ساعة"
-            else -> "منذ ${minutesAgo / (60 * 24)} يوم"
+            minutesAgo < 1 -> t("الآن", "Now")
+            minutesAgo < 60 -> t("منذ $minutesAgo دقيقة", "$minutesAgo min ago")
+            minutesAgo < 60 * 24 -> t("منذ ${minutesAgo / 60} ساعة", "${minutesAgo / 60}h ago")
+            else -> t("منذ ${minutesAgo / (60 * 24)} يوم", "${minutesAgo / (60 * 24)}d ago")
         }
     } catch (e: Exception) {
         ""
