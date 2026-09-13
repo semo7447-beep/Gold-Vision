@@ -52,6 +52,8 @@ kotlin {
             // مكتبات Firebase معاً حتى تبقى متوافقة
             implementation(platform("com.google.firebase:firebase-bom:33.7.0"))
             implementation("com.google.firebase:firebase-auth")
+            // مزامنة المحفظة السحابية للمستخدمين المسجَّلين دخول (PortfolioSync.android.kt)
+            implementation("com.google.firebase:firebase-firestore")
             // قفل التطبيق ببصمة/وجه/رمز الجهاز (BiometricLock.android.kt)
             implementation("androidx.biometric:biometric:1.1.0")
         }

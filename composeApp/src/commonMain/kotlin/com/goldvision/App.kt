@@ -185,7 +185,7 @@ private data class ZakatItem(
 // قطعة ذهب أضافها المستخدم بنفسه عبر شاشة "إضافة قطعة" — تظهر في المحفظة
 // وفي الزكاة معاً (نفس الصنف بنفس البيانات)، بسعر يُحسب حياً من GoldMarket
 @Serializable
-private data class GoldItem(
+internal data class GoldItem(
     val name: String,
     val emoji: String,
     val karat: String,
@@ -420,6 +420,14 @@ private fun GoldVisionApp() {
         }
     }
 
+    // إن كان المستخدم مسجّل دخول أصلاً من جلسة سابقة، يزامن محفظته مع
+    // السحابة مرة واحدة عند بدء التطبيق (وليس كل فتح شاشة)
+    LaunchedEffect(Unit) {
+        if (AuthService.currentUserEmail != null) {
+            syncPortfolioWithCloud(savedGoldItems)
+        }
+    }
+
     // يجلب أخبار الذهب الحقيقية (GoldNews.kt) عند فتح التطبيق، ثم كل
     // 30 دقيقة — أخبار مالية لا تحتاج تحديثاً شبه لحظي كالأسعار
     LaunchedEffect(Unit) {
@@ -534,6 +542,7 @@ private fun GoldVisionApp() {
                             savedGoldItems.add(0, item)
                         }
                         persistGoldItems(savedGoldItems)
+                        uploadPortfolioIfSignedIn(savedGoldItems, marketScope)
                         // الحفظ القادم من الحاسبة (prefillGoldItem) ينقل تلقائياً
                         // إلى شاشة المحفظة، حتى يرى المستخدم القطعة فور حفظها
                         if (prefillGoldItem != null) {
@@ -549,6 +558,7 @@ private fun GoldVisionApp() {
                                 savedGoldItems.removeAt(editingIndex)
                             }
                             persistGoldItems(savedGoldItems)
+                        uploadPortfolioIfSignedIn(savedGoldItems, marketScope)
                             showAddGoldItem = false
                             editingGoldItemIndex = null
                             prefillGoldItem = null
@@ -584,6 +594,7 @@ private fun GoldVisionApp() {
                         signedInEmail = AuthService.currentUserEmail
                         showAuthScreen = false
                         showProfileScreen = true
+                        marketScope.launch { syncPortfolioWithCloud(savedGoldItems) }
                     }
                 )
             } else if (showPrivacyPolicy) {
@@ -3391,7 +3402,7 @@ private val defaultGoldItems = listOf(
 // يُخزَّن ملف JSON بسيط على جهاز المستخدم فقط عبر AppStorage (لا سحابة
 // ولا خادم)، حتى تبقى قطع المحفظة والزكاة محفوظة بين جلسات التطبيق
 // بدل أن تُفقد عند إغلاقه كما كان سابقاً
-private const val goldItemsStorageFile = "gold_items.json"
+internal const val goldItemsStorageFile = "gold_items.json"
 
 private fun loadSavedGoldItems(): List<GoldItem> {
     val text = AppStorage.readText(goldItemsStorageFile) ?: return defaultGoldItems
@@ -3404,8 +3415,49 @@ private fun loadSavedGoldItems(): List<GoldItem> {
     }
 }
 
-private fun persistGoldItems(items: List<GoldItem>) {
+internal fun persistGoldItems(items: List<GoldItem>) {
     AppStorage.writeText(goldItemsStorageFile, Json.encodeToString(items))
+}
+
+// يرفع المحفظة الحالية للسحابة فوراً بعد أي تعديل محلي (إضافة/تعديل/حذف
+// قطعة)، بصمت وبدون انتظار — فقط إن كان المستخدم مسجّل دخول بالإيميل
+private fun uploadPortfolioIfSignedIn(items: List<GoldItem>, scope: kotlinx.coroutines.CoroutineScope) {
+    if (AuthService.currentUserEmail == null) return
+    scope.launch {
+        try {
+            val nowMillis = Clock.System.now().toEpochMilliseconds()
+            PortfolioSync.upload(Json.encodeToString(items), nowMillis)
+            persistPortfolioUpdatedAt(nowMillis)
+        } catch (e: Exception) {
+            reportSilentError("uploadPortfolioIfSignedIn failed: ${e.message}")
+        }
+    }
+}
+
+// يزامن المحفظة المحلية مع نسخة السحابة عند تسجيل الدخول أو بدء التطبيق
+// وهو مسجّل دخول أصلاً: يُنزّل ويستبدل المحلية لو كانت نسخة السحابة أحدث
+// تعديلاً، أو يرفع نسخته المحلية لو كانت هي الأحدث (أو لا توجد نسخة سحابية بعد)
+private suspend fun syncPortfolioWithCloud(
+    localItems: androidx.compose.runtime.snapshots.SnapshotStateList<GoldItem>
+) {
+    if (AuthService.currentUserEmail == null) return
+    try {
+        val localUpdatedAt = loadPortfolioUpdatedAt()
+        val cloud = PortfolioSync.download()
+        if (cloud != null && cloud.second > localUpdatedAt) {
+            val cloudItems = Json.decodeFromString<List<GoldItem>>(cloud.first)
+            localItems.clear()
+            localItems.addAll(cloudItems)
+            persistGoldItems(cloudItems)
+            persistPortfolioUpdatedAt(cloud.second)
+        } else {
+            val nowMillis = Clock.System.now().toEpochMilliseconds()
+            PortfolioSync.upload(Json.encodeToString(localItems.toList()), nowMillis)
+            persistPortfolioUpdatedAt(nowMillis)
+        }
+    } catch (e: Exception) {
+        reportSilentError("syncPortfolioWithCloud failed: ${e.message}")
+    }
 }
 
 private const val userProfileStorageFile = "user_profile.json"
