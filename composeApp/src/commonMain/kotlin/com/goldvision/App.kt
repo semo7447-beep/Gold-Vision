@@ -705,7 +705,6 @@ private fun GoldVisionApp() {
             .navigationBarsPadding()
     ) {
         Header(
-            onRefresh = { marketScope.launch { GoldMarket.refresh() } },
             showNotificationBadge = !notificationSettings.dailyPriceEnabled,
             onNotificationsClick = { showNotificationSettings = true },
             onAccountClick = { if (signedInEmail != null) showProfileScreen = true else showAuthScreen = true }
@@ -6181,11 +6180,11 @@ private fun AddPriceAlertDialog(
 // ==================== الشريط العلوي ====================
 @Composable
 private fun Header(
-    onRefresh: () -> Unit,
     showNotificationBadge: Boolean,
     onNotificationsClick: () -> Unit,
     onAccountClick: () -> Unit
 ) {
+    val shareApp = AppShare.rememberShareTrigger()
     CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
         Row(
             modifier = Modifier
@@ -6220,7 +6219,7 @@ private fun Header(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(5.dp)
             ) {
-                CircleButton(Icons.Outlined.Refresh, onClick = onRefresh)
+                CircleButton(Icons.Outlined.Share, onClick = shareApp)
                 SmallGoldButton("SAR")
                 CircleButton(Icons.Outlined.AccountCircle, onClick = onAccountClick)
             }
