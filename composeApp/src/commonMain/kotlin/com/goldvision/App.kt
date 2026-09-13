@@ -425,26 +425,40 @@ private fun markOnboardingSeen() {
 
 private data class OnboardingPage(val title: String, val description: String, val icon: ImageVector)
 
-private val onboardingPages = listOf(
+// دالة بدل val ثابتة حتى تبقى النصوص متجاوبة مع اللغة الحالية عند كل استدعاء
+private fun onboardingPages(): List<OnboardingPage> = listOf(
     OnboardingPage(
-        "تتبع أسعار الذهب لحظياً",
-        "أسعار حقيقية تتحدث تلقائياً لكل العيارات (24، 22، 21، 18)، مع رسم بياني تاريخي لعدة فترات.",
+        t("تتبع أسعار الذهب لحظياً", "Track Gold Prices Live"),
+        t(
+            "أسعار حقيقية تتحدث تلقائياً لكل العيارات (24، 22، 21، 18)، مع رسم بياني تاريخي لعدة فترات.",
+            "Real prices that update automatically for every karat (24, 22, 21, 18), with a historical chart for several periods."
+        ),
         Icons.AutoMirrored.Outlined.ShowChart
     ),
     OnboardingPage(
-        "محفظتك وزكاتك في مكان واحد",
-        "أضف قطعك الذهبية، وتابع قيمتها الحية، واحسب زكاتك تلقائياً وفق النصاب الشرعي.",
+        t("محفظتك وزكاتك في مكان واحد", "Your Portfolio and Zakat in One Place"),
+        t(
+            "أضف قطعك الذهبية، وتابع قيمتها الحية، واحسب زكاتك تلقائياً وفق النصاب الشرعي.",
+            "Add your gold items, track their live value, and calculate your Zakat automatically according to the Shariah Nisab."
+        ),
         Icons.Outlined.AccountBalanceWallet
     ),
     OnboardingPage(
-        "قيّم عروض المحلات",
-        "قبل ما تشتري أو تبيع، قارن سعر المحل بالسعر العادل فوراً واعرف هل الصفقة ممتازة.",
+        t("قيّم عروض المحلات", "Evaluate Shop Offers"),
+        t(
+            "قبل ما تشتري أو تبيع، قارن سعر المحل بالسعر العادل فوراً واعرف هل الصفقة ممتازة.",
+            "Before you buy or sell, instantly compare the shop's price to the fair price and know if the deal is great."
+        ),
         Icons.Outlined.Store
     ),
     OnboardingPage(
-        "تنبيهات ذكية",
-        "نبّهك عند وصول السعر لهدفك، وعند اقتراب اجتماعات الفيدرالي المؤثرة على السوق. " +
-            "وحتى تجرّب الميزة فوراً، نضيف لك تلقائياً تنبيهين جاهزين على عيار 24 (ارتفاع 5 ريال وانخفاض 5 ريال) تقدر تعدّلهم أو تحذفهم متى ما أردت.",
+        t("تنبيهات ذكية", "Smart Alerts"),
+        t(
+            "نبّهك عند وصول السعر لهدفك، وعند اقتراب اجتماعات الفيدرالي المؤثرة على السوق. " +
+                "وحتى تجرّب الميزة فوراً، نضيف لك تلقائياً تنبيهين جاهزين على عيار 24 (ارتفاع 5 ريال وانخفاض 5 ريال) تقدر تعدّلهم أو تحذفهم متى ما أردت.",
+            "We notify you when the price reaches your target, and when Fed meetings that affect the market approach. " +
+                "So you can try the feature right away, we automatically add two ready alerts on 24K gold (+5 SAR and -5 SAR) that you can edit or delete anytime."
+        ),
         Icons.Outlined.Notifications
     )
 )
@@ -464,8 +478,8 @@ private fun OnboardingAlertsPreview() {
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         listOf(
-            Triple(true, "24 عيار", "عند الارتفاع 5 ريال"),
-            Triple(false, "24 عيار", "عند الانخفاض 5 ريال")
+            Triple(true, t("24 عيار", "24K"), t("عند الارتفاع 5 ريال", "On +5 SAR rise")),
+            Triple(false, t("24 عيار", "24K"), t("عند الانخفاض 5 ريال", "On -5 SAR drop"))
         ).forEach { (isUpward, karat, subtitle) ->
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -506,9 +520,10 @@ private fun OnboardingAlertsPreview() {
 
 @Composable
 private fun OnboardingScreen(onFinish: () -> Unit) {
-    val pagerState = rememberPagerState(pageCount = { onboardingPages.size })
+    val pages = onboardingPages()
+    val pagerState = rememberPagerState(pageCount = { pages.size })
     val scope = rememberCoroutineScope()
-    val isLastPage = pagerState.currentPage == onboardingPages.lastIndex
+    val isLastPage = pagerState.currentPage == pages.lastIndex
 
     Column(
         modifier = Modifier
@@ -526,7 +541,7 @@ private fun OnboardingScreen(onFinish: () -> Unit) {
         Spacer(Modifier.weight(1f))
 
         HorizontalPager(state = pagerState, modifier = Modifier.fillMaxWidth()) { page ->
-            val item = onboardingPages[page]
+            val item = pages[page]
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier
@@ -558,7 +573,7 @@ private fun OnboardingScreen(onFinish: () -> Unit) {
                     textAlign = TextAlign.Center,
                     lineHeight = 20.sp
                 )
-                if (page == onboardingPages.lastIndex) {
+                if (page == pages.lastIndex) {
                     Spacer(Modifier.height(16.dp))
                     OnboardingAlertsPreview()
                 }
@@ -567,7 +582,7 @@ private fun OnboardingScreen(onFinish: () -> Unit) {
 
         Spacer(Modifier.height(28.dp))
         Row(horizontalArrangement = Arrangement.Center, modifier = Modifier.fillMaxWidth()) {
-            onboardingPages.indices.forEach { index ->
+            pages.indices.forEach { index ->
                 Box(
                     modifier = Modifier
                         .padding(horizontal = 4.dp)
@@ -595,12 +610,12 @@ private fun OnboardingScreen(onFinish: () -> Unit) {
                 },
             contentAlignment = Alignment.Center
         ) {
-            Text(if (isLastPage) "ابدأ" else "التالي", color = Black, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+            Text(if (isLastPage) t("ابدأ", "Start") else t("التالي", "Next"), color = Black, fontSize = 14.sp, fontWeight = FontWeight.Bold)
         }
 
         Spacer(Modifier.height(14.dp))
         Text(
-            if (isLastPage) " " else "تخطي",
+            if (isLastPage) " " else t("تخطي", "Skip"),
             color = Gray,
             fontSize = 12.sp,
             textAlign = TextAlign.Center,
@@ -5485,14 +5500,14 @@ private fun ProfileScreen(
         ) {
             Icon(
                 imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
-                contentDescription = "رجوع",
+                contentDescription = t("رجوع", "Back"),
                 tint = Gold,
                 modifier = Modifier
                     .size(22.dp)
                     .clickable { onBack() }
             )
             Text(
-                "الملف الشخصي",
+                t("الملف الشخصي", "Profile"),
                 color = White,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,
@@ -5515,10 +5530,10 @@ private fun ProfileScreen(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Text("الحساب", color = White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                Text(t("الحساب", "Account"), color = White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    signedInEmail ?: "لم تسجّل الدخول بعد — تسجيل الدخول اختياري",
+                    signedInEmail ?: t("لم تسجّل الدخول بعد — تسجيل الدخول اختياري", "Not signed in yet — sign in is optional"),
                     color = Gray,
                     fontSize = 10.sp
                 )
@@ -5531,7 +5546,7 @@ private fun ProfileScreen(
                     .padding(horizontal = 12.dp, vertical = 8.dp)
             ) {
                 Text(
-                    if (signedInEmail != null) "تسجيل الخروج" else "تسجيل الدخول",
+                    if (signedInEmail != null) t("تسجيل الخروج", "Sign Out") else t("تسجيل الدخول", "Sign In"),
                     color = if (signedInEmail != null) Red else Gold,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold
@@ -5544,25 +5559,25 @@ private fun ProfileScreen(
         if (signedInEmail != null) {
             Spacer(Modifier.height(16.dp))
             Text(
-                "الاسم والصورة الرمزية أدناه محليان على جهازك فقط",
+                t("الاسم والصورة الرمزية أدناه محليان على جهازك فقط", "The name and avatar below are local to your device only"),
                 color = Gray,
                 fontSize = 10.sp
             )
 
             Spacer(Modifier.height(20.dp))
 
-            Text("الاسم", color = Gray, fontSize = 10.sp)
+            Text(t("الاسم", "Name"), color = Gray, fontSize = 10.sp)
             Spacer(Modifier.height(6.dp))
             SelectableTextField(
                 value = name,
                 onValueChange = { name = it },
-                placeholder = "مثال: محمد العتيبي",
+                placeholder = t("مثال: محمد العتيبي", "e.g. John Smith"),
                 modifier = Modifier.fillMaxWidth().height(42.dp)
             )
 
             Spacer(Modifier.height(16.dp))
 
-            Text("الصورة الرمزية", color = Gray, fontSize = 10.sp)
+            Text(t("الصورة الرمزية", "Avatar"), color = Gray, fontSize = 10.sp)
             Spacer(Modifier.height(6.dp))
             Row(
                 modifier = Modifier
@@ -5601,7 +5616,7 @@ private fun ProfileScreen(
                     .clickable { onSave(UserProfile(name = name.trim(), avatar = selectedAvatar)) },
                 contentAlignment = Alignment.Center
             ) {
-                Text("حفظ", color = Black, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                Text(t("حفظ", "Save"), color = Black, fontSize = 13.sp, fontWeight = FontWeight.Bold)
             }
         }
 
@@ -5610,9 +5625,9 @@ private fun ProfileScreen(
 
     if (showSignOutConfirm) {
         ConfirmDialog(
-            title = "تسجيل الخروج",
-            message = "هل أنت متأكد من تسجيل الخروج؟",
-            confirmLabel = "تسجيل الخروج",
+            title = t("تسجيل الخروج", "Sign Out"),
+            message = t("هل أنت متأكد من تسجيل الخروج؟", "Are you sure you want to sign out?"),
+            confirmLabel = t("تسجيل الخروج", "Sign Out"),
             confirmColor = Red,
             onDismiss = { showSignOutConfirm = false },
             onConfirm = {
@@ -5799,15 +5814,15 @@ private fun AuthScreen(onBack: () -> Unit, onAuthSuccess: () -> Unit) {
         infoText = null
         val trimmedEmail = email.trim()
         if (!isValidEmail(trimmedEmail)) {
-            errorText = "الرجاء إدخال بريد إلكتروني صحيح"
+            errorText = t("الرجاء إدخال بريد إلكتروني صحيح", "Please enter a valid email address")
             return
         }
         if (password.length < 6) {
-            errorText = "كلمة المرور 6 أحرف على الأقل"
+            errorText = t("كلمة المرور 6 أحرف على الأقل", "Password must be at least 6 characters")
             return
         }
         if (isSignUpMode && password != confirmPassword) {
-            errorText = "كلمتا المرور غير متطابقتين"
+            errorText = t("كلمتا المرور غير متطابقتين", "Passwords do not match")
             return
         }
         isLoading = true
@@ -5823,7 +5838,7 @@ private fun AuthScreen(onBack: () -> Unit, onAuthSuccess: () -> Unit) {
             } else if (isSignUpMode) {
                 // نُبقي المستخدم لحظة على الشاشة ليرى تنبيه إرسال رابط
                 // تأكيد البريد قبل الانتقال لباقي التطبيق
-                infoText = "تم إنشاء حسابك بنجاح، وأُرسل رابط تأكيد إلى بريدك الإلكتروني"
+                infoText = t("تم إنشاء حسابك بنجاح، وأُرسل رابط تأكيد إلى بريدك الإلكتروني", "Your account was created successfully, and a confirmation link was sent to your email")
                 delay(1600)
                 onAuthSuccess()
             } else {
@@ -5844,14 +5859,14 @@ private fun AuthScreen(onBack: () -> Unit, onAuthSuccess: () -> Unit) {
         ) {
             Icon(
                 imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
-                contentDescription = "رجوع",
+                contentDescription = t("رجوع", "Back"),
                 tint = Gold,
                 modifier = Modifier
                     .size(22.dp)
                     .clickable { onBack() }
             )
             Text(
-                if (isSignUpMode) "حساب جديد" else "تسجيل الدخول",
+                if (isSignUpMode) t("حساب جديد", "New Account") else t("تسجيل الدخول", "Sign In"),
                 color = White,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,
@@ -5863,14 +5878,14 @@ private fun AuthScreen(onBack: () -> Unit, onAuthSuccess: () -> Unit) {
 
         Spacer(Modifier.height(16.dp))
         Text(
-            "اختياري تماماً — التطبيق يعمل بكامل ميزاته بلا تسجيل دخول",
+            t("اختياري تماماً — التطبيق يعمل بكامل ميزاته بلا تسجيل دخول", "Completely optional — the app works with all its features without signing in"),
             color = Gray,
             fontSize = 10.sp
         )
 
         Spacer(Modifier.height(20.dp))
 
-        Text("البريد الإلكتروني", color = Gray, fontSize = 10.sp)
+        Text(t("البريد الإلكتروني", "Email"), color = Gray, fontSize = 10.sp)
         Spacer(Modifier.height(6.dp))
         SelectableTextField(
             value = email,
@@ -5882,12 +5897,12 @@ private fun AuthScreen(onBack: () -> Unit, onAuthSuccess: () -> Unit) {
 
         Spacer(Modifier.height(12.dp))
 
-        Text("كلمة المرور", color = Gray, fontSize = 10.sp)
+        Text(t("كلمة المرور", "Password"), color = Gray, fontSize = 10.sp)
         Spacer(Modifier.height(6.dp))
         SelectableTextField(
             value = password,
             onValueChange = { password = it },
-            placeholder = "6 أحرف على الأقل",
+            placeholder = t("6 أحرف على الأقل", "At least 6 characters"),
             visualTransformation = PasswordVisualTransformation(),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
             modifier = Modifier.fillMaxWidth().height(42.dp)
@@ -5895,7 +5910,7 @@ private fun AuthScreen(onBack: () -> Unit, onAuthSuccess: () -> Unit) {
 
         if (isSignUpMode) {
             Spacer(Modifier.height(12.dp))
-            Text("تأكيد كلمة المرور", color = Gray, fontSize = 10.sp)
+            Text(t("تأكيد كلمة المرور", "Confirm Password"), color = Gray, fontSize = 10.sp)
             Spacer(Modifier.height(6.dp))
             SelectableTextField(
                 value = confirmPassword,
@@ -5908,20 +5923,20 @@ private fun AuthScreen(onBack: () -> Unit, onAuthSuccess: () -> Unit) {
         } else {
             Spacer(Modifier.height(8.dp))
             Text(
-                "نسيت كلمة المرور؟",
+                t("نسيت كلمة المرور؟", "Forgot password?"),
                 color = Gold,
                 fontSize = 10.sp,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.clickable {
                     val trimmedEmail = email.trim()
                     if (!isValidEmail(trimmedEmail)) {
-                        errorText = "أدخل بريدك الإلكتروني أول لاستعادة كلمة المرور"
+                        errorText = t("أدخل بريدك الإلكتروني أول لاستعادة كلمة المرور", "Enter your email first to reset your password")
                         return@clickable
                     }
                     errorText = null
                     scope.launch {
                         val error = AuthService.sendPasswordReset(trimmedEmail)
-                        infoText = if (error == null) "أُرسل رابط استعادة كلمة المرور إلى بريدك" else null
+                        infoText = if (error == null) t("أُرسل رابط استعادة كلمة المرور إلى بريدك", "A password reset link was sent to your email") else null
                         errorText = error
                     }
                 }
@@ -5949,7 +5964,7 @@ private fun AuthScreen(onBack: () -> Unit, onAuthSuccess: () -> Unit) {
             contentAlignment = Alignment.Center
         ) {
             Text(
-                if (isLoading) "جارٍ..." else if (isSignUpMode) "إنشاء الحساب" else "تسجيل الدخول",
+                if (isLoading) t("جارٍ...", "Loading...") else if (isSignUpMode) t("إنشاء الحساب", "Create Account") else t("تسجيل الدخول", "Sign In"),
                 color = Black,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Bold
@@ -5959,7 +5974,7 @@ private fun AuthScreen(onBack: () -> Unit, onAuthSuccess: () -> Unit) {
         Spacer(Modifier.height(14.dp))
 
         Text(
-            if (isSignUpMode) "عندك حساب؟ سجّل الدخول" else "ماعندك حساب؟ أنشئ واحداً جديداً",
+            if (isSignUpMode) t("عندك حساب؟ سجّل الدخول", "Have an account? Sign in") else t("ماعندك حساب؟ أنشئ واحداً جديداً", "No account? Create a new one"),
             color = Gray,
             fontSize = 11.sp,
             fontWeight = FontWeight.Bold,
@@ -5976,7 +5991,7 @@ private fun AuthScreen(onBack: () -> Unit, onAuthSuccess: () -> Unit) {
         Spacer(Modifier.height(22.dp))
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
             Box(modifier = Modifier.weight(1f).height(1.dp).background(Border))
-            Text("أو", color = Gray, fontSize = 10.sp, modifier = Modifier.padding(horizontal = 10.dp))
+            Text(t("أو", "or"), color = Gray, fontSize = 10.sp, modifier = Modifier.padding(horizontal = 10.dp))
             Box(modifier = Modifier.weight(1f).height(1.dp).background(Border))
         }
         Spacer(Modifier.height(16.dp))
@@ -5993,7 +6008,7 @@ private fun AuthScreen(onBack: () -> Unit, onAuthSuccess: () -> Unit) {
         ) {
             Text("G", color = Gold, fontSize = 15.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.width(8.dp))
-            Text("الدخول بحساب جوجل", color = White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            Text(t("الدخول بحساب جوجل", "Sign in with Google"), color = White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
         }
 
         Spacer(Modifier.height(16.dp))
@@ -6001,21 +6016,43 @@ private fun AuthScreen(onBack: () -> Unit, onAuthSuccess: () -> Unit) {
 }
 
 // ==================== شاشة سياسة الخصوصية (داخل التطبيق) ====================
-private val privacyPolicySections = listOf(
-    "البيانات المحفوظة على جهازك فقط" to
-        "قطع المحفظة، بيانات الزكاة، والملف الشخصي (الاسم والصورة الرمزية) تُحفظ كملفات محلية على جهازك فقط، بمساحة تخزين خاصة بالتطبيق لا يصل إليها أي تطبيق آخر — لا تُرفع لأي خادم، ولا تُشارك أو تُباع لأي طرف ثالث تحت أي ظرف.",
-    "تسجيل الدخول (اختياري)" to
-        "يمكنك استخدام التطبيق بكامل ميزاته بلا أي تسجيل دخول. إن اخترت إنشاء حساب بالبريد الإلكتروني، تُدار عملية الدخول عبر مزوّد خدمات مصادقة عالمي موثوق ومتخصص، وتُحفظ كلمة المرور لديه بشكل مشفَّر بالكامل — نحن أنفسنا لا نطّلع عليها ولا نحتفظ بنسخة منها. الملف الشخصي (الاسم والصورة الرمزية) منفصل تماماً ومحفوظ على جهازك فقط بغض النظر عن تسجيل الدخول.",
-    "أسعار الذهب والأخبار" to
-        "تُجلب الأسعار الحية والتاريخية، وكذلك الأخبار المتعلقة بالذهب، من مصادر بيانات عامة متخصصة، دون إرسال أي معلومة تعرّف بك أو ببياناتك المحفوظة إليها.",
-    "الأمان وحماية البيانات" to
-        "كل اتصال بين التطبيق وأي مصدر بيانات خارجي مشفَّر بالكامل. لا يجمع التطبيق أو يطّلع على أي بيانات بطاقة دفع أو حساب بنكي إطلاقاً. لأسباب أمنية، لا يُفصح هذا التطبيق عن التفاصيل التقنية الداخلية لكيفية عمله.",
-    "تتبع الأعطال التقنية" to
-        "عند حدوث عطل تقني أو فشل في تحديث الأسعار، تُرسل رسالة تشخيصية تقنية مجهولة (بلا اسمك أو بياناتك) لمساعدتنا على اكتشاف المشكلة وإصلاحها بسرعة.",
-    "إحصاءات استخدام مجهولة" to
-        "نجمع إحصاءات مجهولة تماماً عن استخدام الشاشات (بلا اسمك أو أي رقم يعرّفك) لفهم الميزات الأكثر استخداماً وتحسين التطبيق، بلا أي تسجيل لجلسات الشاشة.",
-    "التواصل" to
-        "لأي استفسار أو طلب حذف بيانات، يمكن التواصل عبر البريد الإلكتروني الموضّح في صفحة التطبيق على المتجر."
+// دالة بدل val ثابتة حتى تبقى النصوص متجاوبة مع اللغة الحالية عند كل استدعاء
+private fun privacyPolicySections(): List<Pair<String, String>> = listOf(
+    t("البيانات المحفوظة على جهازك فقط", "Data stored on your device only") to
+        t(
+            "قطع المحفظة، بيانات الزكاة، والملف الشخصي (الاسم والصورة الرمزية) تُحفظ كملفات محلية على جهازك فقط، بمساحة تخزين خاصة بالتطبيق لا يصل إليها أي تطبيق آخر — لا تُرفع لأي خادم، ولا تُشارك أو تُباع لأي طرف ثالث تحت أي ظرف.",
+            "Portfolio items, Zakat data, and your profile (name and avatar) are stored as local files on your device only, in app-private storage that no other app can access — they are never uploaded to any server, and never shared or sold to any third party under any circumstance."
+        ),
+    t("تسجيل الدخول (اختياري)", "Sign-in (optional)") to
+        t(
+            "يمكنك استخدام التطبيق بكامل ميزاته بلا أي تسجيل دخول. إن اخترت إنشاء حساب بالبريد الإلكتروني، تُدار عملية الدخول عبر مزوّد خدمات مصادقة عالمي موثوق ومتخصص، وتُحفظ كلمة المرور لديه بشكل مشفَّر بالكامل — نحن أنفسنا لا نطّلع عليها ولا نحتفظ بنسخة منها. الملف الشخصي (الاسم والصورة الرمزية) منفصل تماماً ومحفوظ على جهازك فقط بغض النظر عن تسجيل الدخول.",
+            "You can use the app with all its features without signing in at all. If you choose to create an account by email, the sign-in process is managed by a trusted, specialized global authentication provider, and your password is stored there fully encrypted — we ourselves never see it or keep a copy of it. Your profile (name and avatar) is entirely separate and stored on your device only, regardless of sign-in."
+        ),
+    t("أسعار الذهب والأخبار", "Gold prices and news") to
+        t(
+            "تُجلب الأسعار الحية والتاريخية، وكذلك الأخبار المتعلقة بالذهب، من مصادر بيانات عامة متخصصة، دون إرسال أي معلومة تعرّف بك أو ببياناتك المحفوظة إليها.",
+            "Live and historical prices, as well as gold-related news, are fetched from specialized public data sources, without sending any information that identifies you or your saved data to them."
+        ),
+    t("الأمان وحماية البيانات", "Security and data protection") to
+        t(
+            "كل اتصال بين التطبيق وأي مصدر بيانات خارجي مشفَّر بالكامل. لا يجمع التطبيق أو يطّلع على أي بيانات بطاقة دفع أو حساب بنكي إطلاقاً. لأسباب أمنية، لا يُفصح هذا التطبيق عن التفاصيل التقنية الداخلية لكيفية عمله.",
+            "Every connection between the app and any external data source is fully encrypted. The app never collects or accesses any payment card or bank account data whatsoever. For security reasons, this app does not disclose internal technical details of how it works."
+        ),
+    t("تتبع الأعطال التقنية", "Technical crash tracking") to
+        t(
+            "عند حدوث عطل تقني أو فشل في تحديث الأسعار، تُرسل رسالة تشخيصية تقنية مجهولة (بلا اسمك أو بياناتك) لمساعدتنا على اكتشاف المشكلة وإصلاحها بسرعة.",
+            "When a technical fault or a price update failure occurs, an anonymous technical diagnostic message (without your name or data) is sent to help us detect the issue and fix it quickly."
+        ),
+    t("إحصاءات استخدام مجهولة", "Anonymous usage statistics") to
+        t(
+            "نجمع إحصاءات مجهولة تماماً عن استخدام الشاشات (بلا اسمك أو أي رقم يعرّفك) لفهم الميزات الأكثر استخداماً وتحسين التطبيق، بلا أي تسجيل لجلسات الشاشة.",
+            "We collect completely anonymous statistics about screen usage (without your name or any identifying number) to understand the most-used features and improve the app, with no recording of screen sessions."
+        ),
+    t("التواصل", "Contact") to
+        t(
+            "لأي استفسار أو طلب حذف بيانات، يمكن التواصل عبر البريد الإلكتروني الموضّح في صفحة التطبيق على المتجر.",
+            "For any inquiry or data deletion request, you can reach out via the email address shown on the app's store page."
+        )
 )
 
 @Composable
@@ -6032,14 +6069,14 @@ private fun PrivacyPolicyScreen(onBack: () -> Unit) {
         ) {
             Icon(
                 imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
-                contentDescription = "رجوع",
+                contentDescription = t("رجوع", "Back"),
                 tint = Gold,
                 modifier = Modifier
                     .size(22.dp)
                     .clickable { onBack() }
             )
             Text(
-                "سياسة الخصوصية",
+                t("سياسة الخصوصية", "Privacy Policy"),
                 color = White,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,
@@ -6051,7 +6088,8 @@ private fun PrivacyPolicyScreen(onBack: () -> Unit) {
 
         Spacer(Modifier.height(16.dp))
 
-        privacyPolicySections.forEachIndexed { index, (title, body) ->
+        val sections = privacyPolicySections()
+        sections.forEachIndexed { index, (title, body) ->
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -6064,7 +6102,7 @@ private fun PrivacyPolicyScreen(onBack: () -> Unit) {
                 Spacer(Modifier.height(6.dp))
                 Text(body, color = Gray, fontSize = 11.sp, lineHeight = 17.sp)
             }
-            if (index != privacyPolicySections.lastIndex) {
+            if (index != sections.lastIndex) {
                 Spacer(Modifier.height(10.dp))
             }
         }
@@ -6103,14 +6141,14 @@ private fun NotificationSettingsScreen(
         ) {
             Icon(
                 imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
-                contentDescription = "رجوع",
+                contentDescription = t("رجوع", "Back"),
                 tint = Gold,
                 modifier = Modifier
                     .size(22.dp)
                     .clickable { onBack() }
             )
             Text(
-                "الإشعارات",
+                t("الإشعارات", "Notifications"),
                 color = White,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,
@@ -6133,10 +6171,10 @@ private fun NotificationSettingsScreen(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Text("سعر الذهب اليومي", color = White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                Text(t("سعر الذهب اليومي", "Daily Gold Price"), color = White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    "إشعار يومي بسعري الافتتاح والإغلاق الفعليين لعيار 24 وعيار 21",
+                    t("إشعار يومي بسعري الافتتاح والإغلاق الفعليين لعيار 24 وعيار 21", "A daily notification with the actual open and close prices for 24K and 21K"),
                     color = Gray,
                     fontSize = 10.sp,
                     lineHeight = 15.sp
@@ -6167,10 +6205,10 @@ private fun NotificationSettingsScreen(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Text("مواعيد اجتماعات الفيدرالي", color = White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                Text(t("مواعيد اجتماعات الفيدرالي", "Fed Meeting Dates"), color = White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    "تذكير يوم الاجتماع وقبله بيوم واحد، مع موعد إعلان القرار (9:00 مساءً بتوقيت مكة)",
+                    t("تذكير يوم الاجتماع وقبله بيوم واحد، مع موعد إعلان القرار (9:00 مساءً بتوقيت مكة)", "A reminder on the meeting day and the day before, with the decision announcement time (9:00 PM Makkah time)"),
                     color = Gray,
                     fontSize = 10.sp,
                     lineHeight = 15.sp
@@ -6195,19 +6233,19 @@ private fun NotificationSettingsScreen(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("تنبيهات الأسعار", color = White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+            Text(t("تنبيهات الأسعار", "Price Alerts"), color = White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                 modifier = Modifier.clickable { showAddAlertDialog = true }
             ) {
-                Text("إضافة", color = Gold, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                Text(t("إضافة", "Add"), color = Gold, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                 Text("+", color = Gold, fontSize = 15.sp, fontWeight = FontWeight.Bold)
             }
         }
         Spacer(Modifier.height(4.dp))
         Text(
-            "نبّهني عند وصول سعر عيار معيّن لسعر مستهدف — يعمل مرة واحدة لكل تنبيه",
+            t("نبّهني عند وصول سعر عيار معيّن لسعر مستهدف — يعمل مرة واحدة لكل تنبيه", "Notify me when a karat's price reaches a target — fires once per alert"),
             color = Gray,
             fontSize = 10.sp,
             lineHeight = 15.sp
@@ -6215,7 +6253,7 @@ private fun NotificationSettingsScreen(
         Spacer(Modifier.height(10.dp))
 
         if (priceAlerts.isEmpty()) {
-            Text("لا توجد تنبيهات أسعار حالياً", color = Gray, fontSize = 11.sp)
+            Text(t("لا توجد تنبيهات أسعار حالياً", "No price alerts right now"), color = Gray, fontSize = 11.sp)
         } else {
             priceAlerts.forEach { alert ->
                 Row(
@@ -6242,8 +6280,8 @@ private fun NotificationSettingsScreen(
                         Column {
                             Text(karatLabel(alert.karat), color = White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                             Text(
-                                "${if (alert.isUpward) "عند الوصول لـ" else "عند النزول لـ"} " +
-                                    "${fmt(alert.targetPrice, 2, grouped = true)} ريال",
+                                "${if (alert.isUpward) t("عند الوصول لـ", "On reaching") else t("عند النزول لـ", "On dropping to")} " +
+                                    "${fmt(alert.targetPrice, 2, grouped = true)} ${t("ريال", "SAR")}",
                                 color = Gray,
                                 fontSize = 9.5.sp
                             )
@@ -6268,7 +6306,7 @@ private fun NotificationSettingsScreen(
                         )
                         Icon(
                             imageVector = Icons.Outlined.Delete,
-                            contentDescription = "حذف التنبيه",
+                            contentDescription = t("حذف التنبيه", "Delete Alert"),
                             tint = Gray,
                             modifier = Modifier
                                 .size(16.dp)
@@ -6333,10 +6371,10 @@ private fun AddPriceAlertDialog(
                 ) { }
                 .padding(18.dp)
         ) {
-            Text("تنبيه سعر جديد", color = White, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+            Text(t("تنبيه سعر جديد", "New Price Alert"), color = White, fontSize = 15.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(14.dp))
 
-            Text("العيار", color = Gray, fontSize = 10.sp)
+            Text(t("العيار", "Karat"), color = Gray, fontSize = 10.sp)
             Spacer(Modifier.height(6.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -6357,7 +6395,7 @@ private fun AddPriceAlertDialog(
             }
 
             Spacer(Modifier.height(14.dp))
-            Text("السعر المستهدف (ريال للجرام)", color = Gray, fontSize = 10.sp)
+            Text(t("السعر المستهدف (ريال للجرام)", "Target Price (SAR per gram)"), color = Gray, fontSize = 10.sp)
             Spacer(Modifier.height(6.dp))
             NumericInputField(
                 value = targetPrice,
@@ -6385,7 +6423,7 @@ private fun AddPriceAlertDialog(
                         .clickable { onDismiss() },
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("إلغاء", color = Gray, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    Text(t("إلغاء", "Cancel"), color = Gray, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                 }
                 Box(
                     modifier = Modifier
@@ -6399,7 +6437,7 @@ private fun AddPriceAlertDialog(
                         },
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("إضافة", color = Black, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    Text(t("إضافة", "Add"), color = Black, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -6470,7 +6508,7 @@ private fun NotificationBell(showBadge: Boolean, onClick: () -> Unit) {
     ) {
         Icon(
             imageVector = Icons.Outlined.Notifications,
-            contentDescription = "الإشعارات",
+            contentDescription = t("الإشعارات", "Notifications"),
             tint = Gold,
             modifier = Modifier
                 .size(24.dp)

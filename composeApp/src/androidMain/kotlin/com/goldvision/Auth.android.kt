@@ -24,21 +24,21 @@ internal actual object AuthService {
         }
         null
     } catch (e: Exception) {
-        e.message ?: "تعذر إنشاء الحساب"
+        e.message ?: t("تعذر إنشاء الحساب", "Couldn't create account")
     }
 
     actual suspend fun signIn(email: String, password: String): String? = try {
         auth.signInWithEmailAndPassword(email, password).awaitResult()
         null
     } catch (e: Exception) {
-        e.message ?: "تعذر تسجيل الدخول"
+        e.message ?: t("تعذر تسجيل الدخول", "Couldn't sign in")
     }
 
     actual suspend fun sendPasswordReset(email: String): String? = try {
         auth.sendPasswordResetEmail(email).awaitResult()
         null
     } catch (e: Exception) {
-        e.message ?: "تعذر إرسال رابط استعادة كلمة المرور"
+        e.message ?: t("تعذر إرسال رابط استعادة كلمة المرور", "Couldn't send the password reset link")
     }
 
     actual suspend fun completeGoogleSignIn(idToken: String): String? = try {
@@ -46,7 +46,7 @@ internal actual object AuthService {
         auth.signInWithCredential(credential).awaitResult()
         null
     } catch (e: Exception) {
-        e.message ?: "تعذر تسجيل الدخول بحساب جوجل"
+        e.message ?: t("تعذر تسجيل الدخول بحساب جوجل", "Couldn't sign in with Google")
     }
 
     actual fun signOut() {
