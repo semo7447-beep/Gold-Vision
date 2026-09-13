@@ -13,12 +13,14 @@ class GoldVisionApplication : Application() {
         AppStorage.init(this)
         PriceNotificationScheduler.init(this)
         FedMeetingNotificationScheduler.init(this)
+        PriceAlertScheduler.init(this)
         PdfExport.init(this)
         // إعادة جدولة العمل الدوري عند كل بدء تشغيل بناءً على التفضيل
         // المحفوظ — enqueueUniquePeriodicWork آمنة الاستدعاء المتكرر (KEEP)
         val notificationSettings = loadNotificationSettings()
         PriceNotificationScheduler.setEnabled(notificationSettings.dailyPriceEnabled)
         FedMeetingNotificationScheduler.setEnabled(notificationSettings.fedMeetingAlertsEnabled)
+        PriceAlertScheduler.setActive(loadPriceAlerts().isNotEmpty())
 
         val config = PostHogAndroidConfig(
             apiKey = "phc_s4FaeH5VD87obtNSE5SzFc28TqFx3zn2m5BmFx6c8uWq",

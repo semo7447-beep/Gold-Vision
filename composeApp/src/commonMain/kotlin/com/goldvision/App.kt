@@ -810,7 +810,7 @@ private fun HomeScreen(
 }
 
 // ==================== شاشة حاسبة الذهب الكاملة ====================
-private fun karatLabel(karat: String): String = karat.removeSuffix("K") + " عيار"
+internal fun karatLabel(karat: String): String = karat.removeSuffix("K") + " عيار"
 
 @Composable
 private fun CalculatorFullScreen(
@@ -5222,6 +5222,16 @@ private fun NotificationSettingsScreen(
     onToggleDailyPrice: (Boolean) -> Unit,
     onToggleFedMeetingAlerts: (Boolean) -> Unit
 ) {
+    var priceAlerts by remember { mutableStateOf(loadPriceAlerts()) }
+    var showAddAlertDialog by remember { mutableStateOf(false) }
+
+    fun persistAlerts(updated: List<PriceAlert>) {
+        priceAlerts = updated
+        persistPriceAlerts(updated)
+        PriceAlertScheduler.setActive(updated.isNotEmpty())
+    }
+
+    Box(modifier = Modifier.fillMaxSize()) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -5319,7 +5329,203 @@ private fun NotificationSettingsScreen(
             )
         }
 
+        Spacer(Modifier.height(20.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text("تنبيهات الأسعار", color = White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                modifier = Modifier.clickable { showAddAlertDialog = true }
+            ) {
+                Text("إضافة", color = Gold, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                Text("+", color = Gold, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+            }
+        }
+        Spacer(Modifier.height(4.dp))
+        Text(
+            "نبّهني عند وصول سعر عيار معيّن لسعر مستهدف — يعمل مرة واحدة لكل تنبيه",
+            color = Gray,
+            fontSize = 10.sp,
+            lineHeight = 15.sp
+        )
+        Spacer(Modifier.height(10.dp))
+
+        if (priceAlerts.isEmpty()) {
+            Text("لا توجد تنبيهات أسعار حالياً", color = Gray, fontSize = 11.sp)
+        } else {
+            priceAlerts.forEach { alert ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 5.dp)
+                        .clip(RoundedCornerShape(9.dp))
+                        .border(1.dp, Border, RoundedCornerShape(9.dp))
+                        .background(CardBlack)
+                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Outlined.ShowChart,
+                            contentDescription = null,
+                            tint = if (alert.isUpward) Green else Red,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Column {
+                            Text(karatLabel(alert.karat), color = White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            Text(
+                                "${if (alert.isUpward) "عند الوصول لـ" else "عند النزول لـ"} " +
+                                    "${fmt(alert.targetPrice, 2, grouped = true)} ريال",
+                                color = Gray,
+                                fontSize = 9.5.sp
+                            )
+                        }
+                    }
+                    Icon(
+                        imageVector = Icons.Outlined.Delete,
+                        contentDescription = "حذف التنبيه",
+                        tint = Gray,
+                        modifier = Modifier
+                            .size(16.dp)
+                            .clickable { persistAlerts(priceAlerts.filter { it.id != alert.id }) }
+                    )
+                }
+            }
+        }
+
         Spacer(Modifier.height(16.dp))
+    }
+
+    if (showAddAlertDialog) {
+        AddPriceAlertDialog(
+            onDismiss = { showAddAlertDialog = false },
+            onConfirm = { karat, targetPrice, isUpward ->
+                val newAlert = PriceAlert(
+                    id = Clock.System.now().toEpochMilliseconds().toString(),
+                    karat = karat,
+                    targetPrice = targetPrice,
+                    isUpward = isUpward
+                )
+                persistAlerts(priceAlerts + newAlert)
+                showAddAlertDialog = false
+            }
+        )
+    }
+    }
+}
+
+// نافذة إضافة تنبيه سعر جديد: يختار المستخدم العيار ويكتب السعر المستهدف
+// فقط، والاتجاه (صعود/هبوط) يُستنتج تلقائياً بمقارنته بالسعر الحالي
+@Composable
+private fun AddPriceAlertDialog(
+    onDismiss: () -> Unit,
+    onConfirm: (karat: String, targetPrice: Double, isUpward: Boolean) -> Unit
+) {
+    var selectedKarat by remember { mutableStateOf("21K") }
+    var targetPrice by remember { mutableDoubleStateOf(GoldMarket.prices.first { it.karat == "21K" }.price) }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.65f))
+            .clickable(
+                indication = null,
+                interactionSource = remember { MutableInteractionSource() }
+            ) { onDismiss() },
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            modifier = Modifier
+                .padding(horizontal = 28.dp)
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(14.dp))
+                .border(1.dp, Border, RoundedCornerShape(14.dp))
+                .background(CardBlack)
+                .clickable(
+                    indication = null,
+                    interactionSource = remember { MutableInteractionSource() }
+                ) { }
+                .padding(18.dp)
+        ) {
+            Text("تنبيه سعر جديد", color = White, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(14.dp))
+
+            Text("العيار", color = Gray, fontSize = 10.sp)
+            Spacer(Modifier.height(6.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                listOf("24K", "22K", "21K", "18K").forEach { k ->
+                    ChoiceButton(
+                        text = karatLabel(k),
+                        selected = k == selectedKarat,
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(38.dp)
+                    ) {
+                        selectedKarat = k
+                        targetPrice = GoldMarket.prices.first { it.karat == k }.price
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(14.dp))
+            Text("السعر المستهدف (ريال للجرام)", color = Gray, fontSize = 10.sp)
+            Spacer(Modifier.height(6.dp))
+            NumericInputField(
+                value = targetPrice,
+                onValueChanged = { targetPrice = it },
+                fontSize = 16.sp,
+                minValue = 0.0,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(44.dp)
+                    .clip(RoundedCornerShape(9.dp))
+                    .border(1.dp, Border, RoundedCornerShape(9.dp))
+            )
+
+            Spacer(Modifier.height(18.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(44.dp)
+                        .clip(RoundedCornerShape(9.dp))
+                        .border(1.dp, Border, RoundedCornerShape(9.dp))
+                        .clickable { onDismiss() },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text("إلغاء", color = Gray, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                }
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(44.dp)
+                        .clip(RoundedCornerShape(9.dp))
+                        .background(Gold)
+                        .clickable {
+                            val currentPrice = GoldMarket.prices.first { it.karat == selectedKarat }.price
+                            onConfirm(selectedKarat, targetPrice, targetPrice >= currentPrice)
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text("إضافة", color = Black, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                }
+            }
+        }
     }
 }
 
