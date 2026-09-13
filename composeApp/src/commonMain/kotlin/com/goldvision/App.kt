@@ -1033,7 +1033,8 @@ private fun HomeScreen(
             PortfolioSummary(
                 totalValue = homeTotals.totalValue,
                 itemCount = homeTotals.itemCount,
-                totalWeight = homeTotals.totalWeight
+                totalWeight = homeTotals.totalWeight,
+                totalCost = homeTotals.totalCost
             )
         }
 
@@ -3977,7 +3978,12 @@ private fun GoldItem.currentValue(): Double {
     return subtotal + vat
 }
 
-private data class PortfolioTotals(val totalValue: Double, val itemCount: Int, val totalWeight: Double)
+private data class PortfolioTotals(
+    val totalValue: Double,
+    val itemCount: Int,
+    val totalWeight: Double,
+    val totalCost: Double
+)
 
 // القطع "المباعة" لم تعد مِلكاً فعلياً، فلا تُحسب ضمن إجمالي المحفظة
 private fun portfolioTotals(savedItems: List<GoldItem>): PortfolioTotals {
@@ -3985,7 +3991,8 @@ private fun portfolioTotals(savedItems: List<GoldItem>): PortfolioTotals {
     return PortfolioTotals(
         totalValue = ownedItems.sumOf { it.currentValue() },
         itemCount = ownedItems.size,
-        totalWeight = ownedItems.sumOf { it.weightGrams }
+        totalWeight = ownedItems.sumOf { it.weightGrams },
+        totalCost = ownedItems.sumOf { it.purchasePriceWithTax }
     )
 }
 
@@ -4003,6 +4010,7 @@ private fun PortfolioScreen(
     val totalValue = ownedValues.sumOf { it.second }
     val totalWeight = ownedValues.sumOf { it.first.weightGrams }
     val itemCount = ownedValues.size
+    val totalCost = ownedValues.sumOf { it.first.purchasePriceWithTax }
 
     Column(modifier = Modifier.fillMaxSize()) {
         Row(
@@ -4058,7 +4066,7 @@ private fun PortfolioScreen(
         }
 
         Box(modifier = Modifier.padding(horizontal = 12.dp)) {
-            PortfolioSummary(totalValue = totalValue, itemCount = itemCount, totalWeight = totalWeight)
+            PortfolioSummary(totalValue = totalValue, itemCount = itemCount, totalWeight = totalWeight, totalCost = totalCost)
         }
 
         Spacer(Modifier.height(8.dp))
@@ -4135,12 +4143,26 @@ private fun PortfolioScreen(
                             )
                         }
                     }
-                    Text(
-                        "${fmt(value, 2, grouped = true)} ريال",
-                        color = if (item.isSold) Red else Gold,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Bold
-                    )
+                    Column(horizontalAlignment = Alignment.End) {
+                        Text(
+                            "${fmt(value, 2, grouped = true)} ريال",
+                            color = if (item.isSold) Red else Gold,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        // ربح/خسارة القطعة: سعر الذهب اليومي الحالي مقابل سعر الشراء
+                        // — لا معنى له للقطع المباعة (لم تعد تتبع السعر اليومي)
+                        if (!item.isSold && item.purchasePriceWithTax > 0) {
+                            val itemProfit = value - item.purchasePriceWithTax
+                            val itemProfitPercent = (itemProfit / item.purchasePriceWithTax) * 100.0
+                            Text(
+                                "${if (itemProfit >= 0) "+" else ""}${fmt(itemProfit, 2, grouped = true)} ريال (${fmt(itemProfitPercent, 2)}%)",
+                                color = if (itemProfit >= 0) Green else Red,
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
                 }
             }
             item { Spacer(Modifier.height(16.dp)) }
@@ -7402,7 +7424,13 @@ private fun FedMeetingsScreen(onBack: () -> Unit) {
 
 // ==================== شريط ملخص المحفظة ====================
 @Composable
-private fun PortfolioSummary(totalValue: Double, itemCount: Int, totalWeight: Double) {
+private fun PortfolioSummary(totalValue: Double, itemCount: Int, totalWeight: Double, totalCost: Double) {
+    val profitLoss = totalValue - totalCost
+    val profitLossPercent = if (totalCost > 0) (profitLoss / totalCost) * 100.0 else 0.0
+    val profitLossText = if (totalCost > 0) {
+        "${if (profitLoss >= 0) "+" else ""}${fmt(profitLoss, 2, grouped = true)} ريال (${fmt(profitLossPercent, 2)}%)"
+    } else ""
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -7415,7 +7443,8 @@ private fun PortfolioSummary(totalValue: Double, itemCount: Int, totalWeight: Do
         SummaryItem(
             title = "قيمة المحفظة",
             value = "${fmt(totalValue, 2, grouped = true)} ريال",
-            extra = "",
+            extra = profitLossText,
+            extraColor = if (profitLoss >= 0) Green else Red,
             valueColor = Gold
         )
         DividerVertical()
@@ -7461,7 +7490,8 @@ private fun SummaryItem(
     title: String,
     value: String,
     extra: String,
-    valueColor: Color
+    valueColor: Color,
+    extraColor: Color = Green
 ) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -7470,7 +7500,7 @@ private fun SummaryItem(
         Text(title, color = Gold, fontSize = 10.sp)
         Text(value, color = valueColor, fontSize = 13.sp, fontWeight = FontWeight.Bold)
         if (extra.isNotEmpty()) {
-            Text(extra, color = Green, fontSize = 9.sp)
+            Text(extra, color = extraColor, fontSize = 9.sp, fontWeight = FontWeight.Bold)
         }
     }
 }
