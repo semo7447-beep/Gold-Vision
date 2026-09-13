@@ -88,6 +88,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
@@ -349,6 +350,7 @@ fun App() {
             color = Black
         ) {
             CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+                LaunchedEffect(Unit) { seedDefaultPriceAlertsIfNeeded() }
                 var showOnboarding by remember { mutableStateOf(!hasSeenOnboarding()) }
                 if (showOnboarding) {
                     OnboardingScreen(
@@ -382,7 +384,7 @@ private data class OnboardingPage(val title: String, val description: String, va
 private val onboardingPages = listOf(
     OnboardingPage(
         "تتبع أسعار الذهب لحظياً",
-        "أسعار حقيقية تتحدث تلقائياً لكل الأعيرة (24، 22، 21، 18)، مع رسم بياني تاريخي لعدة فترات.",
+        "أسعار حقيقية تتحدث تلقائياً لكل العيارات (24، 22، 21، 18)، مع رسم بياني تاريخي لعدة فترات.",
         Icons.AutoMirrored.Outlined.ShowChart
     ),
     OnboardingPage(
@@ -5871,14 +5873,32 @@ private fun NotificationSettingsScreen(
                             )
                         }
                     }
-                    Icon(
-                        imageVector = Icons.Outlined.Delete,
-                        contentDescription = "حذف التنبيه",
-                        tint = Gray,
-                        modifier = Modifier
-                            .size(16.dp)
-                            .clickable { persistAlerts(priceAlerts.filter { it.id != alert.id }) }
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Switch(
+                            checked = alert.isEnabled,
+                            onCheckedChange = { enabled ->
+                                persistAlerts(priceAlerts.map { if (it.id == alert.id) it.copy(isEnabled = enabled) else it })
+                            },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = Black,
+                                checkedTrackColor = Gold,
+                                uncheckedThumbColor = Gray,
+                                uncheckedTrackColor = CardBlack
+                            ),
+                            modifier = Modifier.scale(0.7f)
+                        )
+                        Icon(
+                            imageVector = Icons.Outlined.Delete,
+                            contentDescription = "حذف التنبيه",
+                            tint = Gray,
+                            modifier = Modifier
+                                .size(16.dp)
+                                .clickable { persistAlerts(priceAlerts.filter { it.id != alert.id }) }
+                        )
+                    }
                 }
             }
         }

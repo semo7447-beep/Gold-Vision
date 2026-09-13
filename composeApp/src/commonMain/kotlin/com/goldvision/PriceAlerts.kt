@@ -12,10 +12,29 @@ internal data class PriceAlert(
     val id: String,
     val karat: String,
     val targetPrice: Double,
-    val isUpward: Boolean
+    val isUpward: Boolean,
+    val isEnabled: Boolean = true
 )
 
 private const val priceAlertsStorageFile = "price_alerts.json"
+private const val defaultAlertsSeededStorageFile = "default_alerts_seeded.txt"
+
+// يزرع تنبيهين افتراضيين (عيار 24: السعر الحالي +5 و-5 ريال) عند أول
+// تشغيل للتطبيق فقط — مرة واحدة عبر عمرها بالكامل، بصرف النظر عمّا إذا
+// حذفهم المستخدم بعدها أو لا (نفس فكرة onboardingSeenStorageFile)
+internal fun seedDefaultPriceAlertsIfNeeded() {
+    if (AppStorage.readText(defaultAlertsSeededStorageFile) == "true") return
+    AppStorage.writeText(defaultAlertsSeededStorageFile, "true")
+
+    val currentPrice = GoldMarket.prices.first { it.karat == "24K" }.price
+    val now = kotlinx.datetime.Clock.System.now().toEpochMilliseconds()
+    val defaults = listOf(
+        PriceAlert(id = (now + 1).toString(), karat = "24K", targetPrice = currentPrice + 5.0, isUpward = true),
+        PriceAlert(id = (now + 2).toString(), karat = "24K", targetPrice = currentPrice - 5.0, isUpward = false)
+    )
+    persistPriceAlerts(loadPriceAlerts() + defaults)
+    PriceAlertScheduler.setActive(true)
+}
 
 internal fun loadPriceAlerts(): List<PriceAlert> {
     val text = AppStorage.readText(priceAlertsStorageFile) ?: return emptyList()
@@ -44,6 +63,10 @@ internal fun checkPriceAlerts(alerts: List<PriceAlert>): Pair<List<Pair<String, 
     val triggered = mutableListOf<Pair<String, String>>()
     val remaining = mutableListOf<PriceAlert>()
     alerts.forEach { alert ->
+        if (!alert.isEnabled) {
+            remaining.add(alert)
+            return@forEach
+        }
         val currentPrice = GoldMarket.prices.firstOrNull { it.karat == alert.karat }?.price
         val reachedPrice = currentPrice?.takeIf { price ->
             if (alert.isUpward) price >= alert.targetPrice else price <= alert.targetPrice
