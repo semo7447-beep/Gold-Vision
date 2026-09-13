@@ -574,7 +574,7 @@ private fun GoldVisionApp() {
     var selectedKarat by remember { mutableStateOf("21K") }
     var selectedPeriod by remember { mutableStateOf("أسبوع") }
     var buyMode by remember { mutableStateOf(true) }
-    var weight by remember { mutableDoubleStateOf(10.0) }
+    var weight by remember { mutableDoubleStateOf(0.0) }
     var manufacturing by remember { mutableDoubleStateOf(35.0) }
     var selectedCountryTax by remember { mutableStateOf(countryTaxOptions.first()) }
     var taxPercent by remember { mutableDoubleStateOf(countryTaxOptions.first().vatPercent) }
