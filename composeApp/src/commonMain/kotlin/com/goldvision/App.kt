@@ -281,11 +281,19 @@ private fun zakatStatusFor(purchaseDateText: String, exceedsNisab: Boolean): Zak
     val hawlCompleted = daysElapsed >= HAWL_DAYS
     return when {
         hawlCompleted && exceedsNisab ->
-            ZakatStatus("وجب عليه الزكاة", Green, "منذ ${(daysElapsed / 30).coerceAtLeast(1)} شهراً تقريباً")
+            ZakatStatus(
+                t("وجب عليه الزكاة", "Zakat Due"),
+                Green,
+                t("منذ ${(daysElapsed / 30).coerceAtLeast(1)} شهراً تقريباً", "About ${(daysElapsed / 30).coerceAtLeast(1)} months ago")
+            )
         hawlCompleted ->
-            ZakatStatus("وقت الزكاة", Green, "حال عليه الحول")
+            ZakatStatus(t("وقت الزكاة", "Zakat Time"), Green, t("حال عليه الحول", "Hawl completed"))
         else ->
-            ZakatStatus("متبقي ${HAWL_DAYS - daysElapsed} يوماً", Gray, "لم يكتمل الحول بعد")
+            ZakatStatus(
+                t("متبقي ${HAWL_DAYS - daysElapsed} يوماً", "${HAWL_DAYS - daysElapsed} days left"),
+                Gray,
+                t("لم يكتمل الحول بعد", "Hawl not yet complete")
+            )
     }
 }
 
@@ -320,6 +328,24 @@ private val arabicDayNames = mapOf(
     DayOfWeek.FRIDAY to "الجمعة"
 )
 
+private val englishDayNames = mapOf(
+    DayOfWeek.SATURDAY to "Saturday",
+    DayOfWeek.SUNDAY to "Sunday",
+    DayOfWeek.MONDAY to "Monday",
+    DayOfWeek.TUESDAY to "Tuesday",
+    DayOfWeek.WEDNESDAY to "Wednesday",
+    DayOfWeek.THURSDAY to "Thursday",
+    DayOfWeek.FRIDAY to "Friday"
+)
+
+private fun dayNameFor(dayOfWeek: DayOfWeek): String =
+    if (AppLanguage.current == AppLang.EN) englishDayNames[dayOfWeek] ?: "" else arabicDayNames[dayOfWeek] ?: ""
+
+// fedMeetingsRaw.time مخزَّن بصيغة "09:00 م" ثابتة؛ هذه الدالة فقط تستبدل
+// حرف الصباح/المساء العربي بالمكافئ الإنجليزي عند عرضه، دون تغيير التخزين
+private fun timeDisplayLabel(time: String): String =
+    if (AppLanguage.current == AppLang.EN) time.replace("ص", "AM").replace("م", "PM") else time
+
 internal fun todayLocalDate(): LocalDate =
     Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
 
@@ -333,7 +359,7 @@ private fun upcomingFedMeetings(): List<FedMeetingRow> {
         .sortedBy { (_, date) -> date }
         .map { (raw, date) ->
             FedMeetingRow(
-                day = arabicDayNames[date.dayOfWeek] ?: "",
+                day = dayNameFor(date.dayOfWeek),
                 date = "${raw.year}/${raw.month}/${raw.day}",
                 time = raw.time,
                 daysLeft = today.daysUntil(date)
@@ -4319,7 +4345,7 @@ private fun ZakatScreen(
             ) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
-                    contentDescription = "رجوع",
+                    contentDescription = t("رجوع", "Back"),
                     tint = Gold,
                     modifier = Modifier
                         .size(20.dp)
@@ -4327,44 +4353,44 @@ private fun ZakatScreen(
                 )
                 Icon(
                     imageVector = Icons.Outlined.Refresh,
-                    contentDescription = "تحديث",
+                    contentDescription = t("تحديث", "Refresh"),
                     tint = Gold,
                     modifier = Modifier
                         .size(20.dp)
                         .clickable { marketScope.launch { GoldMarket.refresh() } }
                 )
             }
-            Text("الزكاة", color = White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+            Text(t("الزكاة", "Zakat"), color = White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 Icon(
                     imageVector = Icons.Outlined.Share,
-                    contentDescription = "تصدير PDF",
+                    contentDescription = t("تصدير PDF", "Export PDF"),
                     tint = Gold,
                     modifier = Modifier
                         .size(20.dp)
                         .clickable {
                             PdfExport.exportReport(
-                                title = "تقرير الزكاة — Gold Vision",
-                                generatedAt = "تاريخ التصدير: ${todayDateText()}",
+                                title = t("تقرير الزكاة — Gold Vision", "Zakat Report — Gold Vision"),
+                                generatedAt = t("تاريخ التصدير: ${todayDateText()}", "Export date: ${todayDateText()}"),
                                 summary = listOf(
-                                    PdfReportRow("نصاب الزكاة", "${fmt(nisabValue, 2, grouped = true)} ريال"),
-                                    PdfReportRow("إجمالي قيمة الذهب", "${fmt(totalGoldValue, 2, grouped = true)} ريال"),
-                                    PdfReportRow("إجمالي الوزن", "${fmt(totalWeight, 2)} جرام"),
+                                    PdfReportRow(t("نصاب الزكاة", "Zakat Nisab"), "${fmt(nisabValue, 2, grouped = true)} ${t("ريال", "SAR")}"),
+                                    PdfReportRow(t("إجمالي قيمة الذهب", "Total Gold Value"), "${fmt(totalGoldValue, 2, grouped = true)} ${t("ريال", "SAR")}"),
+                                    PdfReportRow(t("إجمالي الوزن", "Total Weight"), "${fmt(totalWeight, 2)} ${t("جرام", "g")}"),
                                     PdfReportRow(
-                                        "حالة الزكاة",
-                                        if (exceedsNisab) "واجبة" else "غير واجبة (أقل من النصاب)"
+                                        t("حالة الزكاة", "Zakat Status"),
+                                        if (exceedsNisab) t("واجبة", "Due") else t("غير واجبة (أقل من النصاب)", "Not due (below Nisab)")
                                     ),
-                                    PdfReportRow("مبلغ الزكاة (${fmt(zakatPercent, 1)}%)", "${fmt(totalZakat, 2, grouped = true)} ريال")
+                                    PdfReportRow(t("مبلغ الزكاة (${fmt(zakatPercent, 1)}%)", "Zakat Amount (${fmt(zakatPercent, 1)}%)"), "${fmt(totalZakat, 2, grouped = true)} ${t("ريال", "SAR")}")
                                 ),
                                 rows = allZakatItems.map { item ->
                                     val price = GoldMarket.prices.first { it.karat == item.karat }.price
                                     val itemValue = price * item.weightGrams
                                     PdfReportRow(
-                                        "${item.name} (${karatLabel(item.karat)} • ${fmt(item.weightGrams, 2)} جم)",
-                                        "${fmt(itemValue, 2, grouped = true)} ريال"
+                                        "${item.name} (${karatLabel(item.karat)} • ${fmt(item.weightGrams, 2)} ${t("جم", "g")})",
+                                        "${fmt(itemValue, 2, grouped = true)} ${t("ريال", "SAR")}"
                                     )
                                 }
                             )
@@ -4372,7 +4398,7 @@ private fun ZakatScreen(
                 )
                 Icon(
                     imageVector = Icons.Outlined.Info,
-                    contentDescription = "معلومات عن زكاة الذهب",
+                    contentDescription = t("معلومات عن زكاة الذهب", "About Gold Zakat"),
                     tint = Gold,
                     modifier = Modifier
                         .size(20.dp)
@@ -4404,7 +4430,7 @@ private fun ZakatScreen(
             ) {
                 Icon(
                     imageVector = Icons.Outlined.Info,
-                    contentDescription = "معلومات عن نصاب الزكاة",
+                    contentDescription = t("معلومات عن نصاب الزكاة", "About Zakat Nisab"),
                     tint = Gold,
                     modifier = Modifier.size(12.dp)
                 )
@@ -4413,14 +4439,14 @@ private fun ZakatScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier.weight(1f)
             ) {
-                Text("نصاب الزكاة (85 جم ذهب عيار 24)", color = Gray, fontSize = 10.sp)
+                Text(t("نصاب الزكاة (85 جم ذهب عيار 24)", "Zakat Nisab (85g of 24K gold)"), color = Gray, fontSize = 10.sp)
                 Text(
-                    "${fmt(nisabValue, 2, grouped = true)} ريال",
+                    "${fmt(nisabValue, 2, grouped = true)} ${t("ريال", "SAR")}",
                     color = Gold,
                     fontSize = 21.sp,
                     fontWeight = FontWeight.Bold
                 )
-                Text("يتحدّث مباشرة مع سعر الذهب العالمي", color = Gray, fontSize = 8.5.sp)
+                Text(t("يتحدّث مباشرة مع سعر الذهب العالمي", "Updates live with the global gold price"), color = Gray, fontSize = 8.5.sp)
             }
             Spacer(Modifier.width(22.dp))
         }
@@ -4458,14 +4484,14 @@ private fun ZakatScreen(
                     )
                 }
                 Column {
-                    Text("إجمالي قيمة الذهب", color = Gray, fontSize = 10.sp)
+                    Text(t("إجمالي قيمة الذهب", "Total Gold Value"), color = Gray, fontSize = 10.sp)
                     Text(
                         fmt(totalGoldValue, 2, grouped = true),
                         color = Gold,
                         fontSize = 19.sp,
                         fontWeight = FontWeight.Bold
                     )
-                    Text("ريال سعودي", color = Gray, fontSize = 9.sp)
+                    Text(t("ريال سعودي", "Saudi Riyal"), color = Gray, fontSize = 9.sp)
                 }
             }
 
@@ -4480,16 +4506,16 @@ private fun ZakatScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier.weight(1f)
             ) {
-                Text("مبلغ الزكاة المستحق", color = Gray, fontSize = 10.sp)
+                Text(t("مبلغ الزكاة المستحق", "Zakat Amount Due"), color = Gray, fontSize = 10.sp)
                 Text(
                     fmt(totalZakat, 2, grouped = true),
                     color = Gold,
                     fontSize = 19.sp,
                     fontWeight = FontWeight.Bold
                 )
-                Text("ريال سعودي", color = Gray, fontSize = 9.sp)
+                Text(t("ريال سعودي", "Saudi Riyal"), color = Gray, fontSize = 9.sp)
                 Text(
-                    "(${fmt(zakatPercent, 1)}%) من إجمالي قيمة الذهب",
+                    t("(${fmt(zakatPercent, 1)}%) من إجمالي قيمة الذهب", "(${fmt(zakatPercent, 1)}%) of total gold value"),
                     color = Gray,
                     fontSize = 8.5.sp
                 )
@@ -4508,7 +4534,7 @@ private fun ZakatScreen(
                 .padding(14.dp)
         ) {
             Text(
-                "تفاصيل الزكاة",
+                t("تفاصيل الزكاة", "Zakat Details"),
                 color = White,
                 fontSize = 15.sp,
                 fontWeight = FontWeight.Bold,
@@ -4518,7 +4544,7 @@ private fun ZakatScreen(
             Spacer(Modifier.height(14.dp))
 
             Text(
-                "أوزان الذهب المملوكة (جرام)",
+                t("أوزان الذهب المملوكة (جرام)", "Owned Gold Weights (grams)"),
                 color = Gray,
                 fontSize = 12.sp,
                 modifier = Modifier.fillMaxWidth(),
@@ -4545,7 +4571,7 @@ private fun ZakatScreen(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    if (exceedsNisab) "الزكاة واجبة" else "الزكاة غير واجبة (أقل من النصاب)",
+                    if (exceedsNisab) t("الزكاة واجبة", "Zakat is due") else t("الزكاة غير واجبة (أقل من النصاب)", "Zakat not due (below Nisab)"),
                     color = if (exceedsNisab) Green else Gray,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold
@@ -4555,27 +4581,27 @@ private fun ZakatScreen(
             Spacer(Modifier.height(12.dp))
             Row(modifier = Modifier.fillMaxWidth()) {
                 ZakatDetailItem(
-                    title = "نصاب الزكاة (الذهب)",
+                    title = t("نصاب الزكاة (الذهب)", "Zakat Nisab (Gold)"),
                     value = fmt(nisabValue, 2, grouped = true),
-                    unit = "ريال (85 جرام ع24)",
+                    unit = t("ريال (85 جرام ع24)", "SAR (85g of 24K)"),
                     modifier = Modifier.weight(1f)
                 )
                 ZakatDetailItem(
-                    title = "إجمالي الوزن",
+                    title = t("إجمالي الوزن", "Total Weight"),
                     value = fmt(totalWeight, 3),
-                    unit = "جرام",
+                    unit = t("جرام", "g"),
                     modifier = Modifier.weight(1f)
                 )
                 ZakatDetailItem(
-                    title = "إجمالي قيمة الذهب",
+                    title = t("إجمالي قيمة الذهب", "Total Gold Value"),
                     value = fmt(totalGoldValue, 2, grouped = true),
-                    unit = "ريال",
+                    unit = t("ريال", "SAR"),
                     modifier = Modifier.weight(1f)
                 )
                 ZakatDetailItem(
-                    title = "مبلغ الزكاة (${fmt(zakatPercent, 1)}%)",
+                    title = t("مبلغ الزكاة (${fmt(zakatPercent, 1)}%)", "Zakat Amount (${fmt(zakatPercent, 1)}%)"),
                     value = fmt(totalZakat, 2, grouped = true),
-                    unit = "ريال",
+                    unit = t("ريال", "SAR"),
                     modifier = Modifier.weight(1f)
                 )
             }
@@ -4602,12 +4628,20 @@ private fun ZakatScreen(
                     .padding(top = 1.dp)
             )
             Text(
-                "يجب الزكاة إذا بلغ الذهب المملوك النصاب الشرعي، وهو 85 جراماً من عيار 24 " +
-                        "(أو ما يعادلها بالعيارات الأخرى)، أي ما قيمته الآن نحو " +
-                        "${fmt(nisabValue, 2, grouped = true)} ريال.\n" +
-                        "قيمة ذهبك الحالية (${fmt(totalGoldValue, 2, grouped = true)} ريال) " +
-                        (if (exceedsNisab) "تتجاوز" else "لا تتجاوز") +
-                        " النصاب.",
+                t(
+                    "يجب الزكاة إذا بلغ الذهب المملوك النصاب الشرعي، وهو 85 جراماً من عيار 24 " +
+                            "(أو ما يعادلها بالعيارات الأخرى)، أي ما قيمته الآن نحو " +
+                            "${fmt(nisabValue, 2, grouped = true)} ريال.\n" +
+                            "قيمة ذهبك الحالية (${fmt(totalGoldValue, 2, grouped = true)} ريال) " +
+                            (if (exceedsNisab) "تتجاوز" else "لا تتجاوز") +
+                            " النصاب.",
+                    "Zakat is due if your owned gold reaches the Shariah Nisab of 85 grams of 24K gold " +
+                            "(or its equivalent in other karats), currently worth about " +
+                            "${fmt(nisabValue, 2, grouped = true)} SAR.\n" +
+                            "Your current gold value (${fmt(totalGoldValue, 2, grouped = true)} SAR) " +
+                            (if (exceedsNisab) "exceeds" else "does not exceed") +
+                            " the Nisab."
+                ),
                 color = Gray,
                 fontSize = 10.sp,
                 lineHeight = 15.sp,
@@ -4636,7 +4670,7 @@ private fun ZakatScreen(
                     modifier = Modifier.clickable { showAllItems = !showAllItems }
                 ) {
                     Text(
-                        if (showAllItems) "عرض أقل" else "عرض الكل",
+                        if (showAllItems) t("عرض أقل", "Show Less") else t("عرض الكل", "Show All"),
                         color = Gold,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold
@@ -4648,7 +4682,7 @@ private fun ZakatScreen(
                         modifier = Modifier.size(14.dp)
                     )
                 }
-                Text("تفاصيل الأصناف المحسوبة", color = White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                Text(t("تفاصيل الأصناف المحسوبة", "Calculated Items Details"), color = White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
             }
 
             Spacer(Modifier.height(10.dp))
@@ -4671,7 +4705,7 @@ private fun ZakatScreen(
                 )
                 Spacer(Modifier.width(8.dp))
                 Text(
-                    "استخدام الأوزان الموجودة في المحفظة",
+                    t("استخدام الأوزان الموجودة في المحفظة", "Use weights from Portfolio"),
                     color = Gold,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
@@ -4687,12 +4721,12 @@ private fun ZakatScreen(
                     .fillMaxWidth()
                     .padding(vertical = 4.dp)
             ) {
-                Text("مبلغ الزكاة", color = White, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
-                Text("الحالة", color = White, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1.1f), textAlign = TextAlign.Center)
-                Text("قيمة الذهب", color = White, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
-                Text("الوزن (جم)", color = White, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(0.8f), textAlign = TextAlign.Center)
-                Text("عيار", color = White, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(0.6f), textAlign = TextAlign.Center)
-                Text("الصنف", color = White, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1.2f), textAlign = TextAlign.Center)
+                Text(t("مبلغ الزكاة", "Zakat"), color = White, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
+                Text(t("الحالة", "Status"), color = White, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1.1f), textAlign = TextAlign.Center)
+                Text(t("قيمة الذهب", "Gold Value"), color = White, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
+                Text(t("الوزن (جم)", "Weight (g)"), color = White, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(0.8f), textAlign = TextAlign.Center)
+                Text(t("عيار", "Karat"), color = White, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(0.6f), textAlign = TextAlign.Center)
+                Text(t("الصنف", "Item"), color = White, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1.2f), textAlign = TextAlign.Center)
             }
 
             Box(
@@ -4728,7 +4762,7 @@ private fun ZakatScreen(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    Text("إضافة صنف جديد", color = Gold, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    Text(t("إضافة صنف جديد", "Add New Item"), color = Gold, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                     Text("+", color = Gold, fontSize = 16.sp, fontWeight = FontWeight.Bold)
                 }
             }
@@ -4754,12 +4788,12 @@ private fun ZakatScreen(
             ) {
                 Icon(
                     imageVector = if (settingsExpanded) Icons.Outlined.KeyboardArrowUp else Icons.Outlined.KeyboardArrowDown,
-                    contentDescription = if (settingsExpanded) "طي الإعدادات" else "عرض الإعدادات",
+                    contentDescription = if (settingsExpanded) t("طي الإعدادات", "Collapse Settings") else t("عرض الإعدادات", "Show Settings"),
                     tint = Gold,
                     modifier = Modifier.size(18.dp)
                 )
                 Text(
-                    "إعدادات حساب الزكاة",
+                    t("إعدادات حساب الزكاة", "Zakat Calculation Settings"),
                     color = White,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Bold
@@ -4774,7 +4808,7 @@ private fun ZakatScreen(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Column(modifier = Modifier.weight(1f)) {
-                    Text("نسبة الزكاة", color = Gray, fontSize = 9.sp, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
+                    Text(t("نسبة الزكاة", "Zakat Rate"), color = Gray, fontSize = 9.sp, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
                     Spacer(Modifier.height(4.dp))
                     Row(
                         modifier = Modifier
@@ -4789,7 +4823,7 @@ private fun ZakatScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            "(الذهب) ${fmt(zakatPercent, 2).trimEnd('0').trimEnd('.')}%",
+                            t("(الذهب) ${fmt(zakatPercent, 2).trimEnd('0').trimEnd('.')}%", "(Gold) ${fmt(zakatPercent, 2).trimEnd('0').trimEnd('.')}%"),
                             color = White,
                             fontSize = 10.5.sp,
                             fontWeight = FontWeight.Bold,
@@ -4801,7 +4835,7 @@ private fun ZakatScreen(
                 }
 
                 Column(modifier = Modifier.weight(1f)) {
-                    Text("تاريخ حساب الزكاة", color = Gray, fontSize = 9.sp, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
+                    Text(t("تاريخ حساب الزكاة", "Zakat Calculation Date"), color = Gray, fontSize = 9.sp, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
                     Spacer(Modifier.height(4.dp))
                     Row(
                         modifier = Modifier
@@ -4825,7 +4859,7 @@ private fun ZakatScreen(
                 }
 
                 Column(modifier = Modifier.weight(1f)) {
-                    Text("تاريخ حساب الزكاة", color = Gray, fontSize = 9.sp, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
+                    Text(t("تاريخ حساب الزكاة", "Zakat Calculation Date"), color = Gray, fontSize = 9.sp, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
                     Spacer(Modifier.height(4.dp))
                     Row(
                         modifier = Modifier
@@ -4870,7 +4904,7 @@ private fun ZakatScreen(
                     )
                 }
                 Text(
-                    "سيتم حساب حولان الحول 5 أيام وتحديده لك تلقائياً",
+                    t("سيتم حساب حولان الحول 5 أيام وتحديده لك تلقائياً", "The Hawl completion will be calculated in 5 days and set for you automatically"),
                     color = Gray,
                     fontSize = 9.sp
                 )
@@ -4910,10 +4944,10 @@ private fun ZakatScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("شروط وجوب زكاة الذهب", color = White, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                    Text(t("شروط وجوب زكاة الذهب", "Conditions for Gold Zakat"), color = White, fontSize = 15.sp, fontWeight = FontWeight.Bold)
                     Icon(
                         imageVector = Icons.Outlined.Close,
-                        contentDescription = "إغلاق",
+                        contentDescription = t("إغلاق", "Close"),
                         tint = Gray,
                         modifier = Modifier
                             .size(18.dp)
@@ -4923,7 +4957,10 @@ private fun ZakatScreen(
 
                 Spacer(Modifier.height(6.dp))
                 Text(
-                    "النصاب الحالي: ${fmt(nisabValue, 2, grouped = true)} ريال (يعادل 85 جراماً من عيار 24)",
+                    t(
+                        "النصاب الحالي: ${fmt(nisabValue, 2, grouped = true)} ريال (يعادل 85 جراماً من عيار 24)",
+                        "Current Nisab: ${fmt(nisabValue, 2, grouped = true)} SAR (equivalent to 85g of 24K gold)"
+                    ),
                     color = Gold,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
@@ -4932,12 +4969,17 @@ private fun ZakatScreen(
                 )
 
                 Spacer(Modifier.height(14.dp))
-                Text("شروط الوجوب", color = White, fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.End)
+                Text(t("شروط الوجوب", "Conditions for Zakat"), color = White, fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.End)
                 Spacer(Modifier.height(6.dp))
                 Text(
-                    "• بلوغ النصاب: 85 جراماً من الذهب الخالص (عيار 24)، وما يعادلها بالعيارات الأخرى (نحو 97 جراماً لعيار 21).\n" +
-                            "• مرور الحول: أن يمضي عام هجري كامل على امتلاك النصاب.\n" +
-                            "• الملك التام: أن يكون الذهب مملوكاً بالكامل وغير مرهون.",
+                    t(
+                        "• بلوغ النصاب: 85 جراماً من الذهب الخالص (عيار 24)، وما يعادلها بالعيارات الأخرى (نحو 97 جراماً لعيار 21).\n" +
+                                "• مرور الحول: أن يمضي عام هجري كامل على امتلاك النصاب.\n" +
+                                "• الملك التام: أن يكون الذهب مملوكاً بالكامل وغير مرهون.",
+                        "• Reaching the Nisab: 85 grams of pure gold (24K), or its equivalent in other karats (about 97 grams for 21K).\n" +
+                                "• Passage of a Hawl: a full Hijri year must pass while owning the Nisab.\n" +
+                                "• Full ownership: the gold must be fully owned and not mortgaged."
+                    ),
                     color = Gray,
                     fontSize = 10.5.sp,
                     lineHeight = 17.sp,
@@ -4946,11 +4988,15 @@ private fun ZakatScreen(
                 )
 
                 Spacer(Modifier.height(14.dp))
-                Text("حكم ذهب الزينة", color = White, fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.End)
+                Text(t("حكم ذهب الزينة", "Ruling on Adornment Gold"), color = White, fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.End)
                 Spacer(Modifier.height(6.dp))
                 Text(
-                    "• ذهب الاستعمال الشخصي (الحلي المعتاد): لا زكاة فيه عند جمهور أهل العلم.\n" +
-                            "• ذهب الادخار أو الاستثمار: تجب فيه الزكاة اتفاقاً إذا بلغ النصاب وحال عليه الحول.",
+                    t(
+                        "• ذهب الاستعمال الشخصي (الحلي المعتاد): لا زكاة فيه عند جمهور أهل العلم.\n" +
+                                "• ذهب الادخار أو الاستثمار: تجب فيه الزكاة اتفاقاً إذا بلغ النصاب وحال عليه الحول.",
+                        "• Gold for personal use (customary jewelry): most scholars hold there is no Zakat on it.\n" +
+                                "• Gold for savings or investment: Zakat is due on it by consensus if it reaches the Nisab and a Hawl passes."
+                    ),
                     color = Gray,
                     fontSize = 10.5.sp,
                     lineHeight = 17.sp,
@@ -4960,7 +5006,7 @@ private fun ZakatScreen(
 
                 Spacer(Modifier.height(14.dp))
                 Text(
-                    "مقدار الزكاة الواجب إخراجه: 2.5% (ربع العشر) من قيمة الذهب.",
+                    t("مقدار الزكاة الواجب إخراجه: 2.5% (ربع العشر) من قيمة الذهب.", "The Zakat amount due: 2.5% (a quarter of a tenth) of the gold's value."),
                     color = Gray,
                     fontSize = 10.5.sp,
                     lineHeight = 17.sp,
@@ -4978,7 +5024,7 @@ private fun ZakatScreen(
                         .clickable { showZakatInfo = false },
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("حسناً", color = Black, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    Text(t("حسناً", "OK"), color = Black, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -5001,12 +5047,12 @@ private fun ZakatScreen(
                     }
                     activeDateKarat = null
                 }) {
-                    Text("موافق")
+                    Text(t("موافق", "OK"))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { activeDateKarat = null }) {
-                    Text("إلغاء")
+                    Text(t("إلغاء", "Cancel"))
                 }
             }
         ) {
@@ -5052,7 +5098,7 @@ private fun ZakatKaratWeightInput(
 ) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(
-            karatLabel(karat).removeSuffix(" عيار"),
+            karat.removeSuffix("K"),
             color = Gold,
             fontSize = 13.sp,
             fontWeight = FontWeight.Bold
@@ -5077,7 +5123,7 @@ private fun ZakatKaratWeightInput(
         ) {
             Icon(
                 imageVector = Icons.Outlined.CalendarMonth,
-                contentDescription = "تاريخ الشراء",
+                contentDescription = t("تاريخ الشراء", "Purchase Date"),
                 tint = Gray,
                 modifier = Modifier.size(11.dp)
             )
@@ -5148,7 +5194,7 @@ private fun ZakatItemRow(item: ZakatItem, zakatPercent: Double, exceedsNisab: Bo
         )
 
         Text(
-            karatLabel(item.karat).removeSuffix(" عيار"),
+            item.karat.removeSuffix("K"),
             color = White,
             fontSize = 11.sp,
             modifier = Modifier.weight(0.6f),
@@ -7435,7 +7481,7 @@ private fun FedSchedule(rows: List<FedMeetingRow>) {
                 )
 
                 Text(
-                    text = row.time,
+                    text = timeDisplayLabel(row.time),
                     color = White,
                     fontSize = 9.sp,
                     modifier = Modifier.weight(0.9f),
@@ -7575,7 +7621,7 @@ private fun FedMeetingsScreen(onBack: () -> Unit) {
                         )
                         Spacer(Modifier.height(3.dp))
                         Text(
-                            t("الساعة ${row.time} بتوقيت مكة المكرمة", "${row.time} Makkah time"),
+                            t("الساعة ${row.time} بتوقيت مكة المكرمة", "${timeDisplayLabel(row.time)} Makkah time"),
                             color = Gray,
                             fontSize = 9.5.sp
                         )
