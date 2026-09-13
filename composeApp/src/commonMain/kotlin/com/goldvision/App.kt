@@ -1409,7 +1409,6 @@ private fun CalculatorFullScreen(
                 if (isTaxExempt) t("ضريبة القيمة المضافة (معفى)", "VAT (exempt)") else t("ضريبة القيمة المضافة (${fmt(taxPercent, 0)}%)", "VAT (${fmt(taxPercent, 0)}%)"),
                 "${fmt(vat, 2, grouped = true)} ${t("ريال", "SAR")}"
             )
-            CalculatorRow(t("سعر الجرام النهائي", "Final price per gram"), "${fmt(finalGramPrice, 2, grouped = true)} ${t("ريال", "SAR")}")
         }
 
         Spacer(Modifier.height(14.dp))
