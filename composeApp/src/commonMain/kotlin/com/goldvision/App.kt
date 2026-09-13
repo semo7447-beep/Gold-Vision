@@ -4459,7 +4459,7 @@ private fun ZakatScreen(
             Text(
                 "أوزان الذهب المملوكة (جرام)",
                 color = Gray,
-                fontSize = 10.sp,
+                fontSize = 12.sp,
                 modifier = Modifier.fillMaxWidth(),
                 textAlign = TextAlign.End
             )
@@ -4595,9 +4595,9 @@ private fun ZakatScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(36.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .border(1.dp, Gold, RoundedCornerShape(8.dp))
+                    .height(46.dp)
+                    .clip(RoundedCornerShape(9.dp))
+                    .border(1.dp, Gold, RoundedCornerShape(9.dp))
                     .clickable { fillWeightsFromPortfolio() },
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically
@@ -4606,15 +4606,16 @@ private fun ZakatScreen(
                     imageVector = Icons.Outlined.AccountBalanceWallet,
                     contentDescription = null,
                     tint = Gold,
-                    modifier = Modifier.size(13.dp)
+                    modifier = Modifier.size(17.dp)
                 )
-                Spacer(Modifier.width(6.dp))
+                Spacer(Modifier.width(8.dp))
                 Text(
                     "استخدام الأوزان الموجودة في المحفظة",
                     color = Gold,
-                    fontSize = 10.sp,
+                    fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
-                    maxLines = 1
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
 
@@ -4625,12 +4626,12 @@ private fun ZakatScreen(
                     .fillMaxWidth()
                     .padding(vertical = 4.dp)
             ) {
-                Text("مبلغ الزكاة", color = White, fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
-                Text("الحالة", color = White, fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1.1f), textAlign = TextAlign.Center)
-                Text("قيمة الذهب", color = White, fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
-                Text("الوزن (جم)", color = White, fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(0.8f), textAlign = TextAlign.Center)
-                Text("عيار", color = White, fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(0.6f), textAlign = TextAlign.Center)
-                Text("الصنف", color = White, fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1.2f), textAlign = TextAlign.Center)
+                Text("مبلغ الزكاة", color = White, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
+                Text("الحالة", color = White, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1.1f), textAlign = TextAlign.Center)
+                Text("قيمة الذهب", color = White, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
+                Text("الوزن (جم)", color = White, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(0.8f), textAlign = TextAlign.Center)
+                Text("عيار", color = White, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(0.6f), textAlign = TextAlign.Center)
+                Text("الصنف", color = White, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1.2f), textAlign = TextAlign.Center)
             }
 
             Box(
@@ -4962,21 +4963,21 @@ private fun ZakatDetailItem(title: String, value: String, unit: String, modifier
         Text(
             title,
             color = Gray,
-            fontSize = 9.5.sp,
+            fontSize = 11.sp,
             textAlign = TextAlign.Center,
             maxLines = 2,
-            lineHeight = 11.sp
+            lineHeight = 13.sp
         )
         Spacer(Modifier.height(6.dp))
         Text(
             value,
             color = Gold,
-            fontSize = 14.sp,
+            fontSize = 16.sp,
             fontWeight = FontWeight.Bold,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )
-        Text(unit, color = Gray, fontSize = 8.5.sp, maxLines = 1)
+        Text(unit, color = Gray, fontSize = 10.sp, maxLines = 1)
     }
 }
 
