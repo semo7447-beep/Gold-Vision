@@ -2,6 +2,8 @@ package com.goldvision
 
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Typeface
@@ -14,14 +16,20 @@ import androidx.core.content.FileProvider
 import java.io.File
 import java.io.FileOutputStream
 
-// ينشئ ملف PDF بسيطاً (عنوان + ملخص + جدول صفوف) بخط عربي واتجاه RTL
-// صحيح عبر StaticLayout (بدل Canvas.drawText المباشر، الذي لا يشكّل
-// الحروف العربية بشكل صحيح)، ثم يفتح نافذة المشاركة القياسية في أندرويد
-// لحفظه أو إرساله أو طباعته مباشرة
+// ينشئ ملف PDF بجدول حقيقي (عنوان + شعار + ملخص + جدول أعمدة بحدود)
+// بخط عربي واتجاه RTL صحيح عبر StaticLayout (بدل Canvas.drawText المباشر،
+// الذي لا يشكّل الحروف العربية بشكل صحيح)، ثم يفتح نافذة المشاركة القياسية
+// في أندرويد لحفظه أو إرساله أو طباعته مباشرة.
+//
+// ملاحظة مهمة: لا يجوز ضبط Paint.textAlign عند الرسم عبر StaticLayout —
+// الأمران يتعارضان، فيحاول StaticLayout رسم كل جزء نصي (كل "شريحة" بلغة
+// مختلفة داخل نفس السطر، كنص عربي ممزوج برقم إنجليزي) عند نفس نقطة
+// الإحداثي بدل ترتيبها بجانب بعضها — وهذا بالضبط ما كان يسبب تراكب
+// النصوص فوق بعضها في التقارير السابقة. المحاذاة لليمين تتم يدوياً هنا
+// عبر إزاحة الـ canvas (translate) قبل رسم كل StaticLayout
 internal actual object PdfExport {
     private var appContext: Context? = null
 
-    // يُستدعى من GoldVisionApplication.onCreate، بنفس نمط AppStorage.init
     fun init(context: Context) {
         appContext = context.applicationContext
     }
@@ -29,6 +37,10 @@ internal actual object PdfExport {
     private const val PAGE_WIDTH = 595 // A4 تقريباً بوحدة نقطة (72 نقطة/إنش)
     private const val PAGE_HEIGHT = 842
     private const val MARGIN = 40f
+    private val GoldColor = Color.rgb(160, 120, 20)
+    private val HeaderBg = Color.rgb(32, 26, 10)
+    private val ZebraBg = Color.rgb(246, 246, 246)
+    private val BorderColor = Color.rgb(210, 210, 210)
 
     actual fun exportReport(
         title: String,
@@ -48,37 +60,65 @@ internal actual object PdfExport {
 
             val titlePaint = TextPaint().apply {
                 color = Color.BLACK
-                textSize = 20f
+                textSize = 16f
                 isAntiAlias = true
                 typeface = Typeface.DEFAULT_BOLD
-                textAlign = Paint.Align.RIGHT
+            }
+            val brandPaint = TextPaint(titlePaint).apply {
+                textSize = 13f
+                color = GoldColor
             }
             val metaPaint = TextPaint(titlePaint).apply {
-                textSize = 10f
-                color = Color.DKGRAY
+                textSize = 9.5f
+                color = Color.GRAY
                 typeface = Typeface.DEFAULT
             }
-            val labelPaint = TextPaint(metaPaint).apply {
-                textSize = 12f
+            val labelPaint = TextPaint(titlePaint).apply {
+                textSize = 10.5f
                 color = Color.DKGRAY
+                typeface = Typeface.DEFAULT
             }
             val valuePaint = TextPaint(labelPaint).apply {
                 color = Color.BLACK
                 typeface = Typeface.DEFAULT_BOLD
             }
-            val availableWidth = (PAGE_WIDTH - MARGIN * 2).toInt()
+            val headerCellPaint = TextPaint(labelPaint).apply {
+                textSize = 10f
+                color = Color.WHITE
+                typeface = Typeface.DEFAULT_BOLD
+            }
+            val linePaint = Paint().apply {
+                color = BorderColor
+                strokeWidth = 0.75f
+            }
 
-            fun drawRtlLine(text: String, paint: TextPaint, xRight: Float, topY: Float): Float {
+            val contentWidth = (PAGE_WIDTH - MARGIN * 2)
+
+            // يرسم نصاً عربياً/مختلطاً داخل صندوق بعرض ثابت، محاذى ليمين
+            // الصندوق (boxRight)، عبر StaticLayout — يُعيد ارتفاع السطر
+            // المرسوم فعلياً حتى يُستخدم لحساب الموضع التالي
+            fun drawRtlText(text: String, paint: TextPaint, boxRight: Float, boxWidth: Int, topY: Float): Float {
+                if (text.isEmpty() || boxWidth <= 0) return 0f
                 val layout = StaticLayout.Builder
-                    .obtain(text, 0, text.length, paint, availableWidth)
+                    .obtain(text, 0, text.length, paint, boxWidth)
                     .setAlignment(Layout.Alignment.ALIGN_NORMAL)
                     .setTextDirection(TextDirectionHeuristics.RTL)
                     .build()
                 canvas.save()
-                canvas.translate(xRight - availableWidth, topY)
+                canvas.translate(boxRight - boxWidth, topY)
                 layout.draw(canvas)
                 canvas.restore()
-                return topY + layout.height
+                return layout.height.toFloat()
+            }
+
+            fun measureRtlHeight(text: String, paint: TextPaint, boxWidth: Int): Float {
+                if (text.isEmpty() || boxWidth <= 0) return 0f
+                return StaticLayout.Builder
+                    .obtain(text, 0, text.length, paint, boxWidth)
+                    .setAlignment(Layout.Alignment.ALIGN_NORMAL)
+                    .setTextDirection(TextDirectionHeuristics.RTL)
+                    .build()
+                    .height.toFloat()
             }
 
             fun ensureSpace(neededHeight: Float) {
@@ -93,27 +133,111 @@ internal actual object PdfExport {
                 }
             }
 
-            y = drawRtlLine(title, titlePaint, PAGE_WIDTH - MARGIN, y) + 6f
-            y = drawRtlLine(generatedAt, metaPaint, PAGE_WIDTH - MARGIN, y) + 18f
+            // ==================== رأس التقرير: الشعار + اسم التطبيق ====================
+            val logoSize = 34
+            val logoBitmap = try {
+                BitmapFactory.decodeResource(context.resources, R.drawable.logo_gold_vision)
+                    ?.let { Bitmap.createScaledBitmap(it, logoSize, logoSize, true) }
+            } catch (e: Exception) {
+                null
+            }
+            if (logoBitmap != null) {
+                canvas.drawBitmap(logoBitmap, PAGE_WIDTH - MARGIN - logoSize, y, null)
+            }
+            val brandBoxRight = PAGE_WIDTH - MARGIN - (if (logoBitmap != null) logoSize + 8f else 0f)
+            drawRtlText("Gold Vision", brandPaint, brandBoxRight, contentWidth.toInt(), y + 9f)
+            y += logoSize + 16f
 
+            // ==================== عنوان التقرير وتاريخه ====================
+            y += drawRtlText(title, titlePaint, PAGE_WIDTH - MARGIN, contentWidth.toInt(), y) + 4f
+            y += drawRtlText(generatedAt, metaPaint, PAGE_WIDTH - MARGIN, contentWidth.toInt(), y) + 16f
+
+            // ==================== قسم الملخص (عمودان: تسمية وقيمة) ====================
             if (summary.isNotEmpty()) {
+                val summaryValueColWidth = 170f
+                val summaryLabelColWidth = contentWidth - summaryValueColWidth
                 summary.forEach { row ->
-                    ensureSpace(22f)
-                    val rowText = "${row.label}:  ${row.value}"
-                    y = drawRtlLine(rowText, valuePaint, PAGE_WIDTH - MARGIN, y) + 4f
+                    val rowHeight = maxOf(
+                        measureRtlHeight(row.label, labelPaint, summaryLabelColWidth.toInt()),
+                        measureRtlHeight(row.value, valuePaint, summaryValueColWidth.toInt())
+                    )
+                    ensureSpace(rowHeight + 6f)
+                    drawRtlText(row.label, labelPaint, PAGE_WIDTH - MARGIN, summaryLabelColWidth.toInt(), y)
+                    drawRtlText(row.value, valuePaint, MARGIN + summaryValueColWidth, summaryValueColWidth.toInt(), y)
+                    y += rowHeight + 6f
                 }
-                y += 14f
-                canvas.drawLine(MARGIN, y, PAGE_WIDTH - MARGIN, y, Paint().apply {
-                    color = Color.LTGRAY
-                    strokeWidth = 1f
-                })
+                y += 8f
+                canvas.drawLine(MARGIN, y, PAGE_WIDTH - MARGIN, y, linePaint)
                 y += 16f
             }
 
-            rows.forEach { row ->
-                ensureSpace(30f)
-                val rowText = if (row.value.isNotEmpty()) "${row.label}  —  ${row.value}" else row.label
-                y = drawRtlLine(rowText, labelPaint, PAGE_WIDTH - MARGIN, y) + 8f
+            // ==================== جدول التفاصيل (بحدود وتظليل متبادل) ====================
+            if (rows.isNotEmpty()) {
+                val valueColWidth = 110f
+                val labelColWidth = contentWidth - valueColWidth
+                val tableLeft = MARGIN
+                val tableRight = PAGE_WIDTH - MARGIN
+                val valueColRight = tableLeft + valueColWidth
+                val labelColRight = tableRight
+                val cellPadH = 8f
+                val cellPadV = 7f
+
+                ensureSpace(24f + 26f)
+                val headerHeight = 24f
+                canvas.drawRect(tableLeft, y, tableRight, y + headerHeight, Paint().apply { color = HeaderBg })
+                drawRtlText(
+                    "التفاصيل", headerCellPaint, labelColRight - cellPadH,
+                    (labelColWidth - cellPadH * 2).toInt(), y + 7f
+                )
+                drawRtlText(
+                    "القيمة", headerCellPaint, valueColRight - cellPadH,
+                    (valueColWidth - cellPadH * 2).toInt(), y + 7f
+                )
+                y += headerHeight
+
+                rows.forEachIndexed { index, row ->
+                    val labelHeight = measureRtlHeight(row.label, labelPaint, (labelColWidth - cellPadH * 2).toInt())
+                    val rowHeight = maxOf(labelHeight, 12f) + cellPadV * 2
+
+                    // لو الصف بيتجاوز الصفحة الحالية، ابدأ صفحة جديدة وأعد رسم رأس الجدول
+                    if (y + rowHeight > PAGE_HEIGHT - MARGIN) {
+                        document.finishPage(page)
+                        pageNumber += 1
+                        page = document.startPage(
+                            PdfDocument.PageInfo.Builder(PAGE_WIDTH, PAGE_HEIGHT, pageNumber).create()
+                        )
+                        canvas = page.canvas
+                        y = MARGIN
+                        canvas.drawRect(tableLeft, y, tableRight, y + headerHeight, Paint().apply { color = HeaderBg })
+                        drawRtlText(
+                            "التفاصيل", headerCellPaint, labelColRight - cellPadH,
+                            (labelColWidth - cellPadH * 2).toInt(), y + 7f
+                        )
+                        drawRtlText(
+                            "القيمة", headerCellPaint, valueColRight - cellPadH,
+                            (valueColWidth - cellPadH * 2).toInt(), y + 7f
+                        )
+                        y += headerHeight
+                    }
+
+                    if (index % 2 == 1) {
+                        canvas.drawRect(tableLeft, y, tableRight, y + rowHeight, Paint().apply { color = ZebraBg })
+                    }
+                    drawRtlText(
+                        row.label, labelPaint, labelColRight - cellPadH,
+                        (labelColWidth - cellPadH * 2).toInt(), y + cellPadV
+                    )
+                    if (row.value.isNotEmpty()) {
+                        drawRtlText(
+                            row.value, valuePaint, valueColRight - cellPadH,
+                            (valueColWidth - cellPadH * 2).toInt(), y + cellPadV
+                        )
+                    }
+                    // الفاصل الرأسي بين العمودين + الفاصل الأفقي أسفل الصف
+                    canvas.drawLine(valueColRight, y, valueColRight, y + rowHeight, linePaint)
+                    canvas.drawLine(tableLeft, y + rowHeight, tableRight, y + rowHeight, linePaint)
+                    y += rowHeight
+                }
             }
 
             document.finishPage(page)
