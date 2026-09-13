@@ -1077,7 +1077,6 @@ private fun CalculatorFullScreen(
     onBack: () -> Unit
 ) {
     val selectedPrice = GoldMarket.prices.first { it.karat == selectedKarat }
-    val finalGramPrice = if (weight > 0) total / weight else 0.0
     val marketScope = rememberCoroutineScope()
 
     Column(
@@ -1211,7 +1210,6 @@ private fun CalculatorFullScreen(
                                         "${fmt(vat, 2, grouped = true)} ${t("ريال", "SAR")}"
                                     )
                                 )
-                                add(PdfReportRow(t("سعر الجرام النهائي", "Final price per gram"), "${fmt(finalGramPrice, 2, grouped = true)} ${t("ريال", "SAR")}"))
                             }
                         )
                     }
