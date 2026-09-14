@@ -5904,16 +5904,20 @@ private fun AuthScreen(onBack: () -> Unit, onAuthSuccess: () -> Unit) {
             if (error != null) {
                 errorText = error
             } else if (isSignUpMode) {
-                // نُبقي المستخدم لحظة على الشاشة ليرى نتيجة إرسال رابط تأكيد
-                // البريد الحقيقية (بدل افتراض نجاحها دائماً) قبل الانتقال
-                val verifyError = AuthService.sendEmailVerification()
-                infoText = if (verifyError == null) {
-                    t("تم إنشاء حسابك بنجاح، وأُرسل رابط تأكيد إلى بريدك الإلكتروني", "Your account was created successfully, and a confirmation link was sent to your email")
-                } else {
-                    t("تم إنشاء حسابك بنجاح، لكن تعذر إرسال رابط التأكيد — تحقق من اتصالك بالإنترنت، ويمكنك إعادة إرسال الرابط لاحقاً من الملف الشخصي", "Your account was created successfully, but we couldn't send the confirmation link — check your internet connection; you can resend it later from your profile")
-                }
-                delay(if (verifyError == null) 1600L else 2600L)
-                onAuthSuccess()
+                // إلزامي تأكيد البريد قبل دخول الحساب: نرسل رابط التأكيد ثم
+                // نسجّل الخروج فوراً (بدل onAuthSuccess) ونحوّل الشاشة لوضع
+                // "تسجيل الدخول" — أول محاولة دخول لاحقة بلا تأكيد تُعيد إرسال
+                // الرابط تلقائياً (AuthService.signIn)، فلا يبقى المستخدم بلا حل
+                // حتى لو فشل هذا الإرسال الأول لأي سبب
+                AuthService.sendEmailVerification()
+                AuthService.signOut()
+                isSignUpMode = false
+                password = ""
+                confirmPassword = ""
+                infoText = t(
+                    "تم إنشاء حسابك بنجاح! تحقق من بريدك الإلكتروني واضغط رابط التأكيد، ثم سجّل الدخول من هنا",
+                    "Your account was created! Check your email, click the confirmation link, then sign in here"
+                )
             } else {
                 onAuthSuccess()
             }

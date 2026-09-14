@@ -23,7 +23,24 @@ internal actual object AuthService {
 
     actual suspend fun signIn(email: String, password: String): String? = try {
         auth.signInWithEmailAndPassword(email, password).awaitResult()
-        null
+        val user = auth.currentUser
+        if (user != null && !user.isEmailVerified) {
+            // نعيد إرسال رابط التأكيد تلقائياً بكل محاولة دخول غير مفعَّل —
+            // هذا يتيح "إعادة إرسال" ضمنية بمجرد إعادة محاولة الدخول، حتى لو
+            // فشل الإرسال الأول عند التسجيل لأي سبب (لا يبقى المستخدم بلا حل)
+            try {
+                user.sendEmailVerification().awaitResult()
+            } catch (e: Exception) {
+                // تجاهل: لا نمنع رسالة "غير مفعَّل" الأساسية بسبب فشل إعادة الإرسال
+            }
+            auth.signOut()
+            t(
+                "لم يُفعَّل بريدك الإلكتروني بعد — أُعيد إرسال رابط التأكيد، تحقق من بريدك",
+                "Your email isn't verified yet — the confirmation link was resent, check your inbox"
+            )
+        } else {
+            null
+        }
     } catch (e: Exception) {
         localizedAuthError(e, "تعذر تسجيل الدخول", "Couldn't sign in")
     }
