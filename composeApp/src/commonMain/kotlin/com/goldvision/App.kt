@@ -2756,7 +2756,7 @@ private fun PriceChartFullScreen(
                 .border(1.dp, Border, RoundedCornerShape(9.dp))
                 .padding(2.dp)
         ) {
-            listOf(false to t("تتبع الأسعار", "Price Tracking"), true to t("التحليل الفني", "Technical Analysis")).forEach { (analysisMode, label) ->
+            listOf(false to t("تتبع الأسعار", "Tracking"), true to t("التحليل الفني", "Analysis")).forEach { (analysisMode, label) ->
                 Box(
                     modifier = Modifier
                         .weight(1f)
@@ -6603,7 +6603,7 @@ private fun LiveStatus(updateText: String) {
     val statusColor = if (hasError) Red else Green
     val statusLabel = when {
         GoldMarket.isLoading -> t("يحدّث...", "Updating...")
-        hasError -> t("غير محدث", "Not updated")
+        hasError -> t("غير محدث", "Outdated")
         else -> t("مباشر", "Live")
     }
 
@@ -7299,7 +7299,7 @@ private fun PriceChart(
                 .border(1.dp, Border, RoundedCornerShape(8.dp))
                 .padding(2.dp)
         ) {
-            listOf(false to t("تتبع الأسعار", "Price Tracking"), true to t("التحليل الفني", "Technical Analysis")).forEach { (analysisMode, label) ->
+            listOf(false to t("تتبع الأسعار", "Tracking"), true to t("التحليل الفني", "Analysis")).forEach { (analysisMode, label) ->
                 Box(
                     modifier = Modifier
                         .weight(1f)
