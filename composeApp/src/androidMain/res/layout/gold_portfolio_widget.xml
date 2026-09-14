@@ -41,6 +41,7 @@
     </LinearLayout>
 
     <TextView
+        android:id="@+id/portfolio_widget_label"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="14dp"

@@ -79,9 +79,10 @@ internal fun buildPortfolioWidgetRemoteViews(context: Context): RemoteViews {
     val totalCost = ownedItems.sumOf { it.purchasePriceWithTax }
     val changePercent = if (totalCost > 0.0) (totalValue - totalCost) / totalCost * 100.0 else 0.0
 
-    views.setTextViewText(R.id.portfolio_widget_value, "${fmt(totalValue, 2, grouped = true)} ريال")
+    views.setTextViewText(R.id.portfolio_widget_label, t("قيمة المحفظة", "Portfolio Value"))
+    views.setTextViewText(R.id.portfolio_widget_value, "${fmt(totalValue, 2, grouped = true)} ${t("ريال", "SAR")}")
     if (ownedItems.isEmpty()) {
-        views.setTextViewText(R.id.portfolio_widget_percent, "لا توجد قطع بالمحفظة بعد")
+        views.setTextViewText(R.id.portfolio_widget_percent, t("لا توجد قطع بالمحفظة بعد", "No items in portfolio yet"))
         views.setTextColor(R.id.portfolio_widget_percent, Color.parseColor("#B8B8B8"))
     } else {
         val arrow = if (changePercent >= 0) "▲" else "▼"

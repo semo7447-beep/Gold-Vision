@@ -63,6 +63,12 @@ internal class GoldPriceWidgetProvider : AppWidgetProvider() {
 // مشتركة بين onUpdate (عرض فوري) وGoldPriceWidgetWorker (بعد تحديث حقيقي)
 internal fun buildWidgetRemoteViews(context: Context): RemoteViews {
     val views = RemoteViews(context.packageName, R.layout.gold_price_widget)
+    // تسميات "24 عيار"...إلخ ثابتة داخل XML كقيمة افتراضية عربية؛ تُستبدل
+    // هنا فعلياً عند كل بناء حتى تتبع اللغة الحالية بدل البقاء عربية دائماً
+    views.setTextViewText(R.id.widget_label_24, t("24 عيار", "24K"))
+    views.setTextViewText(R.id.widget_label_22, t("22 عيار", "22K"))
+    views.setTextViewText(R.id.widget_label_21, t("21 عيار", "21K"))
+    views.setTextViewText(R.id.widget_label_18, t("18 عيار", "18K"))
     GoldMarket.prices.forEach { price ->
         val priceId = when (price.karat) {
             "24K" -> R.id.widget_price_24
@@ -71,7 +77,7 @@ internal fun buildWidgetRemoteViews(context: Context): RemoteViews {
             "18K" -> R.id.widget_price_18
             else -> return@forEach
         }
-        views.setTextViewText(priceId, "${fmt(price.price, 2)} ريال")
+        views.setTextViewText(priceId, "${fmt(price.price, 2)} ${t("ريال", "SAR")}")
     }
     views.setTextViewText(R.id.widget_updated_at, widgetUpdatedAtText())
 
@@ -104,5 +110,5 @@ internal fun widgetUpdatedAtText(): String {
     val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
     val hour = now.hour.toString().padStart(2, '0')
     val minute = now.minute.toString().padStart(2, '0')
-    return "آخر تحديث: $hour:$minute"
+    return t("آخر تحديث: $hour:$minute", "Updated: $hour:$minute")
 }
