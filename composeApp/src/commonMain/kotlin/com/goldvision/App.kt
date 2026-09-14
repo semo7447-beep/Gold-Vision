@@ -786,8 +786,10 @@ private fun GoldVisionApp() {
                 showNotificationSettings = true
             },
             onAccountClick = {
+                // نفس صفحة "المزيد" (فيها بطاقة الحساب/الاسم بالأعلى بالفعل)
+                // بدل فتح شاشة منفصلة مكرّرة لنفس المحتوى
                 closeOverlayScreens()
-                if (signedInEmail != null) showProfileScreen = true else showAuthScreen = true
+                selectedBottom = 5
             }
         )
 
