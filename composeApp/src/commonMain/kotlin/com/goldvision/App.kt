@@ -4621,25 +4621,25 @@ private fun ZakatScreen(
             Spacer(Modifier.height(12.dp))
             Row(modifier = Modifier.fillMaxWidth()) {
                 ZakatDetailItem(
-                    title = t("نصاب الزكاة (الذهب)", "Zakat Nisab (Gold)"),
+                    title = t("نصاب الزكاة (الذهب)", "Nisab"),
                     value = fmt(nisabValue, 2, grouped = true),
                     unit = t("ريال (85 جرام ع24)", "SAR (85g of 24K)"),
                     modifier = Modifier.weight(1f)
                 )
                 ZakatDetailItem(
-                    title = t("إجمالي الوزن", "Total Weight"),
+                    title = t("إجمالي الوزن", "Weight"),
                     value = fmt(totalWeight, 3),
                     unit = t("جرام", "g"),
                     modifier = Modifier.weight(1f)
                 )
                 ZakatDetailItem(
-                    title = t("إجمالي قيمة الذهب", "Total Gold Value"),
+                    title = t("إجمالي قيمة الذهب", "Gold Value"),
                     value = fmt(totalGoldValue, 2, grouped = true),
                     unit = t("ريال", "SAR"),
                     modifier = Modifier.weight(1f)
                 )
                 ZakatDetailItem(
-                    title = t("مبلغ الزكاة (${fmt(zakatPercent, 1)}%)", "Zakat Amount (${fmt(zakatPercent, 1)}%)"),
+                    title = t("مبلغ الزكاة (${fmt(zakatPercent, 1)}%)", "Zakat (${fmt(zakatPercent, 1)}%)"),
                     value = fmt(totalZakat, 2, grouped = true),
                     unit = t("ريال", "SAR"),
                     modifier = Modifier.weight(1f)
