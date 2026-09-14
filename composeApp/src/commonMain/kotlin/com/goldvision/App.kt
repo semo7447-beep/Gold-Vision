@@ -1314,6 +1314,7 @@ private fun CalculatorFullScreen(
                     value = weight,
                     onValueChanged = onWeightChanged,
                     fontSize = 18.sp,
+                    placeholderStyle = true,
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxHeight()
@@ -1695,6 +1696,7 @@ private fun DealEvaluatorScreen(
                     value = weight,
                     onValueChanged = { weight = it },
                     fontSize = 16.sp,
+                    placeholderStyle = true,
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxHeight()
@@ -2333,6 +2335,7 @@ private fun AddGoldItemScreen(
                 value = weight,
                 onValueChanged = { weight = it },
                 fontSize = 16.sp,
+                placeholderStyle = !isEditing,
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxHeight()
@@ -6795,6 +6798,7 @@ private fun GoldCalculator(
             NumericInputField(
                 value = weight,
                 onValueChanged = onWeightChanged,
+                placeholderStyle = true,
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxHeight()
@@ -7164,7 +7168,15 @@ private fun NumericInputField(
     var userEdited by remember { mutableStateOf(!placeholderStyle) }
 
     LaunchedEffect(value) {
-        if (!placeholderStyle || userEdited) {
+        if (placeholderStyle && !userEdited) {
+            // تغيّر خارجي (كزر +/− بجانب الحقل) أثناء عرض التلميح يُعتبر
+            // تعديلاً فعلياً، فيتحوّل الحقل لعرض الرقم الحقيقي فوراً
+            if (kotlin.math.abs(value - defaultValue) > 0.001) {
+                userEdited = true
+                val newText = fmt(value, 2)
+                fieldValue = TextFieldValue(newText, selection = TextRange(newText.length))
+            }
+        } else {
             val parsed = fieldValue.text.toDoubleOrNull()
             if (parsed == null || kotlin.math.abs(parsed - value) > 0.001) {
                 val newText = fmt(value, 2)
@@ -7215,14 +7227,23 @@ private fun NumericInputField(
                 // في العرض وفي القيمة الفعلية المستخدَمة بالحساب معاً
                 if (!focusState.isFocused) {
                     val parsed = fieldValue.text.toDoubleOrNull()
-                    if (placeholderStyle && parsed == null) {
-                        fieldValue = TextFieldValue("")
-                        userEdited = false
-                        onValueChanged(defaultValue)
-                    } else if (!placeholderStyle && (parsed == null || parsed < minValue)) {
+                    if (parsed == null) {
+                        if (placeholderStyle) {
+                            fieldValue = TextFieldValue("")
+                            userEdited = false
+                            onValueChanged(defaultValue)
+                        } else {
+                            onValueChanged(minValue)
+                            val newText = fmt(minValue, 2)
+                            fieldValue = TextFieldValue(newText, selection = TextRange(newText.length))
+                        }
+                    } else if (parsed < minValue) {
+                        // الحد الأدنى يُفرض دائماً على رقم فعلي مكتوب، بغض النظر
+                        // عن وضع التلميح — يُستثنى فقط الحقل الفارغ أعلاه
                         onValueChanged(minValue)
                         val newText = fmt(minValue, 2)
                         fieldValue = TextFieldValue(newText, selection = TextRange(newText.length))
+                        if (placeholderStyle) userEdited = true
                     }
                 }
             }
