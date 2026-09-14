@@ -1383,6 +1383,7 @@ private fun CalculatorFullScreen(
                             onValueChanged = { onManufacturingChanged(it.coerceAtMost(500.0)) },
                             fontSize = 10.sp,
                             minValue = 0.0,
+                            placeholderStyle = true,
                             modifier = Modifier
                                 .width(50.dp)
                                 .height(18.dp)
@@ -1744,6 +1745,7 @@ private fun DealEvaluatorScreen(
                 onValueChanged = { shopPrice = it },
                 fontSize = 20.sp,
                 minValue = 0.0,
+                placeholderStyle = true,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(42.dp)
@@ -2373,6 +2375,8 @@ private fun AddGoldItemScreen(
             onValueChanged = { purchasePrice = it },
             fontSize = 18.sp,
             minValue = 0.0,
+            // التلميح فقط عند إضافة قطعة جديدة — عند التعديل هذه قيمة محفوظة فعلاً
+            placeholderStyle = !isEditing,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(42.dp)
@@ -2417,6 +2421,7 @@ private fun AddGoldItemScreen(
                 onValueChanged = { manufacturing = it.coerceAtMost(500.0) },
                 fontSize = 12.sp,
                 minValue = 0.0,
+                placeholderStyle = !isEditing,
                 modifier = Modifier
                     .width(70.dp)
                     .height(30.dp)
@@ -6823,6 +6828,7 @@ private fun GoldCalculator(
                     onValueChanged = { onManufacturingChanged(it.coerceAtMost(500.0)) },
                     fontSize = 10.sp,
                     minValue = 0.0,
+                    placeholderStyle = true,
                     modifier = Modifier
                         .width(46.dp)
                         .height(16.dp)
@@ -7145,57 +7151,82 @@ private fun NumericInputField(
     onValueChanged: (Double) -> Unit,
     modifier: Modifier = Modifier,
     fontSize: androidx.compose.ui.unit.TextUnit = 12.sp,
-    minValue: Double = 0.1
+    minValue: Double = 0.1,
+    // وضع "تلميح تعليمي": الرقم المبدئي يُعرض رمادياً كأنه مثال (كحقل
+    // الإيميل/كلمة المرور) لا كقيمة أُدخلت فعلاً، ويختفي فور الكتابة،
+    // ويعود عند حذف كل ما كُتب — دون أن يفقد الحساب قيمته المبدئية
+    placeholderStyle: Boolean = false
 ) {
-    var fieldValue by remember { mutableStateOf(TextFieldValue(fmt(value, 2))) }
+    val defaultValue = remember { value }
+    var fieldValue by remember {
+        mutableStateOf(if (placeholderStyle) TextFieldValue("") else TextFieldValue(fmt(value, 2)))
+    }
+    var userEdited by remember { mutableStateOf(!placeholderStyle) }
 
     LaunchedEffect(value) {
-        val parsed = fieldValue.text.toDoubleOrNull()
-        if (parsed == null || kotlin.math.abs(parsed - value) > 0.001) {
-            val newText = fmt(value, 2)
-            fieldValue = TextFieldValue(newText, selection = TextRange(newText.length))
+        if (!placeholderStyle || userEdited) {
+            val parsed = fieldValue.text.toDoubleOrNull()
+            if (parsed == null || kotlin.math.abs(parsed - value) > 0.001) {
+                val newText = fmt(value, 2)
+                fieldValue = TextFieldValue(newText, selection = TextRange(newText.length))
+            }
         }
     }
 
-    BasicTextField(
-        value = fieldValue,
-        onValueChange = { new ->
-            if (new.text.isEmpty() || new.text.matches(Regex("^\\d*\\.?\\d*$"))) {
-                fieldValue = new
-                // يُبلَّغ بأي رقم صالح فوراً أثناء الكتابة، حتى لو كان أقل من
-                // minValue (مثل 0) — حتى يبقى المجموع المعروض مطابقاً دائماً
-                // لما يكتبه المستخدم فعلياً، بدل حساب صامت بقيمة قديمة مخفية.
-                // الحد الأدنى يُفرض فقط عند مغادرة الحقل (onFocusChanged أدناه)
-                new.text.toDoubleOrNull()?.let { parsedValue ->
-                    onValueChanged(parsedValue)
+    Box(contentAlignment = Alignment.Center, modifier = modifier) {
+        if (placeholderStyle && !userEdited) {
+            Text(fmt(defaultValue, 2), color = Gray, fontSize = fontSize, textAlign = TextAlign.Center)
+        }
+        BasicTextField(
+            value = fieldValue,
+            onValueChange = { new ->
+                if (new.text.isEmpty() || new.text.matches(Regex("^\\d*\\.?\\d*$"))) {
+                    fieldValue = new
+                    if (new.text.isEmpty()) {
+                        if (placeholderStyle) {
+                            userEdited = false
+                            onValueChanged(defaultValue)
+                        }
+                    } else {
+                        // يُبلَّغ بأي رقم صالح فوراً أثناء الكتابة، حتى لو كان أقل
+                        // من minValue (مثل 0) — حتى يبقى المجموع المعروض مطابقاً
+                        // دائماً لما يكتبه المستخدم فعلياً، بدل حساب صامت بقيمة
+                        // قديمة مخفية. الحد الأدنى يُفرض فقط عند مغادرة الحقل
+                        // (onFocusChanged أدناه)
+                        userEdited = true
+                        new.text.toDoubleOrNull()?.let { parsedValue ->
+                            onValueChanged(parsedValue)
+                        }
+                    }
+                }
+            },
+            singleLine = true,
+            textStyle = TextStyle(
+                color = White,
+                fontSize = fontSize,
+                textAlign = TextAlign.Center
+            ),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+            cursorBrush = SolidColor(Gold),
+            modifier = Modifier.fillMaxSize().onFocusChanged { focusState ->
+                // إذا ترك المستخدم الحقل فارغاً عند الخروج منه: في وضع التلميح
+                // يعود الحقل لعرض الرقم المبدئي كتلميح رمادي (والقيمة الفعلية
+                // تعود لقيمتها المبدئية)، وإلا يُصحَّح للحد الأدنى كالسابق —
+                // في العرض وفي القيمة الفعلية المستخدَمة بالحساب معاً
+                if (!focusState.isFocused) {
+                    val parsed = fieldValue.text.toDoubleOrNull()
+                    if (placeholderStyle && parsed == null) {
+                        fieldValue = TextFieldValue("")
+                        userEdited = false
+                        onValueChanged(defaultValue)
+                    } else if (!placeholderStyle && (parsed == null || parsed < minValue)) {
+                        onValueChanged(minValue)
+                        val newText = fmt(minValue, 2)
+                        fieldValue = TextFieldValue(newText, selection = TextRange(newText.length))
+                    }
                 }
             }
-        },
-        singleLine = true,
-        textStyle = TextStyle(
-            color = White,
-            fontSize = fontSize,
-            textAlign = TextAlign.Center
-        ),
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-        cursorBrush = SolidColor(Gold),
-        modifier = modifier.onFocusChanged { focusState ->
-            // إذا ترك المستخدم الحقل فارغاً أو برقم أقل من الحد الأدنى عند
-            // الخروج منه، يُصحَّح تلقائياً للحد الأدنى — في العرض وفي القيمة
-            // الفعلية المستخدَمة بالحساب معاً، حتى لا يختلفا
-            if (!focusState.isFocused) {
-                val parsed = fieldValue.text.toDoubleOrNull()
-                if (parsed == null || parsed < minValue) {
-                    onValueChanged(minValue)
-                    val newText = fmt(minValue, 2)
-                    fieldValue = TextFieldValue(newText, selection = TextRange(newText.length))
-                }
-            }
-        }
-    ) { innerTextField ->
-        Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-            innerTextField()
-        }
+        )
     }
 }
 
