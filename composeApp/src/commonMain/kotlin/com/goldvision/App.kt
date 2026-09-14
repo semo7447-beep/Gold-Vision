@@ -5165,6 +5165,7 @@ private fun ZakatKaratWeightInput(
             onValueChanged = onValueChanged,
             fontSize = 15.sp,
             minValue = 0.0,
+            placeholderStyle = true,
             modifier = Modifier
                 .width(66.dp)
                 .height(36.dp)
@@ -6482,6 +6483,7 @@ private fun AddPriceAlertDialog(
                 onValueChanged = { targetPrice = it },
                 fontSize = 16.sp,
                 minValue = 0.0,
+                placeholderStyle = true,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(44.dp)
@@ -7068,6 +7070,7 @@ private fun CountryTaxSelector(
                     onValueChanged = onTaxPercentChanged,
                     fontSize = 12.sp,
                     minValue = 0.0,
+                    placeholderStyle = true,
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxHeight()
@@ -7239,9 +7242,6 @@ private fun NumericInputField(
     }
 
     Box(contentAlignment = Alignment.Center, modifier = modifier) {
-        if (placeholderStyle && !userEdited) {
-            Text(fmt(defaultValue, 2), color = Gray, fontSize = fontSize, textAlign = TextAlign.Center)
-        }
         BasicTextField(
             value = fieldValue,
             onValueChange = { new ->
@@ -7303,6 +7303,18 @@ private fun NumericInputField(
                         if (placeholderStyle) userEdited = true
                     }
                 }
+            },
+            // decorationBox يوحّد قياس التلميح الرمادي مع الحقل الفعلي في تمريرة
+            // تخطيط واحدة (بدل عنصرين منفصلين مكدّسين فوق بعض في Box) — هذا هو
+            // الأسلوب الرسمي الموصى به من Compose لعرض تلميح داخل BasicTextField،
+            // ويمنع أي وميض/اختفاء بصري عابر للنص عند التركيز على بعض الأجهزة
+            decorationBox = { innerTextField ->
+                Box(contentAlignment = Alignment.Center) {
+                    if (placeholderStyle && !userEdited) {
+                        Text(fmt(defaultValue, 2), color = Gray, fontSize = fontSize, textAlign = TextAlign.Center)
+                    }
+                    innerTextField()
+                }
             }
         )
     }
@@ -7342,9 +7354,6 @@ private fun SelectableTextField(
             .padding(horizontal = 12.dp),
         contentAlignment = Alignment.CenterStart
     ) {
-        if (value.isEmpty()) {
-            Text(placeholder, color = Gray, fontSize = fontSize)
-        }
         BasicTextField(
             value = fieldValue,
             onValueChange = { new ->
@@ -7358,7 +7367,17 @@ private fun SelectableTextField(
             visualTransformation = visualTransformation,
             modifier = Modifier
                 .fillMaxWidth()
-                .focusRequester(focusRequester)
+                .focusRequester(focusRequester),
+            // decorationBox يوحّد قياس التلميح مع الحقل الفعلي بتمريرة تخطيط
+            // واحدة (بدل عنصرين منفصلين فوق بعض)، يمنع أي وميض/اختفاء عابر
+            decorationBox = { innerTextField ->
+                Box(contentAlignment = Alignment.CenterStart) {
+                    if (value.isEmpty()) {
+                        Text(placeholder, color = Gray, fontSize = fontSize)
+                    }
+                    innerTextField()
+                }
+            }
         )
     }
 }
