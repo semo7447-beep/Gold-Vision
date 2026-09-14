@@ -755,6 +755,23 @@ private fun GoldVisionApp() {
     // كامل التطبيق بغض النظر عن الصفحة المفتوحة حالياً
     var isRefreshing by remember { mutableStateOf(false) }
 
+    // يغلق أي شاشة (طبقة) مفتوحة فوق التبويبات — لازم يُستدعى قبل فتح
+    // شاشة جديدة من الجرس/الحساب في الشريط العلوي، وإلا تبقى الشاشة
+    // القديمة (مثل "إضافة قطعة" أو "تسجيل الدخول") ظاهرة فوق الجديدة لأن
+    // شرط if/else الأول اللي لسه true هو اللي يُعرض (نفس المنطق المستخدم
+    // أصلاً في BottomNav.onSelected أدناه)
+    fun closeOverlayScreens() {
+        showChartFull = false
+        showDealEvaluator = false
+        showAddGoldItem = false
+        editingGoldItemIndex = null
+        showProfileScreen = false
+        showAuthScreen = false
+        showPrivacyPolicy = false
+        showNotificationSettings = false
+        showFedSchedule = false
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -764,8 +781,14 @@ private fun GoldVisionApp() {
     ) {
         Header(
             showNotificationBadge = !notificationSettings.dailyPriceEnabled,
-            onNotificationsClick = { showNotificationSettings = true },
-            onAccountClick = { if (signedInEmail != null) showProfileScreen = true else showAuthScreen = true }
+            onNotificationsClick = {
+                closeOverlayScreens()
+                showNotificationSettings = true
+            },
+            onAccountClick = {
+                closeOverlayScreens()
+                if (signedInEmail != null) showProfileScreen = true else showAuthScreen = true
+            }
         )
 
         PullToRefreshBox(
@@ -967,15 +990,7 @@ private fun GoldVisionApp() {
         BottomNav(
             selected = selectedBottom,
             onSelected = { index ->
-                showChartFull = false
-                showDealEvaluator = false
-                showAddGoldItem = false
-                editingGoldItemIndex = null
-                showProfileScreen = false
-                showAuthScreen = false
-                showPrivacyPolicy = false
-                showNotificationSettings = false
-                showFedSchedule = false
+                closeOverlayScreens()
                 selectedBottom = index
             }
         )
