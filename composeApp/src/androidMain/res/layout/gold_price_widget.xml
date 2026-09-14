@@ -31,15 +31,17 @@
             android:textColor="@color/widget_gold"
             android:textSize="16sp"
             android:textStyle="bold" />
-        <!-- زر تحديث يدوي فوري — منفصل عن باقي الويدجت (يفتح التطبيق) -->
+        <!-- زر تحديث يدوي فوري — منفصل عن باقي الويدجت (يفتح التطبيق).
+             حجم ثابت 40dp (بدل wrap_content+padding صغير) حتى تكون منطقة
+             اللمس واضحة الحدود ولا تختلط بمنطقة "فتح التطبيق" المحيطة بها -->
         <TextView
             android:id="@+id/widget_refresh"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:padding="6dp"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:gravity="center"
             android:text="⟳"
             android:textColor="@color/widget_gold"
-            android:textSize="20sp"
+            android:textSize="24sp"
             android:textStyle="bold" />
     </LinearLayout>
 

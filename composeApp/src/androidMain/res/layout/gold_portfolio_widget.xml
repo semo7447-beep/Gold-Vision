@@ -29,14 +29,16 @@
             android:textColor="@color/widget_gold"
             android:textSize="14sp"
             android:textStyle="bold" />
+        <!-- حجم ثابت 40dp حتى تكون منطقة اللمس واضحة الحدود ولا تختلط
+             بمنطقة "فتح التطبيق" المحيطة بها -->
         <TextView
             android:id="@+id/portfolio_widget_refresh"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:padding="6dp"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:gravity="center"
             android:text="⟳"
             android:textColor="@color/widget_gold"
-            android:textSize="18sp"
+            android:textSize="24sp"
             android:textStyle="bold" />
     </LinearLayout>
 
