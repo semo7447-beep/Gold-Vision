@@ -65,7 +65,7 @@ private fun localizedAuthError(e: Exception, fallbackAr: String, fallbackEn: Str
     val code = (e as? FirebaseAuthException)?.errorCode
     return when (code) {
         "ERROR_EMAIL_ALREADY_IN_USE", "ERROR_CREDENTIAL_ALREADY_IN_USE" ->
-            t("البريد الإلكتروني مستخدم بالفعل بحساب آخر", "This email is already in use by another account")
+            t("أنت مسجَّل من قبل بهذا البريد الإلكتروني", "You're already registered with this email")
         "ERROR_INVALID_EMAIL" ->
             t("صيغة البريد الإلكتروني غير صحيحة", "Invalid email address format")
         "ERROR_WEAK_PASSWORD" ->
