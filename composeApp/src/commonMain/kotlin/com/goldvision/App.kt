@@ -634,7 +634,7 @@ private fun GoldVisionApp() {
     var selectedPeriod by remember { mutableStateOf("أسبوع") }
     var buyMode by remember { mutableStateOf(true) }
     var weight by remember { mutableDoubleStateOf(0.0) }
-    var manufacturing by remember { mutableDoubleStateOf(35.0) }
+    var manufacturing by remember { mutableDoubleStateOf(0.0) }
     var selectedCountryTax by remember { mutableStateOf(countryTaxOptions.first()) }
     var taxPercent by remember { mutableDoubleStateOf(countryTaxOptions.first().vatPercent) }
     var selectedBottom by remember { mutableIntStateOf(0) }
@@ -1597,7 +1597,7 @@ private fun DealEvaluatorScreen(
 ) {
     var karat by remember { mutableStateOf(initialKarat) }
     var weight by remember { mutableDoubleStateOf(initialWeight) }
-    var shopPrice by remember { mutableDoubleStateOf(3000.0) }
+    var shopPrice by remember { mutableDoubleStateOf(0.0) }
     var includingTax by remember { mutableStateOf(true) }
     var showMore by remember { mutableStateOf(false) }
     var showSaveDialog by remember { mutableStateOf(false) }
@@ -2187,9 +2187,9 @@ private fun AddGoldItemScreen(
     var karat by remember { mutableStateOf(initialValues?.karat ?: "21K") }
     var weight by remember { mutableDoubleStateOf(initialValues?.weightGrams ?: 5.0) }
     // عند التعديل، السعر المحفوظ (purchasePriceWithTax) شامل الضريبة أصلاً
-    var purchasePrice by remember { mutableDoubleStateOf(initialValues?.purchasePriceWithTax ?: 3000.0) }
+    var purchasePrice by remember { mutableDoubleStateOf(initialValues?.purchasePriceWithTax ?: 0.0) }
     var includingTax by remember { mutableStateOf(true) }
-    var manufacturing by remember { mutableDoubleStateOf(initialValues?.manufacturingPerGram ?: 35.0) }
+    var manufacturing by remember { mutableDoubleStateOf(initialValues?.manufacturingPerGram ?: 0.0) }
     var purchaseDate by remember { mutableStateOf(initialValues?.purchaseDate ?: todayDateText()) }
     var notes by remember { mutableStateOf(initialValues?.notes ?: "") }
     var isSold by remember { mutableStateOf(initialValues?.isSold ?: false) }
@@ -7263,7 +7263,11 @@ private fun NumericInputField(
                 textAlign = TextAlign.Center
             ),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-            cursorBrush = SolidColor(Gold),
+            // المؤشر الوامض لحقل فارغ يُرسم في منتصف الصندوق تماماً (نفس مكان
+            // تمركز نص التلميح الرمادي)، فيبدو للمستخدم وكأن التلميح "يختفي"
+            // فور التركيز عليه قبل أي كتابة فعلية — نُخفي المؤشر تماماً بهذه
+            // الحالة فقط، فيبقى التلميح ظاهراً بلا أي تعارض بصري حتى يكتب رقماً
+            cursorBrush = SolidColor(if (placeholderStyle && fieldValue.text.isEmpty()) Color.Transparent else Gold),
             modifier = Modifier.fillMaxSize().onFocusChanged { focusState ->
                 // إذا ترك المستخدم الحقل فارغاً عند الخروج منه: في وضع التلميح
                 // يعود الحقل لعرض الرقم المبدئي كتلميح رمادي (والقيمة الفعلية
