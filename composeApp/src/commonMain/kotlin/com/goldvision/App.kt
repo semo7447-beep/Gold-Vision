@@ -1118,7 +1118,7 @@ private fun HomeScreen(
 // ==================== شاشة حاسبة الذهب الكاملة ====================
 internal fun karatLabel(karat: String): String {
     val number = karat.removeSuffix("K")
-    return t("$number عيار", "${number}K")
+    return t("عيار $number", "${number}K")
 }
 
 @Composable
