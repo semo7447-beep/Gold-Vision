@@ -4,6 +4,12 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- مطلوبة من أندرويد 13 فأعلى لعرض إشعار سعر الذهب اليومي -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- مطلوبة فقط على أندرويد 9 فأقل (maxSdkVersion) لحفظ بطاقة السعر
+         بالمعرض عبر MediaStore — من أندرويد 10 (Q) فأعلى التخزين النطاقي
+         (Scoped Storage) يسمح بهذا دون أي صلاحية -->
+    <uses-permission
+        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="28" />
 
     <application
         android:name=".GoldVisionApplication"

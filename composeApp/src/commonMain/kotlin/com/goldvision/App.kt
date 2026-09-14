@@ -51,6 +51,7 @@ import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.KeyboardArrowDown
@@ -97,6 +98,7 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
@@ -653,6 +655,7 @@ private fun GoldVisionApp() {
     var signedInEmail by remember { mutableStateOf(AuthService.currentUserEmail) }
     var showAuthScreen by remember { mutableStateOf(false) }
     var showFedSchedule by remember { mutableStateOf(false) }
+    var showSharePriceCard by remember { mutableStateOf(false) }
 
     var liveTimeText by remember { mutableStateOf(currentDateTimeText()) }
     LaunchedEffect(Unit) {
@@ -728,7 +731,7 @@ private fun GoldVisionApp() {
     // الإيماءة تترك للنظام (يخرج من التطبيق كالمعتاد)
     val hasOverlayScreen = showChartFull || showDealEvaluator || showAddGoldItem ||
         showProfileScreen || showAuthScreen || showPrivacyPolicy || showNotificationSettings ||
-        showFedSchedule || selectedBottom != 0
+        showFedSchedule || showSharePriceCard || selectedBottom != 0
     BackHandler(enabled = hasOverlayScreen) {
         when {
             showChartFull -> showChartFull = false
@@ -746,6 +749,7 @@ private fun GoldVisionApp() {
             showPrivacyPolicy -> showPrivacyPolicy = false
             showNotificationSettings -> showNotificationSettings = false
             showFedSchedule -> showFedSchedule = false
+            showSharePriceCard -> showSharePriceCard = false
             selectedBottom != 0 -> selectedBottom = 0
         }
     }
@@ -770,6 +774,7 @@ private fun GoldVisionApp() {
         showPrivacyPolicy = false
         showNotificationSettings = false
         showFedSchedule = false
+        showSharePriceCard = false
     }
 
     Column(
@@ -790,6 +795,10 @@ private fun GoldVisionApp() {
                 // بدل فتح شاشة منفصلة مكرّرة لنفس المحتوى
                 closeOverlayScreens()
                 selectedBottom = 5
+            },
+            onShareCardClick = {
+                closeOverlayScreens()
+                showSharePriceCard = true
             }
         )
 
@@ -912,6 +921,8 @@ private fun GoldVisionApp() {
                 )
             } else if (showFedSchedule) {
                 FedMeetingsScreen(onBack = { showFedSchedule = false })
+            } else if (showSharePriceCard) {
+                SharePriceCardScreen(onBack = { showSharePriceCard = false })
             } else {
                 when (selectedBottom) {
                     0 -> HomeScreen(
@@ -6531,9 +6542,9 @@ private fun AddPriceAlertDialog(
 private fun Header(
     showNotificationBadge: Boolean,
     onNotificationsClick: () -> Unit,
-    onAccountClick: () -> Unit
+    onAccountClick: () -> Unit,
+    onShareCardClick: () -> Unit
 ) {
-    val shareApp = AppShare.rememberShareTrigger()
     CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
         Row(
             modifier = Modifier
@@ -6568,7 +6579,7 @@ private fun Header(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(5.dp)
             ) {
-                CircleButton(Icons.Outlined.Share, onClick = shareApp)
+                CircleButton(Icons.Outlined.Share, onClick = onShareCardClick)
                 SmallGoldButton("SAR")
                 CircleButton(Icons.Outlined.AccountCircle, onClick = onAccountClick)
             }
@@ -7870,6 +7881,232 @@ private fun FedMeetingsScreen(onBack: () -> Unit) {
                 }
             }
             item { Spacer(Modifier.height(16.dp)) }
+        }
+    }
+}
+
+// ==================== بطاقة السعر اليومية القابلة للمشاركة ====================
+// تُلتقَط بطاقة PriceShareCard كصورة (عبر GraphicsLayer) ثم تُشارَك أو
+// تُحفَظ بالمعرض — نفس الفكرة اللي تنتشر بها تطبيقات أسعار الصرف/الذهب
+// بمجموعات واتساب دون أي مجهود من المستخدم غير ضغطة مشاركة واحدة
+@Composable
+private fun SharePriceCardScreen(onBack: () -> Unit) {
+    val priceCardCapture = PriceCardShare.rememberCapture()
+    val shareImage = PriceCardShare.rememberShareImage()
+    val saveImage = PriceCardShare.rememberSaveImage()
+    var saveMessage by remember { mutableStateOf<String?>(null) }
+
+    fun capture(after: (ImageBitmap) -> Unit) {
+        val bitmap = priceCardCapture.capture()
+        if (bitmap != null) {
+            after(bitmap)
+        } else {
+            saveMessage = t("تعذّر التقاط البطاقة، حاول مجدداً", "Couldn't capture the card, try again")
+        }
+    }
+
+    Column(modifier = Modifier.fillMaxSize()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 18.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
+                contentDescription = t("رجوع", "Back"),
+                tint = Gold,
+                modifier = Modifier
+                    .size(20.dp)
+                    .clickable { onBack() }
+            )
+            Text(
+                t("بطاقة السعر اليومي", "Daily Price Card"),
+                color = Gold,
+                fontSize = 17.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
+
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 18.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                t(
+                    "هذه البطاقة تُحدَّث تلقائياً بسعر اليوم — جاهزة للمشاركة بضغطة واحدة",
+                    "This card updates automatically with today's price — ready to share in one tap"
+                ),
+                color = Gray,
+                fontSize = 11.sp,
+                textAlign = TextAlign.Center,
+                lineHeight = 16.sp,
+                modifier = Modifier.padding(top = 4.dp, bottom = 16.dp)
+            )
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .then(priceCardCapture.modifier)
+            ) {
+                PriceShareCard()
+            }
+
+            saveMessage?.let { message ->
+                Text(message, color = Gold, fontSize = 11.sp, modifier = Modifier.padding(top = 12.dp))
+            }
+
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 18.dp, bottom = 24.dp)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(Gold)
+                        .clickable {
+                            saveMessage = null
+                            capture { bitmap -> shareImage(bitmap) }
+                        }
+                        .padding(vertical = 13.dp),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Outlined.Share, contentDescription = null, tint = Black, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text(t("مشاركة", "Share"), color = Black, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                }
+                Row(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(12.dp))
+                        .border(1.4.dp, Gold, RoundedCornerShape(12.dp))
+                        .clickable {
+                            capture { bitmap ->
+                                val saved = saveImage(bitmap)
+                                saveMessage = if (saved) {
+                                    t("تم حفظ الصورة في المعرض", "Image saved to gallery")
+                                } else {
+                                    t("تعذّر حفظ الصورة", "Couldn't save the image")
+                                }
+                            }
+                        }
+                        .padding(vertical = 13.dp),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Outlined.Download, contentDescription = null, tint = Gold, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text(t("حفظ الصورة", "Save Image"), color = Gold, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PriceShareCard() {
+    val today = todayLocalDate()
+    val dateText = "${dayNameFor(today.dayOfWeek)} " +
+        "${today.dayOfMonth.toString().padStart(2, '0')}/" +
+        "${today.monthNumber.toString().padStart(2, '0')}/${today.year}"
+    val featured = GoldMarket.prices.firstOrNull { it.karat == "24K" } ?: GoldMarket.prices.first()
+    val others = GoldMarket.prices.filterNot { it.karat == featured.karat }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(20.dp))
+            .background(CardBlack)
+            .border(1.4.dp, Gold.copy(alpha = 0.55f), RoundedCornerShape(20.dp))
+            .padding(20.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                GoldLogo(size = 22.dp)
+                Text("GOLD VISION", color = Gold, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+            }
+            Text(dateText, color = Gray, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+        }
+
+        Spacer(Modifier.height(14.dp))
+        Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(Border))
+        Spacer(Modifier.height(14.dp))
+
+        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+            Text(t("عيار ${featured.karat.removeSuffix("K")}", "${featured.karat} Gold"), color = Gold, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(fmt(featured.price, 2), color = White, fontSize = 34.sp, fontWeight = FontWeight.Bold)
+                Text(t("ريال/جرام", "SAR/g"), color = Gray, fontSize = 12.sp)
+            }
+            val isUp = featured.change >= 0
+            Row(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(20.dp))
+                    .background((if (isUp) Green else Red).copy(alpha = 0.14f))
+                    .padding(horizontal = 10.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Text(if (isUp) "▲" else "▼", color = if (isUp) Green else Red, fontSize = 9.sp)
+                Text(
+                    t("${fmt(featured.percent, 2)}٪ اليوم", "${fmt(featured.percent, 2)}% today"),
+                    color = if (isUp) Green else Red,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+
+        Spacer(Modifier.height(14.dp))
+        Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(Border))
+        Spacer(Modifier.height(14.dp))
+
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            others.forEach { item ->
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(11.dp))
+                        .background(Black)
+                        .border(1.dp, Border, RoundedCornerShape(11.dp))
+                        .padding(vertical = 9.dp)
+                ) {
+                    Text(t("عيار ${item.karat.removeSuffix("K")}", item.karat), color = Gold, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                    Text(fmt(item.price, 2), color = White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+
+        Spacer(Modifier.height(14.dp))
+        Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(Border))
+        Spacer(Modifier.height(14.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            GoldLogo(size = 12.dp)
+            Spacer(Modifier.width(5.dp))
+            Text(
+                t("GOLD VISION · حمّل التطبيق الآن", "GOLD VISION · Download the app now"),
+                color = Gray,
+                fontSize = 9.sp,
+                fontWeight = FontWeight.Bold
+            )
         }
     }
 }
