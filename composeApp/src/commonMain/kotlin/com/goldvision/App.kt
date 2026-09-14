@@ -5409,8 +5409,6 @@ private fun MoreScreen(
                 onClick = { showLanguageDialog = true }
             )
             SettingsDivider()
-            SettingsRow(icon = Icons.Outlined.AttachMoney, label = t("العملة", "Currency"))
-            SettingsDivider()
             SettingsRow(icon = Icons.Outlined.Info, label = t("عن التطبيق", "About"))
             SettingsDivider()
             SettingsRow(
