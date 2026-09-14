@@ -6,34 +6,33 @@ import androidx.compose.runtime.setValue
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.request.get
+import io.ktor.client.request.header
 import io.ktor.client.statement.bodyAsText
+import kotlinx.datetime.Clock
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.jsonPrimitive
 
 // جسر الأسعار العالمية الحية: يجلب سعر أونصة الذهب الفعلي بالدولار من
-// xaus.com — مزوّد مخصص لبيانات XAU/USD تحديداً، بلا حاجة لمفتاح API
-// ولا تسجيل، ومُصمَّم أصلاً للاستطلاع المتكرر (مصدره محدَّث باستمرار
-// ومخزَّن مؤقتاً 30 ثانية عند الحافة، بلا حد أقصى شهري صارم).
-//
-// تاريخ المزوّدين المجرَّبين: data-asg.goldprice.org رجع فاضياً على شبكة
-// المستخدم، وapi.goldprice.dev (v1/carat) عنده حصة شهرية 1000 طلب فقط
-// اكتُشفت بالتجربة الفعلية (رسالة quota_exceeded حقيقية من المزوّد عبر
-// Sentry) — تنفد خلال أيام من الاستخدام العادي وتجعله غير مناسب لتحديث
-// شبه لحظي. متاح من commonMain فيعمل بنفس الطريقة على أندرويد و iOS
-// مستقبلاً
-//
-// ⚠️ لم يُختبر هذا المزوّد فعلياً من هذه الجلسة (الشبكة هنا مقيّدة عن
-// نطاقه)، وشكل استجابته غير موثّق بدقة كافية — لذلك التحليل أدناه دفاعي
-// (يجرّب عدة مسارات محتملة)، ويُلتقط نص الاستجابة الخام في Sentry عند
-// الفشل لتشخيصه فوراً لو احتاج تعديلاً
+// GoldAPI.io (مزوّد مخصص لبيانات المعادن، مصدره بورصة لندن LBMA)،
+// بمفتاح API شخصي (goldApiKey، يُقرأ من local.properties محلياً — غير
+// مرفوع على GitHub). الخطة المجانية محدودة بـ 100 طلب/شهر فقط، لذلك
+// refresh() تفرض حداً أدنى بين طلبات التحديث التلقائية (انظر
+// MIN_AUTO_REFRESH_INTERVAL_MILLIS أدناه) — الحد يُحفَظ محلياً فيبقى
+// فعّالاً حتى لو أُعيد تشغيل التطبيق، ويحمي الحصة من كل مصادر التحديث
+// التلقائي مجتمعة (الشاشة الرئيسية + الويدجتين + التنبيهات) بغض النظر
+// عن فترة كل مصدر بمفرده. الضغط اليدوي على زر التحديث يتجاوز هذا الحد
+// دائماً (نية صريحة من المستخدم).
 //
 // ملاحظة: السعر يوصل بالدولار فقط، فنحوّله بسعر الصرف الرسمي الثابت.
 // ونسبة/قيمة التغيّر المعروضة هي "منذ آخر تحديث" (محسوبة محلياً بمقارنة
 // آخر سعرين)، وليست تغيّر اليوم
-// الأونصة = 31.1034768 جرام — يُستخدم هنا وفي extractUsdPerGram24k أدناه
+// الأونصة = 31.1034768 جرام
 private const val TROY_OUNCE_GRAMS = 31.1034768
+
+private const val MIN_AUTO_REFRESH_INTERVAL_MILLIS = 8L * 60 * 60 * 1000 // 8 ساعات
+private const val lastFetchStorageFile = "gold_market_last_fetch.txt"
 
 internal object GoldMarket {
 
@@ -70,11 +69,26 @@ internal object GoldMarket {
         }
     }
 
-    suspend fun refresh() {
+    // force = true (الضغط اليدوي على زر التحديث) يتجاوز الحد الأدنى بين
+    // الطلبات التلقائية؛ الاستدعاءات التلقائية (عند فتح الشاشة، عمال
+    // الويدجت، التنبيهات) تمر بلا force فتُفرض عليها الحماية من استهلاك
+    // الحصة الشهرية
+    suspend fun refresh(force: Boolean = false) {
+        val now = Clock.System.now().toEpochMilliseconds()
+        if (!force) {
+            val lastAttempt = AppStorage.readText(lastFetchStorageFile)?.toLongOrNull()
+            if (lastAttempt != null && now - lastAttempt < MIN_AUTO_REFRESH_INTERVAL_MILLIS) {
+                return
+            }
+        }
+        AppStorage.writeText(lastFetchStorageFile, now.toString())
+
         isLoading = true
         var rawBody = ""
         try {
-            rawBody = client.get("https://xaus.com/api/v1/spot?currency=USD&unit=gram").bodyAsText()
+            rawBody = client.get("https://www.goldapi.io/api/price/XAU/USD") {
+                header("x-access-token", goldApiKey)
+            }.bodyAsText()
             val usdPerGram24k = extractUsdPerGram24k(rawBody)
                 ?.takeIf { it > 0.0 }
                 ?: error("شكل استجابة غير متوقع من مزوّد الأسعار")
@@ -105,11 +119,9 @@ internal object GoldMarket {
     }
 }
 
-// تحليل دفاعي: نجرّب عدة مسارات محتملة لسعر جرام الذهب الخالص (عيار 24)
-// بالدولار من استجابة GET https://xaus.com/api/v1/spot?currency=USD&unit=gram،
-// لأن شكل الاستجابة غير موثّق بدقة كافية ولم يمكن اختباره فعلياً من هذه
-// البيئة. إن فشلت كل المسارات نرجع null بدل قيمة خاطئة، ويُلتقط نص
-// الاستجابة الخام في catch أعلاه للتشخيص عن بُعد
+// شكل استجابة GoldAPI.io موثّق وثابت (خلاف المزوّدين السابقين): يُحلَّل
+// من الحقول الحقيقية لواجهتهم (price_per_unit.gram و price)، مع بقاء
+// احتمالات احتياطية بسيطة تحسباً لتبديل مزوّد لاحقاً
 private fun extractUsdPerGram24k(bodyText: String): Double? {
     val root = try {
         Json.parseToJsonElement(bodyText) as? JsonObject
@@ -117,14 +129,15 @@ private fun extractUsdPerGram24k(bodyText: String): Double? {
         null
     } ?: return null
 
-    // 1) حقل مباشر لسعر الجرام بالدولار (إن وُجد بهذا الاسم)
+    // 1) شكل GoldAPI.io: سعر الجرام بالدولار مباشرة (عيار 24 الخالص)
+    (root["price_per_unit"] as? JsonObject)?.get("gram")?.jsonPrimitive?.doubleOrNull?.let { return it }
+
+    // 2) سعر الأونصة بالدولار (حقل "price" في GoldAPI.io)، نحوّله يدوياً
+    root["price"]?.jsonPrimitive?.doubleOrNull?.let { return it / TROY_OUNCE_GRAMS }
+
+    // 3) احتمالات احتياطية (مزوّدين آخرين محتملين مستقبلاً)
     root["per_gram_usd"]?.jsonPrimitive?.doubleOrNull?.let { return it }
-
-    // 2) كائن xau متداخل بحقل price (متوقَّع عند طلب unit=gram)
     (root["xau"] as? JsonObject)?.get("price")?.jsonPrimitive?.doubleOrNull?.let { return it }
-
-    // 3) سعر الأونصة بالدولار (يُفترض أنه يرجع دائماً بغض النظر عن unit)،
-    // نحوّله يدوياً لسعر الجرام إذا لم نجد سعر الجرام مباشرة
     root["spot_usd_oz"]?.jsonPrimitive?.doubleOrNull?.let { return it / TROY_OUNCE_GRAMS }
 
     return null

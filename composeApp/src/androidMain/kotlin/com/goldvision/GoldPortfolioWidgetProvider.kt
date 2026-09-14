@@ -11,6 +11,7 @@ import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
+import androidx.work.workDataOf
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
 import java.util.concurrent.TimeUnit
@@ -29,7 +30,12 @@ internal class GoldPortfolioWidgetProvider : AppWidgetProvider() {
     override fun onReceive(context: Context, intent: Intent) {
         super.onReceive(context, intent)
         if (intent.action == ACTION_REFRESH) {
-            WorkManager.getInstance(context).enqueue(OneTimeWorkRequestBuilder<GoldPortfolioWidgetWorker>().build())
+            // ضغط يدوي صريح من المستخدم — يتجاوز الحد الأدنى بين طلبات
+            // التحديث التلقائية (حماية حصة GoldAPI.io الشهرية)
+            val request = OneTimeWorkRequestBuilder<GoldPortfolioWidgetWorker>()
+                .setInputData(workDataOf("force" to true))
+                .build()
+            WorkManager.getInstance(context).enqueue(request)
         }
     }
 

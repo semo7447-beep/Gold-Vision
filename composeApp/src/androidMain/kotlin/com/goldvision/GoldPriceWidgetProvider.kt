@@ -10,6 +10,7 @@ import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
+import androidx.work.workDataOf
 import kotlinx.datetime.Clock
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
@@ -30,7 +31,12 @@ internal class GoldPriceWidgetProvider : AppWidgetProvider() {
     override fun onReceive(context: Context, intent: Intent) {
         super.onReceive(context, intent)
         if (intent.action == ACTION_REFRESH) {
-            WorkManager.getInstance(context).enqueue(OneTimeWorkRequestBuilder<GoldPriceWidgetWorker>().build())
+            // ضغط يدوي صريح من المستخدم على زر التحديث — يتجاوز الحد الأدنى
+            // بين طلبات التحديث التلقائية (حماية حصة GoldAPI.io الشهرية)
+            val request = OneTimeWorkRequestBuilder<GoldPriceWidgetWorker>()
+                .setInputData(workDataOf("force" to true))
+                .build()
+            WorkManager.getInstance(context).enqueue(request)
         }
     }
 

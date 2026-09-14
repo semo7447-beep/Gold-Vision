@@ -796,7 +796,7 @@ private fun GoldVisionApp() {
             onRefresh = {
                 isRefreshing = true
                 marketScope.launch {
-                    GoldMarket.refresh()
+                    GoldMarket.refresh(force = true)
                     GoldHistory.refresh(todayLocalDate())
                     GoldNews.refresh()
                     isRefreshing = false
@@ -1161,7 +1161,7 @@ private fun CalculatorFullScreen(
                 modifier = Modifier
                     .size(22.dp)
                     .align(Alignment.CenterStart)
-                    .clickable { marketScope.launch { GoldMarket.refresh() } }
+                    .clickable { marketScope.launch { GoldMarket.refresh(force = true) } }
             )
             Text(
                 t("الحاسبة", "Calculator"),
@@ -4405,7 +4405,7 @@ private fun ZakatScreen(
                     tint = Gold,
                     modifier = Modifier
                         .size(20.dp)
-                        .clickable { marketScope.launch { GoldMarket.refresh() } }
+                        .clickable { marketScope.launch { GoldMarket.refresh(force = true) } }
                 )
             }
             Text(t("الزكاة", "Zakat"), color = White, fontSize = 16.sp, fontWeight = FontWeight.Bold)

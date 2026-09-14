@@ -1,5 +1,17 @@
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import java.io.FileInputStream
+import java.util.Properties
+
+// مفتاح GoldAPI.io الشخصي — يُقرأ من local.properties (ملف محلي على كل
+// جهاز، خارج Git تماماً) بدل تضمينه مباشرة بالكود المرفوع على GitHub
+val localProperties = Properties().apply {
+    val localPropertiesFile = rootProject.file("local.properties")
+    if (localPropertiesFile.exists()) {
+        load(FileInputStream(localPropertiesFile))
+    }
+}
+val goldApiKeyFromLocalProperties: String = localProperties.getProperty("GOLDAPI_KEY", "")
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
@@ -102,6 +114,11 @@ android {
         targetSdk = 35
         versionCode = 1
         versionName = "1.0"
+        buildConfigField("String", "GOLDAPI_KEY", "\"$goldApiKeyFromLocalProperties\"")
+    }
+
+    buildFeatures {
+        buildConfig = true
     }
 
     sourceSets["main"].apply {

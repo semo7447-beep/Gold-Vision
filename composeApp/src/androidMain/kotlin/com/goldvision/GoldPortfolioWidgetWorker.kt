@@ -14,7 +14,7 @@ internal class GoldPortfolioWidgetWorker(
 ) : CoroutineWorker(context, params) {
     override suspend fun doWork(): Result {
         return try {
-            GoldMarket.refresh()
+            GoldMarket.refresh(force = inputData.getBoolean("force", false))
             val appWidgetManager = AppWidgetManager.getInstance(applicationContext)
             val componentName = ComponentName(applicationContext, GoldPortfolioWidgetProvider::class.java)
             val appWidgetIds = appWidgetManager.getAppWidgetIds(componentName)
