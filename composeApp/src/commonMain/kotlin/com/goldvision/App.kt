@@ -3711,24 +3711,27 @@ private fun CandlestickChart(modifier: Modifier, bars: List<HistoryBar>, karat: 
         }
 
         if (scale > 1.01f) {
-            Row(
-                modifier = Modifier
-                    // TopStart (يمين الشاشة فعلياً بما إن التطبيق RTL) بدل
-                    // TopEnd — تسميات المحور السعري الأعلى تُرسم داخل الـ
-                    // Canvas عند x=0 (يسار فعلي دائماً بغض النظر عن اتجاه
-                    // الواجهة)، فلو حطينا الزر بنفس الجهة يتصادمان بصرياً
-                    .align(Alignment.TopStart)
-                    .padding(top = 4.dp, start = 4.dp)
-                    .clip(RoundedCornerShape(6.dp))
-                    .background(CardBlack)
-                    .border(1.dp, Border, RoundedCornerShape(6.dp))
-                    .clickable {
-                        scale = 1f
-                        startIndexFloat = 0f
-                    }
-                    .padding(horizontal = 8.dp, vertical = 4.dp)
-            ) {
-                Text(t("إعادة ضبط", "Reset"), color = Gold, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+            // يُفرَض اتجاه LTR محلياً هنا حتى يبقى الزر بالزاوية اليمنى
+            // العلوية فعلياً بكل الأحوال (بعيداً عن تسميات محور Y المرسومة
+            // دائماً بإحداثي ثابت x=0 يساراً، بلا علاقة باتجاه اللغة) —
+            // Alignment.TopStart وحده كان يفترض التطبيق RTL دائماً، فينتقل
+            // فعلياً لليسار بوضع الإنجليزي (LTR) ويتصادم مع تسميات المحور
+            CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+                Row(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(top = 4.dp, start = 4.dp)
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(CardBlack)
+                        .border(1.dp, Border, RoundedCornerShape(6.dp))
+                        .clickable {
+                            scale = 1f
+                            startIndexFloat = 0f
+                        }
+                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                ) {
+                    Text(t("إعادة ضبط", "Reset"), color = Gold, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                }
             }
         }
     }
