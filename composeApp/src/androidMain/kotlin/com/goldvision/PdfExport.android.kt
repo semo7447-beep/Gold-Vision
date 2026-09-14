@@ -186,11 +186,11 @@ internal actual object PdfExport {
                 val headerHeight = 24f
                 canvas.drawRect(tableLeft, y, tableRight, y + headerHeight, Paint().apply { color = HeaderBg })
                 drawRtlText(
-                    "التفاصيل", headerCellPaint, labelColRight - cellPadH,
+                    t("التفاصيل", "Details"), headerCellPaint, labelColRight - cellPadH,
                     (labelColWidth - cellPadH * 2).toInt(), y + 7f
                 )
                 drawRtlText(
-                    "القيمة", headerCellPaint, valueColRight - cellPadH,
+                    t("القيمة", "Value"), headerCellPaint, valueColRight - cellPadH,
                     (valueColWidth - cellPadH * 2).toInt(), y + 7f
                 )
                 y += headerHeight
@@ -210,11 +210,11 @@ internal actual object PdfExport {
                         y = MARGIN
                         canvas.drawRect(tableLeft, y, tableRight, y + headerHeight, Paint().apply { color = HeaderBg })
                         drawRtlText(
-                            "التفاصيل", headerCellPaint, labelColRight - cellPadH,
+                            t("التفاصيل", "Details"), headerCellPaint, labelColRight - cellPadH,
                             (labelColWidth - cellPadH * 2).toInt(), y + 7f
                         )
                         drawRtlText(
-                            "القيمة", headerCellPaint, valueColRight - cellPadH,
+                            t("القيمة", "Value"), headerCellPaint, valueColRight - cellPadH,
                             (valueColWidth - cellPadH * 2).toInt(), y + 7f
                         )
                         y += headerHeight
