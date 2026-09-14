@@ -6999,14 +6999,7 @@ private fun CountryTaxSelector(
                         .weight(1f)
                         .fillMaxHeight()
                 )
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(3.dp),
-                    modifier = Modifier.padding(end = 10.dp)
-                ) {
-                    Text("✎", color = Gold, fontSize = 10.sp)
-                    Text("%", color = Gray, fontSize = 11.sp)
-                }
+                Text("%", color = Gray, fontSize = 11.sp, modifier = Modifier.padding(end = 10.dp))
             }
         }
     }
