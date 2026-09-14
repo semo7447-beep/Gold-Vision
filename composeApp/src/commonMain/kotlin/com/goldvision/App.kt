@@ -3751,7 +3751,11 @@ private fun KaratChartCanvas(
     }
     val textMeasurer = rememberTextMeasurer()
     val density = LocalDensity.current
-    val useReal = realPoints != null && realPoints.isNotEmpty()
+    // نقطة حقيقية واحدة فقط (يحصل مع فترة "24 ساعة" حين لا يتوفر سوى سعر
+    // إغلاق يوم واحد من مزوّد بيانات يومي) لا تكفي لرسم بيان فعلي — تُعامَل
+    // مثل عدم توفر بيانات حقيقية أصلاً فينتقل تلقائياً للرسم التقديري
+    // بدل نقطة واحدة تبدو للمستخدم كأن الرسم "فارغ"
+    val useReal = realPoints != null && realPoints.size >= 2
     val realPrices = if (useReal) realPoints!!.map { it.second } else null
 
     val minPrice = realPrices?.min() ?: (basePrice * 0.94)
@@ -3786,6 +3790,12 @@ private fun KaratChartCanvas(
                     val tooltipWidthPx = with(density) { ChartTooltipWidth.toPx() }
 
                     fun updateTooltip(touchX: Float) {
+                        // نقطة واحدة فقط (مثلاً فترة "24 ساعة" حين يتوفر سعر إغلاق
+                        // يوم واحد فقط) تعني points.size - 1 = 0 — القسمة عليه أدناه
+                        // تنتج NaN، و roundToInt() على NaN يرمي استثناءً يُعطّل
+                        // التطبيق فوراً عند أول لمسة. لا معنى لتلميح بلا مجال زمني أصلاً
+                        if (points.size <= 1) return
+
                         val left = 52f
                         val right = size.width - 6f
                         val top = 6f
