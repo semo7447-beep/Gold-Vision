@@ -6999,7 +6999,14 @@ private fun CountryTaxSelector(
                         .weight(1f)
                         .fillMaxHeight()
                 )
-                Text("%", color = Gray, fontSize = 11.sp, modifier = Modifier.padding(end = 10.dp))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(3.dp),
+                    modifier = Modifier.padding(end = 10.dp)
+                ) {
+                    Text("✎", color = Gold, fontSize = 10.sp)
+                    Text("%", color = Gray, fontSize = 11.sp)
+                }
             }
         }
     }
@@ -7028,15 +7035,34 @@ private fun CountryTaxSelector(
                     ) { }
                     .padding(vertical = 8.dp)
             ) {
-                Text(
-                    t("اختر الدولة", "Choose country"),
-                    color = White,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold,
+                Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 14.dp, vertical = 8.dp),
-                    textAlign = TextAlign.End
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Spacer(Modifier.width(19.dp))
+                    Text(
+                        t("اختر الدولة", "Country"),
+                        color = Gray,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Text(
+                        t("نسبة الضريبة", "Tax Rate"),
+                        color = Gray,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 14.dp)
+                        .height(1.dp)
+                        .background(Border)
                 )
                 countryTaxOptions.forEach { option ->
                     Row(
