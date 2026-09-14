@@ -7609,7 +7609,7 @@ private fun FedSchedule(rows: List<FedMeetingRow>) {
                 color = Gray,
                 fontSize = 9.sp,
                 fontWeight = FontWeight.Bold,
-                modifier = Modifier.weight(0.8f),
+                modifier = Modifier.weight(0.7f),
                 textAlign = TextAlign.Center,
                 maxLines = 1
             )
@@ -7629,17 +7629,20 @@ private fun FedSchedule(rows: List<FedMeetingRow>) {
                 color = Gray,
                 fontSize = 9.sp,
                 fontWeight = FontWeight.Bold,
-                modifier = Modifier.weight(0.9f),
+                modifier = Modifier.weight(0.75f),
                 textAlign = TextAlign.Center,
                 maxLines = 1
             )
 
+            // وزن أكبر من باقي الأعمدة عمداً: نص هذا العمود ("بعد 134 يوم")
+            // أطول فعلياً من العنوان نفسه ("العدّ التنازلي")، وبطانة الحبة
+            // الملوّنة أسفله تستهلك جزءاً إضافياً من نفس المساحة المخصصة
             Text(
                 text = t("العدّ التنازلي", "Countdown"),
                 color = Gray,
                 fontSize = 9.sp,
                 fontWeight = FontWeight.Bold,
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.weight(1.35f),
                 textAlign = TextAlign.Center,
                 maxLines = 1
             )
@@ -7664,7 +7667,7 @@ private fun FedSchedule(rows: List<FedMeetingRow>) {
                     text = row.day,
                     color = White,
                     fontSize = 9.sp,
-                    modifier = Modifier.weight(0.8f),
+                    modifier = Modifier.weight(0.7f),
                     textAlign = TextAlign.Center,
                     maxLines = 1
                 )
@@ -7682,25 +7685,28 @@ private fun FedSchedule(rows: List<FedMeetingRow>) {
                     text = timeDisplayLabel(row.time),
                     color = White,
                     fontSize = 9.sp,
-                    modifier = Modifier.weight(0.9f),
+                    modifier = Modifier.weight(0.75f),
                     textAlign = TextAlign.Center,
                     maxLines = 1
                 )
 
+                // وزن أكبر عمداً + بطانة أفقية أقل للحبة الملوّنة — نص هذا
+                // العمود ("بعد 134 يوم") كان يُقصّ صامتاً (بلا "…") فتختفي
+                // كلمة "يوم" لأي رقم من رقمين أو أكثر، رغم وجودها بالكود فعلاً
                 Box(
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.weight(1.35f),
                     contentAlignment = Alignment.Center
                 ) {
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(6.dp))
                             .background((if (row.daysLeft <= 3) Red else Gold).copy(alpha = 0.15f))
-                            .padding(horizontal = 6.dp, vertical = 3.dp)
+                            .padding(horizontal = 4.dp, vertical = 3.dp)
                     ) {
                         Text(
                             text = if (row.daysLeft == 0) t("اليوم", "Today") else t("بعد ${row.daysLeft} يوم", "In ${row.daysLeft}d"),
                             color = if (row.daysLeft <= 3) Red else Gold,
-                            fontSize = 8.5.sp,
+                            fontSize = 8.sp,
                             fontWeight = FontWeight.Bold,
                             maxLines = 1
                         )
