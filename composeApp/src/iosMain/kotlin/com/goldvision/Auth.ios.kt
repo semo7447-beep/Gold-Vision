@@ -14,8 +14,14 @@ internal actual object AuthService {
     actual suspend fun sendPasswordReset(email: String): String? =
         "غير مفعّل على iOS بعد"
 
+    actual suspend fun sendEmailVerification(): String? =
+        "غير مفعّل على iOS بعد"
+
     actual suspend fun completeGoogleSignIn(idToken: String): String? =
         "تسجيل الدخول غير مفعّل على iOS بعد"
+
+    actual suspend fun linkPasswordToCurrentUser(password: String): String? =
+        "غير مفعّل على iOS بعد"
 
     actual fun signOut() {
     }

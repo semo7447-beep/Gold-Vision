@@ -1,6 +1,7 @@
 package com.goldvision
 
 import com.google.android.gms.tasks.Task
+import com.google.firebase.auth.EmailAuthProvider
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.GoogleAuthProvider
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -15,13 +16,6 @@ internal actual object AuthService {
 
     actual suspend fun signUp(email: String, password: String): String? = try {
         auth.createUserWithEmailAndPassword(email, password).awaitResult()
-        // رابط تأكيد البريد يُرسل تلقائياً عند إنشاء الحساب — لا يمنع استخدام
-        // التطبيق إن فشل الإرسال لأي سبب (لا يوجد اتصال مثلاً)
-        try {
-            auth.currentUser?.sendEmailVerification()?.awaitResult()
-        } catch (e: Exception) {
-            // تجاهل: الحساب أُنشئ بنجاح بغض النظر عن نجاح إرسال رابط التأكيد
-        }
         null
     } catch (e: Exception) {
         e.message ?: t("تعذر إنشاء الحساب", "Couldn't create account")
@@ -41,12 +35,33 @@ internal actual object AuthService {
         e.message ?: t("تعذر إرسال رابط استعادة كلمة المرور", "Couldn't send the password reset link")
     }
 
+    actual suspend fun sendEmailVerification(): String? = try {
+        val user = auth.currentUser
+            ?: return t("لا يوجد مستخدم مسجَّل دخوله حالياً", "No signed-in user")
+        user.sendEmailVerification().awaitResult()
+        null
+    } catch (e: Exception) {
+        e.message ?: t("تعذر إرسال رابط التأكيد", "Couldn't send the confirmation link")
+    }
+
     actual suspend fun completeGoogleSignIn(idToken: String): String? = try {
         val credential = GoogleAuthProvider.getCredential(idToken, null)
         auth.signInWithCredential(credential).awaitResult()
         null
     } catch (e: Exception) {
         e.message ?: t("تعذر تسجيل الدخول بحساب جوجل", "Couldn't sign in with Google")
+    }
+
+    actual suspend fun linkPasswordToCurrentUser(password: String): String? = try {
+        val user = auth.currentUser
+            ?: return t("لا يوجد مستخدم مسجَّل دخوله حالياً", "No signed-in user")
+        val email = user.email
+            ?: return t("تعذر العثور على بريد الحساب الحالي", "Couldn't find the current account's email")
+        val credential = EmailAuthProvider.getCredential(email, password)
+        user.linkWithCredential(credential).awaitResult()
+        null
+    } catch (e: Exception) {
+        e.message ?: t("تعذر حفظ كلمة المرور", "Couldn't save the password")
     }
 
     actual fun signOut() {

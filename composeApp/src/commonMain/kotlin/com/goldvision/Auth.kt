@@ -13,9 +13,15 @@ internal expect object AuthService {
     suspend fun signUp(email: String, password: String): String?
     suspend fun signIn(email: String, password: String): String?
     suspend fun sendPasswordReset(email: String): String?
+    // تُرسل لمستخدم مسجَّل دخوله حديثاً (بعد signUp) — منفصلة عن signUp حتى
+    // تُعرَض نتيجتها الحقيقية للمستخدم بدل افتراض نجاحها دائماً
+    suspend fun sendEmailVerification(): String?
     // تُستدعى بعد نجاح شاشة اختيار حساب جوجل نفسها (يديرها GoogleSignInLauncher)،
     // بالرمز (idToken) الناتج، لإكمال تسجيل الدخول فعلياً عبر Firebase
     suspend fun completeGoogleSignIn(idToken: String): String?
+    // تربط كلمة مرور بحساب جوجل الحالي — تتيح لاحقاً تسجيل الدخول بالإيميل
+    // وكلمة المرور بنفس الحساب، بجانب الدخول بجوجل
+    suspend fun linkPasswordToCurrentUser(password: String): String?
     fun signOut()
 }
 
