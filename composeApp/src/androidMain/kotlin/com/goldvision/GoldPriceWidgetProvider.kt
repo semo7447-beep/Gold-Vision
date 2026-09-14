@@ -81,7 +81,12 @@ internal fun buildWidgetRemoteViews(context: Context): RemoteViews {
     }
     views.setTextViewText(R.id.widget_updated_at, widgetUpdatedAtText())
 
-    val openAppIntent = Intent(context, MainActivity::class.java)
+    // FLAG_ACTIVITY_NEW_TASK إلزامي لإطلاق Activity من سياق غير Activity
+    // (الويدجت هنا)، وبالتزامن مع singleTask في AndroidManifest.xml يضمن
+    // إحضار نفس نسخة التطبيق الحالية للمقدمة بدل نسخة جديدة تفقد حالتها
+    val openAppIntent = Intent(context, MainActivity::class.java).apply {
+        flags = Intent.FLAG_ACTIVITY_NEW_TASK
+    }
     val pendingIntent = PendingIntent.getActivity(
         context,
         0,

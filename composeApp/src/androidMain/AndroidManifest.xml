@@ -26,9 +26,15 @@
             android:name="io.sentry.traces.sample-rate"
             android:value="0.0" />
 
+        <!-- singleTask ضروري: بدونه، فتح التطبيق من ضغطة الويدجت (أو أي
+             PendingIntent خارجي آخر) ينشئ نسخة MainActivity جديدة كل مرة
+             فوق أي نسخة موجودة أصلاً بالخلفية، فتُفقد كل حالة Compose
+             (بما فيها بوابة قفل البصمة) وكأن التطبيق ما فُتح من الأساس،
+             بدل إحضار نفس النسخة الحالية للمقدمة فقط -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
+            android:launchMode="singleTask"
             android:theme="@style/Theme.GoldVision">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
