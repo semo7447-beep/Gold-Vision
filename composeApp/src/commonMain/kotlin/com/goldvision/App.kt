@@ -1364,6 +1364,52 @@ private fun CalculatorFullScreen(
                 .background(CardBlack)
                 .padding(14.dp)
         ) {
+            CalculatorRow(t("سعر الذهب", "Gold price"), "${fmt(beforeVat, 2, grouped = true)} ${t("ريال", "SAR")}")
+            if (buyMode) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 2.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(t("المصنعية (للجرام) ✎", "Workmanship (per gram) ✎"), color = White, fontSize = 10.sp)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        NumericInputField(
+                            value = manufacturing,
+                            onValueChanged = { onManufacturingChanged(it.coerceAtMost(500.0)) },
+                            fontSize = 10.sp,
+                            minValue = 0.0,
+                            modifier = Modifier
+                                .width(50.dp)
+                                .height(18.dp)
+                                .clip(RoundedCornerShape(5.dp))
+                                .border(1.dp, Border, RoundedCornerShape(5.dp))
+                        )
+                        Text(t("ريال", "SAR"), color = Gray, fontSize = 9.sp)
+                    }
+                }
+                CalculatorRow(t("إجمالي المصنعية", "Total workmanship"), "${fmt(manufacturing * weight, 2, grouped = true)} ${t("ريال", "SAR")}")
+            } else {
+                CalculatorRow(t("المصنعية", "Workmanship"), "0.00 ${t("ريال", "SAR")}")
+            }
+            CalculatorRow(
+                if (isTaxExempt) t("ضريبة القيمة المضافة (معفى)", "VAT (exempt)") else t("ضريبة القيمة المضافة (${fmt(taxPercent, 0)}%)", "VAT (${fmt(taxPercent, 0)}%)"),
+                "${fmt(vat, 2, grouped = true)} ${t("ريال", "SAR")}"
+            )
+
+            Spacer(Modifier.height(10.dp))
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(1.dp)
+                    .background(Border)
+            )
+            Spacer(Modifier.height(14.dp))
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -1429,52 +1475,6 @@ private fun CalculatorFullScreen(
                     )
                 }
             }
-
-            Spacer(Modifier.height(14.dp))
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(1.dp)
-                    .background(Border)
-            )
-            Spacer(Modifier.height(10.dp))
-
-            CalculatorRow(t("سعر الذهب", "Gold price"), "${fmt(beforeVat, 2, grouped = true)} ${t("ريال", "SAR")}")
-            if (buyMode) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 2.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(t("المصنعية (للجرام) ✎", "Workmanship (per gram) ✎"), color = White, fontSize = 10.sp)
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        NumericInputField(
-                            value = manufacturing,
-                            onValueChanged = { onManufacturingChanged(it.coerceAtMost(500.0)) },
-                            fontSize = 10.sp,
-                            minValue = 0.0,
-                            modifier = Modifier
-                                .width(50.dp)
-                                .height(18.dp)
-                                .clip(RoundedCornerShape(5.dp))
-                                .border(1.dp, Border, RoundedCornerShape(5.dp))
-                        )
-                        Text(t("ريال", "SAR"), color = Gray, fontSize = 9.sp)
-                    }
-                }
-                CalculatorRow(t("إجمالي المصنعية", "Total workmanship"), "${fmt(manufacturing * weight, 2, grouped = true)} ${t("ريال", "SAR")}")
-            } else {
-                CalculatorRow(t("المصنعية", "Workmanship"), "0.00 ${t("ريال", "SAR")}")
-            }
-            CalculatorRow(
-                if (isTaxExempt) t("ضريبة القيمة المضافة (معفى)", "VAT (exempt)") else t("ضريبة القيمة المضافة (${fmt(taxPercent, 0)}%)", "VAT (${fmt(taxPercent, 0)}%)"),
-                "${fmt(vat, 2, grouped = true)} ${t("ريال", "SAR")}"
-            )
         }
 
         Spacer(Modifier.height(14.dp))
