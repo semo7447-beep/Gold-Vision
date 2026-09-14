@@ -1,7 +1,6 @@
 package com.goldvision
 
 import com.google.android.gms.tasks.Task
-import com.google.firebase.auth.EmailAuthProvider
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.GoogleAuthProvider
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -50,18 +49,6 @@ internal actual object AuthService {
         null
     } catch (e: Exception) {
         e.message ?: t("تعذر تسجيل الدخول بحساب جوجل", "Couldn't sign in with Google")
-    }
-
-    actual suspend fun linkPasswordToCurrentUser(password: String): String? = try {
-        val user = auth.currentUser
-            ?: return t("لا يوجد مستخدم مسجَّل دخوله حالياً", "No signed-in user")
-        val email = user.email
-            ?: return t("تعذر العثور على بريد الحساب الحالي", "Couldn't find the current account's email")
-        val credential = EmailAuthProvider.getCredential(email, password)
-        user.linkWithCredential(credential).awaitResult()
-        null
-    } catch (e: Exception) {
-        e.message ?: t("تعذر حفظ كلمة المرور", "Couldn't save the password")
     }
 
     actual fun signOut() {

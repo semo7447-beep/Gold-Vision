@@ -5777,116 +5777,6 @@ private fun LanguageOptionRow(label: String, selected: Boolean, onClick: () -> U
     }
 }
 
-// نافذة تظهر بعد نجاح الدخول بحساب جوجل، تعرض إضافة كلمة مرور اختيارية
-// للحساب — تتيح لاحقاً تسجيل الدخول بالإيميل وكلمة المرور أيضاً، بجانب
-// الدخول بجوجل (الدخول بجوجل نفسه لا يحتاج كلمة مرور أساساً؛ هذا اختياري بحت)
-@Composable
-private fun SetPasswordAfterGoogleDialog(onSkip: () -> Unit, onSaved: () -> Unit) {
-    var password by remember { mutableStateOf("") }
-    var confirmPassword by remember { mutableStateOf("") }
-    var errorText by remember { mutableStateOf<String?>(null) }
-    var isLoading by remember { mutableStateOf(false) }
-    val scope = rememberCoroutineScope()
-
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.65f)),
-        contentAlignment = Alignment.Center
-    ) {
-        Column(
-            modifier = Modifier
-                .padding(horizontal = 28.dp)
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(14.dp))
-                .border(1.dp, Border, RoundedCornerShape(14.dp))
-                .background(CardBlack)
-                .clickable(
-                    indication = null,
-                    interactionSource = remember { MutableInteractionSource() }
-                ) { }
-                .padding(18.dp)
-        ) {
-            Text(t("إضافة كلمة مرور لحسابك؟", "Add a password to your account?"), color = White, fontSize = 15.sp, fontWeight = FontWeight.Bold)
-            Spacer(Modifier.height(8.dp))
-            Text(
-                t("اختياري — يتيح لك لاحقاً تسجيل الدخول بالبريد وكلمة المرور، بجانب الدخول بجوجل", "Optional — lets you also sign in later with email and password, alongside Google sign-in"),
-                color = Gray,
-                fontSize = 11.sp
-            )
-            Spacer(Modifier.height(14.dp))
-
-            SelectableTextField(
-                value = password,
-                onValueChange = { password = it },
-                placeholder = t("6 أحرف على الأقل", "At least 6 characters"),
-                visualTransformation = PasswordVisualTransformation(),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                modifier = Modifier.fillMaxWidth().height(42.dp)
-            )
-            Spacer(Modifier.height(10.dp))
-            SelectableTextField(
-                value = confirmPassword,
-                onValueChange = { confirmPassword = it },
-                placeholder = t("تأكيد كلمة المرور", "Confirm password"),
-                visualTransformation = PasswordVisualTransformation(),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                modifier = Modifier.fillMaxWidth().height(42.dp)
-            )
-
-            errorText?.let {
-                Spacer(Modifier.height(8.dp))
-                Text(it, color = Red, fontSize = 10.sp)
-            }
-
-            Spacer(Modifier.height(18.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(42.dp)
-                        .clip(RoundedCornerShape(9.dp))
-                        .border(1.dp, Border, RoundedCornerShape(9.dp))
-                        .clickable(enabled = !isLoading) { onSkip() },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(t("لاحقاً", "Later"), color = Gray, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                }
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(42.dp)
-                        .clip(RoundedCornerShape(9.dp))
-                        .background(Gold)
-                        .clickable(enabled = !isLoading) {
-                            if (password.length < 6) {
-                                errorText = t("كلمة المرور 6 أحرف على الأقل", "Password must be at least 6 characters")
-                                return@clickable
-                            }
-                            if (password != confirmPassword) {
-                                errorText = t("كلمتا المرور غير متطابقتين", "Passwords do not match")
-                                return@clickable
-                            }
-                            errorText = null
-                            isLoading = true
-                            scope.launch {
-                                val err = AuthService.linkPasswordToCurrentUser(password)
-                                isLoading = false
-                                if (err != null) errorText = err else onSaved()
-                            }
-                        },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(if (isLoading) t("جارٍ...", "Loading...") else t("حفظ", "Save"), color = Black, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                }
-            }
-        }
-    }
-}
-
 // نافذة تأكيد عامة (نعم/إلغاء) بنفس أسلوب نوافذ التطبيق الأخرى
 @Composable
 private fun ConfirmDialog(
@@ -5965,7 +5855,6 @@ private fun AuthScreen(onBack: () -> Unit, onAuthSuccess: () -> Unit) {
     var errorText by remember { mutableStateOf<String?>(null) }
     var infoText by remember { mutableStateOf<String?>(null) }
     var isLoading by remember { mutableStateOf(false) }
-    var showSetPasswordDialog by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
     val triggerGoogleSignIn = GoogleSignInLauncher.rememberLauncher { idToken, error ->
@@ -5975,9 +5864,7 @@ private fun AuthScreen(onBack: () -> Unit, onAuthSuccess: () -> Unit) {
                 scope.launch {
                     val err = AuthService.completeGoogleSignIn(idToken)
                     isLoading = false
-                    // بعد نجاح الدخول بجوجل، نعرض خطوة اختيارية لإضافة كلمة
-                    // مرور للحساب (الدخول بجوجل نفسه لا يحتاج كلمة مرور أساساً)
-                    if (err != null) errorText = err else showSetPasswordDialog = true
+                    if (err != null) errorText = err else onAuthSuccess()
                 }
             }
             error != null -> errorText = error
@@ -6028,7 +5915,6 @@ private fun AuthScreen(onBack: () -> Unit, onAuthSuccess: () -> Unit) {
         }
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -6194,20 +6080,6 @@ private fun AuthScreen(onBack: () -> Unit, onAuthSuccess: () -> Unit) {
         }
 
         Spacer(Modifier.height(16.dp))
-    }
-
-    if (showSetPasswordDialog) {
-        SetPasswordAfterGoogleDialog(
-            onSkip = {
-                showSetPasswordDialog = false
-                onAuthSuccess()
-            },
-            onSaved = {
-                showSetPasswordDialog = false
-                onAuthSuccess()
-            }
-        )
-    }
     }
 }
 

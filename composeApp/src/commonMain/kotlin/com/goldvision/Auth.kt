@@ -19,9 +19,6 @@ internal expect object AuthService {
     // تُستدعى بعد نجاح شاشة اختيار حساب جوجل نفسها (يديرها GoogleSignInLauncher)،
     // بالرمز (idToken) الناتج، لإكمال تسجيل الدخول فعلياً عبر Firebase
     suspend fun completeGoogleSignIn(idToken: String): String?
-    // تربط كلمة مرور بحساب جوجل الحالي — تتيح لاحقاً تسجيل الدخول بالإيميل
-    // وكلمة المرور بنفس الحساب، بجانب الدخول بجوجل
-    suspend fun linkPasswordToCurrentUser(password: String): String?
     fun signOut()
 }
 
