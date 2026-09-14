@@ -7362,10 +7362,12 @@ private fun PriceChart(
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f)
-                // بوضع التحليل الفني، رسم الشموع يتعامل مع اللمس بنفسه
-                // (تكبير/سحب/تلميح) — تفعيل النقر للتنقل هنا كان يتعارض
-                // مع تلك الإيماءات، فنعطّله في هذا الوضع تحديداً فقط
-                .then(if (!showAnalysis) Modifier.clickable { onChartClick() } else Modifier)
+                // النقر للتنقل للشاشة الكاملة مفعّل بالوضعين معاً — رسم
+                // الشموع بوضع التحليل الفني يتعامل مع اللمس بنفسه
+                // (تكبير/سحب/تلميح) عبر pointerInput منفصل داخلي، وهذا
+                // يتعايش بلا تعارض مع .clickable الخارجي هنا (نفس نمط
+                // معالجة اللمس المستخدم أصلاً بوضع تتبع الأسعار العادي)
+                .clickable { onChartClick() }
         ) {
             KaratChartCanvas(
                 modifier = Modifier.fillMaxSize(),
