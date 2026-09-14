@@ -7352,7 +7352,9 @@ private fun SelectableTextField(
                 interactionSource = remember { MutableInteractionSource() }
             ) { focusRequester.requestFocus() }
             .padding(horizontal = 12.dp),
-        contentAlignment = Alignment.CenterStart
+        // نفس محاذاة المنتصف المستخدَمة بكل حقول الإدخال الرقمية بالتطبيق
+        // (الوزن، السعر، إلخ) — حتى تكون كل حقول الإدخال بمستوى واحد موحّد
+        contentAlignment = Alignment.Center
     ) {
         BasicTextField(
             value = fieldValue,
@@ -7361,7 +7363,12 @@ private fun SelectableTextField(
                 if (new.text != value) onValueChange(new.text)
             },
             singleLine = true,
-            textStyle = TextStyle(color = White, fontSize = fontSize, textDirection = TextDirection.Content),
+            textStyle = TextStyle(
+                color = White,
+                fontSize = fontSize,
+                textAlign = TextAlign.Center,
+                textDirection = TextDirection.Content
+            ),
             cursorBrush = SolidColor(Gold),
             keyboardOptions = keyboardOptions,
             visualTransformation = visualTransformation,
@@ -7371,9 +7378,9 @@ private fun SelectableTextField(
             // decorationBox يوحّد قياس التلميح مع الحقل الفعلي بتمريرة تخطيط
             // واحدة (بدل عنصرين منفصلين فوق بعض)، يمنع أي وميض/اختفاء عابر
             decorationBox = { innerTextField ->
-                Box(contentAlignment = Alignment.CenterStart) {
+                Box(contentAlignment = Alignment.Center) {
                     if (value.isEmpty()) {
-                        Text(placeholder, color = Gray, fontSize = fontSize)
+                        Text(placeholder, color = Gray, fontSize = fontSize, textAlign = TextAlign.Center)
                     }
                     innerTextField()
                 }
