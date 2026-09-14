@@ -3802,7 +3802,7 @@ private fun KaratChartCanvas(
                         // يوم واحد فقط) تعني points.size - 1 = 0 — القسمة عليه أدناه
                         // تنتج NaN، و roundToInt() على NaN يرمي استثناءً يُعطّل
                         // التطبيق فوراً عند أول لمسة. لا معنى لتلميح بلا مجال زمني أصلاً
-                        if (points.size <= 1) return
+                        if (points.size <= 1 || xLabels.isEmpty()) return
 
                         val left = 52f
                         val right = size.width - 6f
@@ -3810,6 +3810,11 @@ private fun KaratChartCanvas(
                         val bottom = size.height - 6f
                         val w = right - left
                         val h = bottom - top
+
+                        // لمسة أولى محتملة قبل اكتمال قياس حجم الرسم فعلياً (العرض
+                        // شبه صفري أو أقل من الهامش الثابت) تجعل w صفراً أو سالباً —
+                        // القسمة عليه أدناه تنتج NaN أو Infinity وتُعطّل التطبيق
+                        if (w <= 0f || h <= 0f) return
 
                         val clampedX = touchX.coerceIn(left, right)
                         val index = (((clampedX - left) / w) * (points.size - 1))
