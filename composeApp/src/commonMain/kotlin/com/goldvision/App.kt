@@ -6742,7 +6742,13 @@ private fun PriceCards(
                             fontSize = 17.sp,
                             fontWeight = FontWeight.Bold
                         )
-                        Text(t("ريال / جرام", "SAR / gram"), color = Gray, fontSize = 10.sp)
+                        Text(
+                            t("ريال / جرام", "SAR/gram"),
+                            color = Gray,
+                            fontSize = 10.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
                         Text(
                             "▲ ${fmt(item.change, 2)} (${fmt(item.percent, 2)}%)",
                             color = Green,
@@ -7484,31 +7490,39 @@ private fun PriceChart(
             // الشموع، والشموع أصلاً توفّر أعلى/أدنى سعر بتفصيل أدق عبر
             // بطاقة التلميح عند اللمس
             if (!showAnalysis) {
-                Column(
-                    modifier = Modifier
-                        .align(Alignment.TopStart)
-                        .padding(top = 2.dp, end = 2.dp),
-                    horizontalAlignment = Alignment.End
-                ) {
-                    Text(t("أعلى سعر", "High"), color = Gray, fontSize = 8.5.sp)
-                    Text(
-                        fmt(maxPrice, 2),
-                        color = White,
-                        fontSize = 10.5.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(t("ريال", "SAR"), color = Gray, fontSize = 8.sp)
+                // يُفرَض هنا اتجاه LTR محلياً بغض النظر عن لغة التطبيق، حتى يبقى
+                // هذا الركن دائماً بالزاوية اليمنى العلوية فعلياً (نفس ركن
+                // تسميات محور Y المرسومة يدوياً على الرسم دائماً من اليسار،
+                // بلا علاقة باتجاه اللغة) — Alignment.TopStart وحده كان يتحول
+                // لأعلى يسار فعلياً بوضع الإنجليزي (LTR)، فيتداخل مع تسميات
+                // محور Y هناك
+                CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+                    Column(
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(top = 2.dp, end = 2.dp),
+                        horizontalAlignment = Alignment.End
+                    ) {
+                        Text(t("أعلى سعر", "High"), color = Gray, fontSize = 8.5.sp)
+                        Text(
+                            fmt(maxPrice, 2),
+                            color = White,
+                            fontSize = 10.5.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(t("ريال", "SAR"), color = Gray, fontSize = 8.sp)
 
-                    Spacer(Modifier.height(6.dp))
+                        Spacer(Modifier.height(6.dp))
 
-                    Text(t("أدنى سعر", "Low"), color = Gray, fontSize = 8.5.sp)
-                    Text(
-                        fmt(minPrice, 2),
-                        color = White,
-                        fontSize = 10.5.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(t("ريال", "SAR"), color = Gray, fontSize = 8.sp)
+                        Text(t("أدنى سعر", "Low"), color = Gray, fontSize = 8.5.sp)
+                        Text(
+                            fmt(minPrice, 2),
+                            color = White,
+                            fontSize = 10.5.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(t("ريال", "SAR"), color = Gray, fontSize = 8.sp)
+                    }
                 }
             }
         }
