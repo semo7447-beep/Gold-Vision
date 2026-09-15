@@ -9,6 +9,8 @@ import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.statement.bodyAsText
 import kotlinx.datetime.Clock
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.doubleOrNull
@@ -33,6 +35,20 @@ private const val TROY_OUNCE_GRAMS = 31.1034768
 
 private const val MIN_AUTO_REFRESH_INTERVAL_MILLIS = 8L * 60 * 60 * 1000 // 8 ساعات
 private const val lastFetchStorageFile = "gold_market_last_fetch.txt"
+private const val lastPricesStorageFile = "gold_market_last_prices.json"
+
+// يُقرأ مرة واحدة عند إقلاع التطبيق: آخر أسعار حُفظت فعلياً بعد نجاح
+// حقيقي، بدل القيم الافتراضية الثابتة — بدونه، أي إعادة تشغيل للتطبيق
+// (حتى لو كان آخر تحديث ناجح قبل ثوانٍ) بلا إنترنت تُرجع الأسعار لقيم
+// وهمية ثابتة كأن التطبيق لم يُشغَّل من قبل إطلاقاً
+private fun loadCachedPrices(): List<KaratPrice>? {
+    val text = AppStorage.readText(lastPricesStorageFile) ?: return null
+    return try {
+        Json.decodeFromString<List<KaratPrice>>(text).takeIf { it.isNotEmpty() }
+    } catch (e: Exception) {
+        null
+    }
+}
 
 internal object GoldMarket {
 
@@ -52,7 +68,7 @@ internal object GoldMarket {
         KaratPrice("18K", 302.38, 0.55, 0.18)
     )
 
-    var prices by mutableStateOf(defaultPrices)
+    var prices by mutableStateOf(loadCachedPrices() ?: defaultPrices)
         private set
 
     var isLoading by mutableStateOf(false)
@@ -104,6 +120,7 @@ internal object GoldMarket {
 
             prices = updated
             lastError = null
+            AppStorage.writeText(lastPricesStorageFile, Json.encodeToString(updated))
         } catch (e: Exception) {
             // نرسل تفاصيل الخطأ الفعلية مرة واحدة فقط عند أول فشل بعد نجاح
             // (وليس عند كل محاولة فاشلة متكررة)، مع مقطع من نص الاستجابة

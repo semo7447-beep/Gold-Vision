@@ -155,7 +155,10 @@ private val Red = Color(0xFFFF3B30)
 private val Yellow = Color(0xFFFFC21A)
 private val Border = Color(0xFF9B7300)
 
-// يُستخدم من App.kt (واجهات الشاشات) ومن GoldMarket.kt (جلب الأسعار الحية)
+// يُستخدم من App.kt (واجهات الشاشات) ومن GoldMarket.kt (جلب الأسعار الحية) —
+// Serializable حتى يُحفَظ محلياً (GoldMarket.kt) ويبقى معروضاً حتى بعد
+// إعادة تشغيل التطبيق دون إنترنت، بدل الرجوع لقيم افتراضية ثابتة
+@Serializable
 internal data class KaratPrice(
     val karat: String,
     val price: Double,

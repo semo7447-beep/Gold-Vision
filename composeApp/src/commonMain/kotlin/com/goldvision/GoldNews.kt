@@ -13,8 +13,27 @@ import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.minus
 import kotlinx.datetime.toInstant
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 
+@Serializable
 internal data class GoldNewsArticle(val title: String, val source: String, val publishedAt: String)
+
+private const val lastArticlesStorageFile = "gold_news_last_articles.json"
+
+// نفس فكرة GoldMarket.loadCachedPrices: يقرأ آخر أخبار حُفظت فعلياً عند
+// إقلاع التطبيق، بدل قائمة فارغة ثابتة تجعل أي إعادة تشغيل بلا إنترنت
+// تبدو وكأنه لا توجد أخبار إطلاقاً حتى لو كان آخر تحديث ناجحاً قبل قليل
+private fun loadCachedArticles(): List<GoldNewsArticle>? {
+    val text = AppStorage.readText(lastArticlesStorageFile) ?: return null
+    return try {
+        Json.decodeFromString<List<GoldNewsArticle>>(text).takeIf { it.isNotEmpty() }
+    } catch (e: Exception) {
+        null
+    }
+}
 
 // أخبار حقيقية عن الذهب من Google News RSS (بحث بالعربية عن "أسعار الذهب
 // الفيدرالي") — مصدر مجاني بالكامل، بلا مفتاح API ولا تسجيل ولا حد أقصى
@@ -28,7 +47,7 @@ internal object GoldNews {
     private const val FEED_URL =
         "https://news.google.com/rss/search?q=%D8%A7%D9%84%D8%B0%D9%87%D8%A8%20%D8%A7%D9%84%D9%81%D9%8A%D8%AF%D8%B1%D8%A7%D9%84%D9%8A%20when:3d&hl=ar&gl=SA&ceid=SA:ar"
 
-    var articles by mutableStateOf<List<GoldNewsArticle>>(emptyList())
+    var articles by mutableStateOf(loadCachedArticles() ?: emptyList())
         private set
 
     var isLoading by mutableStateOf(false)
@@ -54,6 +73,7 @@ internal object GoldNews {
             if (parsed.isEmpty()) error("لم يُعثر على أي عنصر أخبار في الاستجابة")
             articles = parsed
             lastError = null
+            AppStorage.writeText(lastArticlesStorageFile, Json.encodeToString(parsed))
         } catch (e: Exception) {
             if (lastError == null) {
                 reportSilentError("GoldNews.refresh failed: ${e.message} | body: ${rawBody.take(500)}")
