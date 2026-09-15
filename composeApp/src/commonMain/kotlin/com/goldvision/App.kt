@@ -2044,13 +2044,15 @@ private fun DealEvaluatorScreen(
                 CalculatorRow(t("سعر الذهب", "Gold price"), "${fmt(fairBeforeVat, 2, grouped = true)} ${t("ريال", "SAR")}")
                 CalculatorRow(
                     t("المصنعية", "Workmanship"),
-                    "${fmt(fairManufacturing, 2, grouped = true)} ${t("ريال", "SAR")} (${fmt(manufacturing, 2)} ${t("/جم", "/g")})"
+                    "${fmt(fairManufacturing, 2, grouped = true)} ${t("ريال", "SAR")}",
+                    subValue = "${fmt(manufacturing, 2)} ${t("ريال/جم", "SAR/g")}"
                 )
                 val shopMargin = shopPriceWithTax - fairTotal
                 val shopMarginPerGram = if (weight > 0) shopMargin / weight else 0.0
                 CalculatorRow(
                     t("ربح المحل", "Shop profit"),
-                    "${fmt(shopMargin, 2, grouped = true)} ${t("ريال", "SAR")} (${fmt(shopMarginPerGram, 2)} ${t("/جم", "/g")})"
+                    "${fmt(shopMargin, 2, grouped = true)} ${t("ريال", "SAR")}",
+                    subValue = "${fmt(shopMarginPerGram, 2)} ${t("ريال/جم", "SAR/g")}"
                 )
                 CalculatorRow(
                     if (isDealTaxExempt) t("ضريبة القيمة المضافة (معفى)", "VAT (exempt)") else t("ضريبة القيمة المضافة (${fmt(dealTaxPercent, 0)}%)", "VAT (${fmt(dealTaxPercent, 0)}%)"),
@@ -7661,16 +7663,28 @@ private fun SelectableTextField(
 private fun CalculatorRow(
     label: String,
     value: String,
-    valueColor: Color = White
+    valueColor: Color = White,
+    // سطر ثانٍ اختياري (كسعر الجرام) يُرسم بصف مستقل تماماً عن value، لا
+    // مدمَجاً معه بقوسين داخل نص واحد — دمج نص عربي مع رقم إنجليزي بين
+    // قوسين بسلسلة واحدة يسبّب تشوّش بصري حقيقي في ترتيب الأرقام على
+    // الجهاز (خوارزمية Bidi تُعيد ترتيب المحتوى المختلط داخل الأقواس)،
+    // وفصلهما بسطرين منفصلين يتفادى المشكلة نهائياً
+    subValue: String? = null
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 2.dp),
-        horizontalArrangement = Arrangement.SpaceBetween
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.Top
     ) {
         Text(label, color = White, fontSize = 10.sp)
-        Text(value, color = valueColor, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+        Column(horizontalAlignment = Alignment.End) {
+            Text(value, color = valueColor, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+            if (subValue != null) {
+                Text(subValue, color = Gray, fontSize = 8.sp)
+            }
+        }
     }
 }
 
