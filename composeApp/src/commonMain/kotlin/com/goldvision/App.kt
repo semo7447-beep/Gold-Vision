@@ -5403,6 +5403,7 @@ private fun MoreScreen(
         Text(t("الإعدادات", "Settings"), color = Gray, fontSize = 11.sp, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(6.dp))
 
+        val shareApp = AppShare.rememberShareTrigger()
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -5410,6 +5411,12 @@ private fun MoreScreen(
                 .border(1.dp, Border, RoundedCornerShape(9.dp))
                 .background(CardBlack)
         ) {
+            SettingsRow(
+                icon = Icons.Outlined.Share,
+                label = t("مشاركة التطبيق", "Share App"),
+                onClick = shareApp
+            )
+            SettingsDivider()
             SettingsRow(
                 icon = Icons.Outlined.Notifications,
                 label = t("الإشعارات", "Notifications"),

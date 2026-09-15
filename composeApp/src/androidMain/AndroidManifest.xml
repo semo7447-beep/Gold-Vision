@@ -46,6 +46,11 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <!-- اختصارات الضغط المطول على أيقونة التطبيق (res/xml/shortcuts.xml) —
+                 مدعومة من أندرويد 7.1 (API 25) فأعلى، تُتجاهَل بصمت على ما دونه -->
+            <meta-data
+                android:name="android.app.shortcuts"
+                android:resource="@xml/shortcuts" />
         </activity>
 
         <!-- يسمح بمشاركة ملفات PDF المُصدَّرة (PdfExport.android.kt) بأمان

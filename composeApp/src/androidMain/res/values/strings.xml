@@ -2,4 +2,6 @@
     <string name="app_name">Gold Vision</string>
     <string name="widget_description">عرض سعر الذهب الحي</string>
     <string name="portfolio_widget_description">عرض قيمة محفظتك الحية</string>
+    <string name="shortcut_share_app_short">مشاركة التطبيق</string>
+    <string name="shortcut_share_app_long">مشاركة تطبيق Gold Vision</string>
 </resources>

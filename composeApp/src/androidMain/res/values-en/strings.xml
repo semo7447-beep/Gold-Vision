@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">Gold Vision</string>
+    <string name="widget_description">Live gold price</string>
+    <string name="portfolio_widget_description">Your live portfolio value</string>
+    <string name="shortcut_share_app_short">Share app</string>
+    <string name="shortcut_share_app_long">Share Gold Vision</string>
+</resources>
