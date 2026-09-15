@@ -992,6 +992,10 @@ private fun GoldVisionApp() {
                     4 -> ZakatScreen(
                         savedItems = savedGoldItems,
                         onNavigateAddItem = { showAddGoldItem = true },
+                        onEditItem = { index ->
+                            editingGoldItemIndex = index
+                            showAddGoldItem = true
+                        },
                         onBack = { selectedBottom = 0 }
                     )
                     5 -> MoreScreen(
@@ -4562,6 +4566,7 @@ private fun PortfolioScreen(
 private fun ZakatScreen(
     savedItems: List<GoldItem>,
     onNavigateAddItem: () -> Unit,
+    onEditItem: (Int) -> Unit,
     onBack: () -> Unit
 ) {
     var zakatPercent by remember { mutableDoubleStateOf(2.5) }
@@ -4584,8 +4589,12 @@ private fun ZakatScreen(
     var date18 by remember { mutableStateOf(todayDateText()) }
     var activeDateKarat by remember { mutableStateOf<String?>(null) }
 
-    // القطع "المباعة" لم تعد مِلكاً للمستخدم، فلا تُحسب ضمن الزكاة إطلاقاً
-    val ownedItems = savedItems.filter { !it.isSold }
+    // القطع "المباعة" لم تعد مِلكاً للمستخدم، فلا تُحسب ضمن الزكاة إطلاقاً —
+    // نحتفظ بالفهرس الأصلي في savedItems (indexedOwnedItems) حتى يمكن
+    // فتح نفس القطعة للتعديل عند الضغط عليها هنا، رغم أن ترتيبها هنا
+    // (بعد استبعاد المباعة) يختلف عن ترتيبها في القائمة الأصلية
+    val indexedOwnedItems = savedItems.withIndex().filter { !it.value.isSold }
+    val ownedItems = indexedOwnedItems.map { it.value }
 
     fun earliestPurchaseDate(karat: String): String =
         ownedItems
@@ -4609,7 +4618,10 @@ private fun ZakatScreen(
     // قائمة الأصناف في الزكاة مطابقة تماماً لقطع المحفظة المملوكة (غير المباعة):
     // أي حذف أو إضافة في المحفظة ينعكس هنا فوراً، وتكون فارغة إذا كانت المحفظة فارغة
     val allZakatItems = ownedItems.map { it.toZakatItem() }
-    val displayedItems = if (showAllItems) allZakatItems else allZakatItems.take(3)
+    // نسخة محتفظة بالفهرس الأصلي (في savedItems) لكل صف، حتى يفتح الضغط
+    // على القطعة نفس شاشة تعديلها المستخدَمة في المحفظة
+    val indexedZakatItems = indexedOwnedItems.map { (index, item) -> index to item.toZakatItem() }
+    val displayedIndexedItems = if (showAllItems) indexedZakatItems else indexedZakatItems.take(3)
 
     val karatWeights = listOf("24K" to weight24, "22K" to weight22, "21K" to weight21, "18K" to weight18)
     val totalGoldValue = karatWeights.sumOf { (karat, w) ->
@@ -4689,14 +4701,6 @@ private fun ZakatScreen(
                             }
                         )
                     }
-                )
-                Icon(
-                    imageVector = Icons.Outlined.Info,
-                    contentDescription = t("معلومات عن زكاة الذهب", "About Gold Zakat"),
-                    tint = Gold,
-                    modifier = Modifier
-                        .size(20.dp)
-                        .clickable { showZakatInfo = true }
                 )
             }
         }
@@ -5030,8 +5034,13 @@ private fun ZakatScreen(
                     .background(Border)
             )
 
-            displayedItems.forEach { item ->
-                ZakatItemRow(item = item, zakatPercent = zakatPercent, exceedsNisab = exceedsNisab)
+            displayedIndexedItems.forEach { (originalIndex, item) ->
+                ZakatItemRow(
+                    item = item,
+                    zakatPercent = zakatPercent,
+                    exceedsNisab = exceedsNisab,
+                    onClick = { onEditItem(originalIndex) }
+                )
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -5428,7 +5437,7 @@ private fun ZakatKaratWeightInput(
 }
 
 @Composable
-private fun ZakatItemRow(item: ZakatItem, zakatPercent: Double, exceedsNisab: Boolean) {
+private fun ZakatItemRow(item: ZakatItem, zakatPercent: Double, exceedsNisab: Boolean, onClick: () -> Unit) {
     val pricePerGram = GoldMarket.prices.first { it.karat == item.karat }.price
     val goldValue = pricePerGram * item.weightGrams
     val zakatAmount = goldValue * (zakatPercent / 100.0)
@@ -5437,6 +5446,7 @@ private fun ZakatItemRow(item: ZakatItem, zakatPercent: Double, exceedsNisab: Bo
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .clickable { onClick() }
             .padding(vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
