@@ -120,7 +120,6 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.Dp
@@ -400,17 +399,7 @@ fun App() {
             color = Black
         ) {
             val layoutDirection = if (AppLanguage.current == AppLang.EN) LayoutDirection.Ltr else LayoutDirection.Rtl
-            // تكبير طفيف لكل نصوص التطبيق (بلا استثناء شاشة) عبر تكبير
-            // fontScale نفسه بدل تعديل كل fontSize يدوياً بكل مكان —
-            // density (وبالتالي أحجام dp) تبقى كما هي، فقط sp يكبر
-            val baseDensity = LocalDensity.current
-            val scaledDensity = remember(baseDensity) {
-                Density(density = baseDensity.density, fontScale = baseDensity.fontScale * 1.12f)
-            }
-            CompositionLocalProvider(
-                LocalLayoutDirection provides layoutDirection,
-                LocalDensity provides scaledDensity
-            ) {
+            CompositionLocalProvider(LocalLayoutDirection provides layoutDirection) {
                 LaunchedEffect(Unit) { seedDefaultPriceAlertsIfNeeded() }
                 var showOnboarding by remember { mutableStateOf(!hasSeenOnboarding()) }
                 if (showOnboarding) {
