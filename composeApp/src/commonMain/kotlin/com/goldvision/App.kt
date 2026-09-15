@@ -1714,7 +1714,6 @@ private fun DealEvaluatorScreen(
     var manufacturing by remember { mutableDoubleStateOf(initialManufacturing) }
     var shopPrice by remember { mutableDoubleStateOf(0.0) }
     var includingTax by remember { mutableStateOf(true) }
-    var showMore by remember { mutableStateOf(false) }
     var shopNote by remember { mutableStateOf("") }
     var showSaveDialog by remember { mutableStateOf(false) }
     var dealCountryTax by remember { mutableStateOf(countryTaxOptions.first()) }
@@ -1830,15 +1829,9 @@ private fun DealEvaluatorScreen(
                 isTaxExempt = isDealTaxExempt
             )
 
-            Spacer(Modifier.height(6.dp))
-            Text(
-                t("إظهار المزيد", "Show more"),
-                color = Gray,
-                fontSize = 10.sp,
-                modifier = Modifier.clickable { showMore = !showMore }
-            )
-
-            if (showMore) {
+            // كانت هذه المنطقة مخفية خلف زر "إظهار المزيد" — أصبحت ظاهرة
+            // دائماً بدل الحاجة لضغطة إضافية لكشفها
+            run {
                 Spacer(Modifier.height(10.dp))
 
                 // أيقونة تصدير PDF الموحّدة، بصف مستقل بتدفّق طبيعي فوق
