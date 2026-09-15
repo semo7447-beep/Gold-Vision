@@ -1619,6 +1619,7 @@ private fun DealEvaluatorScreen(
     var shopPrice by remember { mutableDoubleStateOf(0.0) }
     var includingTax by remember { mutableStateOf(true) }
     var showMore by remember { mutableStateOf(false) }
+    var shopNote by remember { mutableStateOf("") }
     var showSaveDialog by remember { mutableStateOf(false) }
     var dealCountryTax by remember { mutableStateOf(countryTaxOptions.first()) }
     var dealTaxPercent by remember { mutableDoubleStateOf(countryTaxOptions.first().vatPercent) }
@@ -1742,12 +1743,79 @@ private fun DealEvaluatorScreen(
             )
 
             if (showMore) {
+                Spacer(Modifier.height(10.dp))
+
+                // بوكس 1: ملاحظة باسم المحل (اختياري)
+                Text(t("ملاحظة (اسم المحل)", "Note (shop name)"), color = Gray, fontSize = 10.sp)
                 Spacer(Modifier.height(6.dp))
-                Text(
-                    t("بيانات إضافية عن الحلية ستظهر هنا قريباً", "More details about the item will appear here soon"),
-                    color = Gray,
-                    fontSize = 10.sp
+                SelectableTextField(
+                    value = shopNote,
+                    onValueChange = { shopNote = it },
+                    placeholder = t("مثال: محلات الراجحي للمجوهرات", "e.g. Al-Rajhi Jewelry"),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(42.dp)
                 )
+
+                Spacer(Modifier.height(12.dp))
+
+                // بوكس 2: سعر جرام العيار المحدد حالياً (يتبع نفس السعر
+                // الحي المعروض بالشاشة الرئيسية، ويتحدّث تلقائياً عند تغيير
+                // العيار أعلاه لأنه نفس karatPrice المستخدَم بحسابات الشاشة
+                // كاملة) + تصدير عرض سعر PDF
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(9.dp))
+                        .border(1.dp, Border, RoundedCornerShape(9.dp))
+                        .background(CardBlack)
+                        .padding(12.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text(
+                            t("سعر الجرام (${karatLabel(karat)})", "Price per gram (${karatLabel(karat)})"),
+                            color = Gray,
+                            fontSize = 10.sp
+                        )
+                        Text(
+                            "${fmt(karatPrice, 2)} ${t("ريال", "SAR")}",
+                            color = Gold,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                    Icon(
+                        imageVector = Icons.Outlined.Share,
+                        contentDescription = t("تصدير عرض السعر PDF", "Export price quote PDF"),
+                        tint = Gold,
+                        modifier = Modifier
+                            .size(20.dp)
+                            .clickable {
+                                PdfExport.exportReport(
+                                    title = t("عرض سعر — Gold Vision", "Price Quote — Gold Vision"),
+                                    generatedAt = t("تاريخ التصدير: ${todayDateText()}", "Export date: ${todayDateText()}"),
+                                    summary = listOfNotNull(
+                                        shopNote.takeIf { it.isNotBlank() }
+                                            ?.let { PdfReportRow(t("اسم المحل", "Shop name"), it) },
+                                        PdfReportRow(t("العيار", "Karat"), karatLabel(karat)),
+                                        PdfReportRow(t("الوزن", "Weight"), "${fmt(weight, 2)} ${t("جرام", "g")}"),
+                                        PdfReportRow(t("سعر الجرام", "Price per gram"), "${fmt(karatPrice, 2)} ${t("ريال", "SAR")}")
+                                    ),
+                                    rows = listOf(
+                                        PdfReportRow(t("عرض المحل", "Shop offer"), "${fmt(shopPriceWithTax, 2, grouped = true)} ${t("ريال", "SAR")}"),
+                                        PdfReportRow(t("السعر العادل (شامل الضريبة)", "Fair price (incl. tax)"), "${fmt(fairTotal, 2, grouped = true)} ${t("ريال", "SAR")}"),
+                                        PdfReportRow(
+                                            if (savings >= 0) t("وفرت", "You saved") else t("دفعت أكثر بمقدار", "You paid more by"),
+                                            "${fmt(kotlin.math.abs(savings), 2, grouped = true)} ${t("ريال", "SAR")}"
+                                        ),
+                                        PdfReportRow(t("التقييم", "Verdict"), tierLabel)
+                                    )
+                                )
+                            }
+                    )
+                }
             }
 
             Spacer(Modifier.height(14.dp))
