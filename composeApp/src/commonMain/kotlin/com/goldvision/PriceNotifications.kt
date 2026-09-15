@@ -37,20 +37,26 @@ internal expect object PriceNotificationScheduler {
     fun setEnabled(enabled: Boolean)
 }
 
-// يجدول أو يلغي فحصاً يومياً لأقرب اجتماع فيدرالي: إن كان اليوم أو غداً،
-// يُصدر إشعار تذكير بالتاريخ والوقت المتوقع للإعلان. التطبيق الفعلي
-// مختلف لكل منصة (WorkManager على أندرويد؛ لا تأثير على iOS بعد)
+// يجدول أو يلغي فحصاً يومياً لأقرب اجتماع فيدرالي: إن كان بعد أسبوع أو
+// غداً أو اليوم، يُصدر إشعار تذكير بالتاريخ والوقت المتوقع للإعلان —
+// وليس كل يوم بينهما. التطبيق الفعلي مختلف لكل منصة (WorkManager على
+// أندرويد؛ لا تأثير على iOS بعد)
 internal expect object FedMeetingNotificationScheduler {
     fun setEnabled(enabled: Boolean)
 }
 
 // نص إشعار تذكير اجتماع الفيدرالي (عنوان + محتوى)، أو null إن لم يكن
-// الاجتماع القادم اليوم أو غداً (لا داعي لإشعار في هذه الحالة)
+// الاجتماع القادم بعد أسبوع بالضبط أو غداً أو اليوم (لا داعي لإشعار في
+// أي يوم آخر بينهما)
 internal fun buildFedMeetingNotificationText(): Pair<String, String>? {
     val date = nextFedMeetingDate() ?: return null
     val daysLeft = todayLocalDate().daysUntil(date)
-    if (daysLeft != 0 && daysLeft != 1) return null
-    val whenText = if (daysLeft == 0) "اليوم" else "غداً"
+    if (daysLeft != 0 && daysLeft != 1 && daysLeft != 7) return null
+    val whenText = when (daysLeft) {
+        0 -> "اليوم"
+        1 -> "غداً"
+        else -> "بعد أسبوع"
+    }
     val title = "اجتماع الفيدرالي $whenText"
     val body = "قرار الفائدة الأمريكية يُعلن عادة الساعة 9:00 مساءً بتوقيت مكة المكرمة"
     return title to body

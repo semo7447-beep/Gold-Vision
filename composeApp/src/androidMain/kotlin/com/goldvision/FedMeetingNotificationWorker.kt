@@ -19,7 +19,8 @@ private const val FED_MEETING_NOTIFICATION_ID = 1002
 
 // يعمل حتى لو كان التطبيق مغلقاً تماماً (مُشغَّل من WorkManager): يفحص
 // يومياً أقرب اجتماع فيدرالي، ويُصدر إشعار تذكير فقط إن كان الاجتماع
-// اليوم أو غداً (بدل إشعار يومي دائم لا فائدة منه أغلب أيام السنة)
+// بعد أسبوع بالضبط أو غداً أو اليوم (بدل إشعار يومي دائم لا فائدة منه
+// أغلب أيام السنة)
 internal class FedMeetingNotificationWorker(
     context: Context,
     params: WorkerParameters

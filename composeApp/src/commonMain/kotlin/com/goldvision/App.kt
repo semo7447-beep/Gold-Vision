@@ -6563,7 +6563,7 @@ private fun NotificationSettingsScreen(
                 Text(t("مواعيد اجتماعات الفيدرالي", "Fed Meeting Dates"), color = White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    t("تذكير يوم الاجتماع وقبله بيوم واحد، مع موعد إعلان القرار (9:00 مساءً بتوقيت مكة)", "A reminder on the meeting day and the day before, with the decision announcement time (9:00 PM Makkah time)"),
+                    t("تذكير قبل الاجتماع بأسبوع، وقبله بيوم، ويوم الاجتماع نفسه (9:00 مساءً بتوقيت مكة)", "A reminder a week before the meeting, the day before, and on the meeting day itself (9:00 PM Makkah time)"),
                     color = Gray,
                     fontSize = 10.sp,
                     lineHeight = 15.sp
