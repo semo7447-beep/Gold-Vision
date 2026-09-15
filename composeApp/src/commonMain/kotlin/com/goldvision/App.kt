@@ -4831,14 +4831,32 @@ private fun ZakatScreen(
                 .background(CardBlack)
                 .padding(14.dp)
         ) {
-            Text(
-                t("تفاصيل الزكاة", "Zakat Details"),
-                color = White,
-                fontSize = 15.sp,
-                fontWeight = FontWeight.Bold,
+            Row(
                 modifier = Modifier.fillMaxWidth(),
-                textAlign = TextAlign.End
-            )
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // يمسح أوزان الأعيرة الأربعة دفعة واحدة (بدل مسح كل حقل يدوياً)
+                Icon(
+                    imageVector = Icons.Outlined.Close,
+                    contentDescription = t("مسح كل الأوزان", "Clear all weights"),
+                    tint = Red,
+                    modifier = Modifier
+                        .size(20.dp)
+                        .clickable {
+                            weight24 = 0.0
+                            weight22 = 0.0
+                            weight21 = 0.0
+                            weight18 = 0.0
+                        }
+                )
+                Text(
+                    t("تفاصيل الزكاة", "Zakat Details"),
+                    color = White,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
             Spacer(Modifier.height(14.dp))
 
             Text(
