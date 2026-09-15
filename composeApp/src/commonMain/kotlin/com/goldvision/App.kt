@@ -1897,7 +1897,7 @@ private fun DealEvaluatorScreen(
                     .clickable { showSaveDialog = true },
                 contentAlignment = Alignment.Center
             ) {
-                Text(t("حفظ في المجموعة", "Save to collection"), color = Black, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                Text(t("حفظ في المحفظة", "Save to Portfolio"), color = Black, fontSize = 13.sp, fontWeight = FontWeight.Bold)
             }
 
             Spacer(Modifier.height(16.dp))
