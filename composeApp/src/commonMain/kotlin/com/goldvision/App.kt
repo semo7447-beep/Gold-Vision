@@ -2049,7 +2049,7 @@ private fun DealEvaluatorScreen(
                 val shopMargin = shopPriceWithTax - fairTotal
                 val shopMarginPerGram = if (weight > 0) shopMargin / weight else 0.0
                 CalculatorRow(
-                    t("ريع المحل", "Shop margin"),
+                    t("ربح المحل", "Shop profit"),
                     "${fmt(shopMargin, 2, grouped = true)} ${t("ريال", "SAR")} (${fmt(shopMarginPerGram, 2)} ${t("/جم", "/g")})"
                 )
                 CalculatorRow(
