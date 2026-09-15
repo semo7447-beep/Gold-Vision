@@ -7656,15 +7656,6 @@ private fun ImportantNews() {
                 NewsRow(dot = Gold, text = article.title, time = article.publishedAt)
             }
         }
-        Spacer(Modifier.weight(1f))
-        Text(
-            t("عرض المزيد", "View more"),
-            color = White,
-            fontSize = 11.sp,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.fillMaxWidth(),
-            textAlign = TextAlign.Center
-        )
     }
 }
 
