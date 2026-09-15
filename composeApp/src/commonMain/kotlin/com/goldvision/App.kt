@@ -3734,22 +3734,29 @@ private fun CandlestickChart(modifier: Modifier, bars: List<HistoryBar>, karat: 
             // العلوية فعلياً بكل الأحوال (بعيداً عن تسميات محور Y المرسومة
             // دائماً بإحداثي ثابت x=0 يساراً، بلا علاقة باتجاه اللغة) —
             // Alignment.TopStart وحده كان يفترض التطبيق RTL دائماً، فينتقل
-            // فعلياً لليسار بوضع الإنجليزي (LTR) ويتصادم مع تسميات المحور
+            // فعلياً لليسار بوضع الإنجليزي (LTR) ويتصادم مع تسميات المحور.
+            // مهم: لازم يُلَف Box جديد هنا (مو فقط العنصر المُحاذى) — محاذاة
+            // .align() تُحسَب باتجاه الـ Box *الأب* المحيط وقت تخطيطه هو،
+            // بغض النظر عن اتجاه اللغة المفروض محلياً على العنصر الابن نفسه.
+            // بدون Box جديد هنا، الفرض ما كان يغيّر شيئاً فعلياً بوضع
+            // اللغة العربية تحديداً (لأن الـ Box الأب يبقى بريطه بالعربي RTL)
             CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
-                Row(
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(top = 4.dp, start = 4.dp)
-                        .clip(RoundedCornerShape(6.dp))
-                        .background(CardBlack)
-                        .border(1.dp, Border, RoundedCornerShape(6.dp))
-                        .clickable {
-                            scale = 1f
-                            startIndexFloat = 0f
-                        }
-                        .padding(horizontal = 8.dp, vertical = 4.dp)
-                ) {
-                    Text(t("إعادة ضبط", "Reset"), color = Gold, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                Box(modifier = Modifier.fillMaxSize()) {
+                    Row(
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(top = 4.dp, start = 4.dp)
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(CardBlack)
+                            .border(1.dp, Border, RoundedCornerShape(6.dp))
+                            .clickable {
+                                scale = 1f
+                                startIndexFloat = 0f
+                            }
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                    ) {
+                        Text(t("إعادة ضبط", "Reset"), color = Gold, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                    }
                 }
             }
         }
@@ -7609,33 +7616,40 @@ private fun PriceChart(
                 // تسميات محور Y المرسومة يدوياً على الرسم دائماً من اليسار،
                 // بلا علاقة باتجاه اللغة) — Alignment.TopStart وحده كان يتحول
                 // لأعلى يسار فعلياً بوضع الإنجليزي (LTR)، فيتداخل مع تسميات
-                // محور Y هناك
+                // محور Y هناك.
+                // مهم: لازم Box جديد هنا يلفّ العنصر المُحاذى — محاذاة
+                // .align() تُحسَب باتجاه الـ Box *الأب* المحيط وقت تخطيطه
+                // هو، بغض النظر عن اتجاه اللغة المفروض محلياً على الابن
+                // نفسه فقط. بدون Box جديد هنا، الفرض ما كان يغيّر شيئاً
+                // فعلياً بوضع اللغة العربية تحديداً (الـ Box الأب يبقى RTL)
                 CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
-                    Column(
-                        modifier = Modifier
-                            .align(Alignment.TopEnd)
-                            .padding(top = 2.dp, end = 2.dp),
-                        horizontalAlignment = Alignment.End
-                    ) {
-                        Text(t("أعلى سعر", "High"), color = Gray, fontSize = 8.5.sp)
-                        Text(
-                            fmt(maxPrice, 2),
-                            color = White,
-                            fontSize = 10.5.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(t("ريال", "SAR"), color = Gray, fontSize = 8.sp)
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        Column(
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .padding(top = 2.dp, end = 2.dp),
+                            horizontalAlignment = Alignment.End
+                        ) {
+                            Text(t("أعلى سعر", "High"), color = Gray, fontSize = 8.5.sp)
+                            Text(
+                                fmt(maxPrice, 2),
+                                color = White,
+                                fontSize = 10.5.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(t("ريال", "SAR"), color = Gray, fontSize = 8.sp)
 
-                        Spacer(Modifier.height(6.dp))
+                            Spacer(Modifier.height(6.dp))
 
-                        Text(t("أدنى سعر", "Low"), color = Gray, fontSize = 8.5.sp)
-                        Text(
-                            fmt(minPrice, 2),
-                            color = White,
-                            fontSize = 10.5.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(t("ريال", "SAR"), color = Gray, fontSize = 8.sp)
+                            Text(t("أدنى سعر", "Low"), color = Gray, fontSize = 8.5.sp)
+                            Text(
+                                fmt(minPrice, 2),
+                                color = White,
+                                fontSize = 10.5.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(t("ريال", "SAR"), color = Gray, fontSize = 8.sp)
+                        }
                     }
                 }
             }
