@@ -2042,7 +2042,10 @@ private fun DealEvaluatorScreen(
                 CalculatorRow(t("الإجمالي (بدون ضريبة)", "Total (excl. tax)"), "${fmt(fairSubtotal, 2, grouped = true)} ${t("ريال", "SAR")}")
                 CalculatorRow(t("الإجمالي (شامل الضريبة)", "Total (incl. tax)"), "${fmt(fairTotal, 2, grouped = true)} ${t("ريال", "SAR")}")
                 CalculatorRow(t("سعر الذهب", "Gold price"), "${fmt(fairBeforeVat, 2, grouped = true)} ${t("ريال", "SAR")}")
-                CalculatorRow(t("المصنعية", "Workmanship"), "${fmt(fairManufacturing, 2, grouped = true)} ${t("ريال", "SAR")}")
+                CalculatorRow(
+                    t("المصنعية", "Workmanship"),
+                    "${fmt(fairManufacturing, 2, grouped = true)} ${t("ريال", "SAR")} (${fmt(manufacturing, 2)} ${t("/جم", "/g")})"
+                )
                 val shopMargin = shopPriceWithTax - fairTotal
                 val shopMarginPerGram = if (weight > 0) shopMargin / weight else 0.0
                 CalculatorRow(
