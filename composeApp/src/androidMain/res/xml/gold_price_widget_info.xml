@@ -10,4 +10,5 @@
     android:resizeMode="horizontal|vertical"
     android:widgetCategory="home_screen"
     android:initialLayout="@layout/gold_price_widget"
+    android:previewLayout="@layout/gold_price_widget"
     android:description="@string/widget_description" />

@@ -10,4 +10,5 @@
     android:resizeMode="horizontal|vertical"
     android:widgetCategory="home_screen"
     android:initialLayout="@layout/gold_portfolio_widget"
+    android:previewLayout="@layout/gold_portfolio_widget"
     android:description="@string/portfolio_widget_description" />
