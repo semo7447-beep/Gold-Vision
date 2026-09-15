@@ -1776,20 +1776,32 @@ private fun DealEvaluatorScreen(
                     // عند تغيير العيار أعلاه لأنه نفس karatPrice المستخدَم
                     // بحسابات الشاشة كاملة)
                     Column(modifier = Modifier.weight(0.4f)) {
-                        // العنوان وأيقونة تصدير PDF معاً كمجموعة واحدة
-                        // ممركزة أفقياً فوق البوكس (بدل SpaceBetween الذي
-                        // كان يدفع العنوان بعيداً عن مركز القيمة أسفله)،
-                        // والأيقونة داخل دائرة بيضاء بارزة وحجم أكبر لوضوحها
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.Center,
-                            verticalAlignment = Alignment.CenterVertically
+                        // عنوان "سعر الجرام" ممركز فعلياً بعرض العمود كاملاً
+                        // (fillMaxWidth + TextAlign.Center)، بمعزل تماماً عن
+                        // أيقونة PDF التي تطفو فوقه في نفس ارتفاع السطر لكن
+                        // بمحاذاة الطرف الخارجي (Alignment.CenterEnd) — بهذا
+                        // لا يزيح وجود الأيقونة توسيط العنوان أبداً، وتبقى
+                        // نفس ارتفاع صف العنوان في البوكس المجاور (بوكس
+                        // الملاحظة) فيتطابق ارتفاع البوكسين. الأيقونة نفسها
+                        // مكبّرة وداخل دائرة بيضاء بارزة لوضوح رمز PDF عليها
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(26.dp)
                         ) {
-                            Text(t("سعر الجرام", "Price/gram"), color = Gray, fontSize = 10.sp)
-                            Spacer(Modifier.width(6.dp))
+                            Text(
+                                t("سعر الجرام", "Price/gram"),
+                                color = Gray,
+                                fontSize = 10.sp,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .align(Alignment.Center)
+                            )
                             Box(
                                 modifier = Modifier
-                                    .size(22.dp)
+                                    .align(Alignment.CenterEnd)
+                                    .size(26.dp)
                                     .clip(CircleShape)
                                     .background(White)
                                     .clickable {
@@ -1820,7 +1832,7 @@ private fun DealEvaluatorScreen(
                                     imageVector = Icons.Outlined.PictureAsPdf,
                                     contentDescription = t("تصدير عرض السعر PDF", "Export price quote PDF"),
                                     tint = Black,
-                                    modifier = Modifier.size(14.dp)
+                                    modifier = Modifier.size(17.dp)
                                 )
                             }
                         }
