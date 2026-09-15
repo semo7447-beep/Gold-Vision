@@ -103,6 +103,13 @@ internal fun buildPortfolioWidgetRemoteViews(context: Context): RemoteViews {
         views.setTextColor(R.id.portfolio_widget_percent, if (changePercent >= 0) PortfolioGreen else PortfolioRed)
     }
     views.setTextViewText(R.id.portfolio_widget_updated_at, widgetUpdatedAtText())
+    // نقطة حالة الاتصال: قيمة المحفظة تعتمد على أسعار GoldMarket الحية،
+    // فتتبع نفس حالة GoldMarket.lastError الحقيقية
+    views.setInt(
+        R.id.portfolio_widget_status_dot,
+        "setColorFilter",
+        if (GoldMarket.lastError == null) context.getColor(R.color.widget_green) else context.getColor(R.color.widget_red)
+    )
 
     // FLAG_ACTIVITY_NEW_TASK إلزامي لإطلاق Activity من سياق غير Activity
     // (الويدجت هنا)، وبالتزامن مع singleTask في AndroidManifest.xml يضمن

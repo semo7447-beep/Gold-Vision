@@ -97,6 +97,14 @@ internal fun buildWidgetRemoteViews(context: Context): RemoteViews {
         views.setTextViewText(priceId, "${fmt(price.price, 2)} ${t("ريال", "SAR")}")
     }
     views.setTextViewText(R.id.widget_updated_at, widgetUpdatedAtText())
+    // نقطة حالة الاتصال: تتبع نفس حالة GoldMarket.lastError الحقيقية
+    // المستخدَمة في شريط "أسعار الذهب الآن" داخل التطبيق نفسه، بدل عدم
+    // وجود أي مؤشر بالويدجت إطلاقاً
+    views.setInt(
+        R.id.widget_status_dot,
+        "setColorFilter",
+        if (GoldMarket.lastError == null) context.getColor(R.color.widget_green) else context.getColor(R.color.widget_red)
+    )
 
     // FLAG_ACTIVITY_NEW_TASK إلزامي لإطلاق Activity من سياق غير Activity
     // (الويدجت هنا)، وبالتزامن مع singleTask في AndroidManifest.xml يضمن

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- دائرة صلبة بسيطة تُستخدم كمؤشر حالة اتصال داخل الويدجتات (تُلوَّن
+     أخضر/أحمر وقت التشغيل عبر setColorFilter من الكود) -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="oval">
+    <solid android:color="#FFFFFF" />
+</shape>

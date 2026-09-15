@@ -71,13 +71,29 @@
         android:textSize="14sp"
         android:textStyle="bold" />
 
-    <TextView
-        android:id="@+id/portfolio_widget_updated_at"
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="12dp"
-        android:text=""
-        android:textColor="#777777"
-        android:textSize="10sp" />
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+        <!-- نقطة حالة الاتصال: خضراء عند نجاح آخر تحديث فعلي، حمراء عند
+             فشله (بدل ما كانت تختفي دون أي مؤشر) -->
+        <ImageView
+            android:id="@+id/portfolio_widget_status_dot"
+            android:layout_width="7dp"
+            android:layout_height="7dp"
+            android:layout_marginEnd="5dp"
+            android:src="@drawable/dot_circle"
+            android:contentDescription="@null" />
+        <TextView
+            android:id="@+id/portfolio_widget_updated_at"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text=""
+            android:textColor="#777777"
+            android:textSize="10sp" />
+    </LinearLayout>
 
 </LinearLayout>

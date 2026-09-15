@@ -2,4 +2,6 @@
 <resources>
     <color name="ic_launcher_background">#050505</color>
     <color name="widget_gold">#FFC21A</color>
+    <color name="widget_green">#35D12F</color>
+    <color name="widget_red">#FF3B30</color>
 </resources>

@@ -3435,7 +3435,7 @@ private fun KaratChartCard(
 ) {
     val karatNumber = karat.removeSuffix("K")
     val title = t("عيار $karatNumber - ريال سعودي", "${karatNumber}K - Saudi Riyal")
-    AppCard(title = title, modifier = Modifier.fillMaxWidth().height(215.dp)) {
+    AppCard(title = title, isLive = GoldMarket.lastError == null, modifier = Modifier.fillMaxWidth().height(215.dp)) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -7074,7 +7074,7 @@ private fun GoldCalculator(
     onManufacturingChanged: (Double) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    AppCard(title = t("حاسبة الذهب", "Gold Calculator"), modifier = modifier) {
+    AppCard(title = t("حاسبة الذهب", "Gold Calculator"), isLive = GoldMarket.lastError == null, modifier = modifier) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -7703,6 +7703,7 @@ private fun PriceChart(
     AppCard(
         title = t("تتبع أسعار الذهب", "Gold Price Tracking"),
         titleIcon = Icons.AutoMirrored.Outlined.ShowChart,
+        isLive = GoldHistory.lastError == null && GoldMarket.lastError == null,
         modifier = Modifier.fillMaxSize()
     ) {
         // مفتاح التبديل بين تتبع الأسعار (رسم بسيط) والتحليل الفني
@@ -7849,7 +7850,7 @@ private fun PriceChart(
 @Composable
 private fun ImportantNews() {
     val topThree = GoldNews.articles.take(3)
-    AppCard(title = t("أهم الأخبار المؤثرة", "Top News"), modifier = Modifier.fillMaxSize()) {
+    AppCard(title = t("أهم الأخبار المؤثرة", "Top News"), isLive = GoldNews.lastError == null, modifier = Modifier.fillMaxSize()) {
         if (topThree.isEmpty()) {
             Text(
                 if (GoldNews.isLoading) t("جارٍ تحميل الأخبار...", "Loading news...") else t("لا توجد أخبار متوفرة حالياً", "No news available right now"),
@@ -7903,6 +7904,10 @@ private fun FedSchedule(rows: List<FedMeetingRow>) {
     AppCard(
         title = t("مواعيد اجتماعات الفيدرالي", "Fed Meeting Dates"),
         titleIcon = Icons.Outlined.CalendarMonth,
+        // مواعيد الفيدرالي بيانات ثابتة مدمجة بالتطبيق (لا تُجلب من
+        // الشبكة)، فلا يوجد لها مصدر خطأ خاص بها — تتبع حالة اتصال
+        // الأسعار كمؤشر عام لاتصال الجهاز، بدل نقطة خضراء ثابتة دائماً
+        isLive = GoldMarket.lastError == null,
         modifier = Modifier.fillMaxSize()
     ) {
         Row(
@@ -8536,6 +8541,12 @@ private fun AppCard(
     title: String,
     modifier: Modifier = Modifier,
     titleIcon: ImageVector? = null,
+    // هل بيانات هذه البطاقة محدّثة فعلياً (نقطة خضراء) أم متعثّرة بسبب
+    // فشل آخر تحديث حقيقي (نقطة حمراء)؟ كانت هذه النقطة ثابتة على
+    // الأخضر دائماً بغض النظر عن حالة الاتصال الفعلية، فتناقض شريط
+    // "أسعار الذهب الآن" الذي يعرض "غير محدث" بالأحمر بصدق عند انقطاع
+    // الشبكة — كل استدعاء الآن يمرّر حالة مصدر بياناته الحقيقي
+    isLive: Boolean = true,
     content: @Composable ColumnScope.() -> Unit
 ) {
     Column(
@@ -8573,7 +8584,7 @@ private fun AppCard(
                 modifier = Modifier
                     .size(8.dp)
                     .clip(RoundedCornerShape(5.dp))
-                    .background(Green)
+                    .background(if (isLive) Green else Red)
             )
         }
 
