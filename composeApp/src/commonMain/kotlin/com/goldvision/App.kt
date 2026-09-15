@@ -716,7 +716,11 @@ private fun GoldVisionApp() {
     }
     val marketScope = rememberCoroutineScope()
 
-    val fedRows = remember { upcomingFedMeetings().take(4) }
+    // AppLanguage.current مفتاح إلزامي هنا: أسماء الأيام بداخل upcomingFedMeetings()
+    // تعتمد على اللغة الحالية، وremember بلا مفتاح كان يحسبها مرة واحدة فقط
+    // عند أول تركيب للشاشة، فتبقى بلغة قديمة (إنجليزي) حتى لو تغيّرت لغة
+    // التطبيق لاحقاً إلى العربي
+    val fedRows = remember(AppLanguage.current) { upcomingFedMeetings().take(4) }
 
     val selectedPrice = GoldMarket.prices.first { it.karat == selectedKarat }.price
     val beforeVat = selectedPrice * weight
@@ -8105,7 +8109,7 @@ private fun FedSchedule(rows: List<FedMeetingRow>) {
 // ==================== شاشة مواعيد الفيدرالي الكاملة ====================
 @Composable
 private fun FedMeetingsScreen(onBack: () -> Unit) {
-    val rows = remember { upcomingFedMeetings() }
+    val rows = remember(AppLanguage.current) { upcomingFedMeetings() }
     Column(modifier = Modifier.fillMaxSize()) {
         Row(
             modifier = Modifier
