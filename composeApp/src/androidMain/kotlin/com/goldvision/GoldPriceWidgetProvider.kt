@@ -70,13 +70,6 @@ internal class GoldPriceWidgetProvider : AppWidgetProvider() {
 // مشتركة بين onUpdate (عرض فوري) وGoldPriceWidgetWorker (بعد تحديث حقيقي)
 internal fun buildWidgetRemoteViews(context: Context): RemoteViews {
     val views = RemoteViews(context.packageName, R.layout.gold_price_widget)
-    // اتجاه الويدجت يتبع لغة التطبيق الداخلية (AppLanguage)، لا لغة نظام
-    // الجهاز — فلو كانا مختلفين يصير ترتيب العناصر معكوساً بشكل خاطئ
-    views.setInt(
-        R.id.widget_root,
-        "setLayoutDirection",
-        if (AppLanguage.current == AppLang.EN) android.view.View.LAYOUT_DIRECTION_LTR else android.view.View.LAYOUT_DIRECTION_RTL
-    )
 
     views.setTextViewText(R.id.widget_date, widgetDateText())
 

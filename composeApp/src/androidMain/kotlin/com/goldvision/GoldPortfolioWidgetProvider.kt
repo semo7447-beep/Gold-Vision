@@ -73,13 +73,6 @@ private fun goldItemCurrentValue(item: GoldItem): Double {
 
 internal fun buildPortfolioWidgetRemoteViews(context: Context): RemoteViews {
     val views = RemoteViews(context.packageName, R.layout.gold_portfolio_widget)
-    // نفس إصلاح ويدجت الأسعار: اتجاه الويدجت يفرض ليطابق لغة التطبيق
-    // نفسها دائماً، لا لغة نظام الجهاز (راجع التعليق بـ buildWidgetRemoteViews)
-    views.setInt(
-        R.id.portfolio_widget_root,
-        "setLayoutDirection",
-        if (AppLanguage.current == AppLang.EN) android.view.View.LAYOUT_DIRECTION_LTR else android.view.View.LAYOUT_DIRECTION_RTL
-    )
 
     val items = try {
         AppStorage.readText(goldItemsStorageFile)?.let { Json.decodeFromString<List<GoldItem>>(it) }
