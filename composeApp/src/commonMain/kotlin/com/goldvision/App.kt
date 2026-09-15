@@ -6603,6 +6603,13 @@ private fun NotificationSettingsScreen(
         PriceAlertScheduler.setActive(updated.isNotEmpty())
     }
 
+    // تكبير خط شاشة الإشعارات فقط، بنفس أسلوب الشاشات السابقة — آمن هنا
+    // لأن المحتوى داخل عمود قابل للتمرير عمودياً
+    val baseDensity = LocalDensity.current
+    val notificationsDensity = remember(baseDensity) {
+        Density(density = baseDensity.density, fontScale = baseDensity.fontScale * 1.15f)
+    }
+    CompositionLocalProvider(LocalDensity provides notificationsDensity) {
     Box(modifier = Modifier.fillMaxSize()) {
     Column(
         modifier = Modifier
@@ -6649,7 +6656,7 @@ private fun NotificationSettingsScreen(
                 Text(t("سعر الذهب اليومي", "Daily Gold Price"), color = White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    t("إشعار كل ساعة بسعري الافتتاح والإغلاق الفعليين لعيار 24 وعيار 21", "An hourly notification with the actual open and close prices for 24K and 21K"),
+                    t("إشعار كل ساعة بسعر الافتتاح والإغلاق عيار 24 و21", "An hourly notification with the open and close prices for 24K and 21K"),
                     color = Gray,
                     fontSize = 10.sp,
                     lineHeight = 15.sp
@@ -6683,7 +6690,7 @@ private fun NotificationSettingsScreen(
                 Text(t("مواعيد اجتماعات الفيدرالي", "Fed Meeting Dates"), color = White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    t("تذكير قبل الاجتماع بأسبوع، وقبله بيوم، ويوم الاجتماع نفسه (9:00 مساءً بتوقيت مكة)", "A reminder a week before the meeting, the day before, and on the meeting day itself (9:00 PM Makkah time)"),
+                    t("تذكير قبل الاجتماع بأسبوع، وقبل يوم الاجتماع، ويوم الاجتماع نفسه (9:00 مساءً بتوقيت مكة المكرمة)", "A reminder a week before the meeting, the day before, and on the meeting day itself (9:00 PM Makkah time)"),
                     color = Gray,
                     fontSize = 10.sp,
                     lineHeight = 15.sp
@@ -6809,6 +6816,7 @@ private fun NotificationSettingsScreen(
                 showAddAlertDialog = false
             }
         )
+    }
     }
     }
 }
