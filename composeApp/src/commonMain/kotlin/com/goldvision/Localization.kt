@@ -39,8 +39,16 @@ internal object AppLanguage {
         if (current == lang) return
         current = lang
         persistLanguageSettings(LanguageSettings(lang))
+        // بدون هذا، أي ويدجت مضاف فعلاً على الشاشة الرئيسية يبقى بلغته
+        // القديمة لين موعد تحديثه الدوري القادم (حتى 30 دقيقة) أو ضغطة
+        // تحديث يدوية — بدل ما يتبع اللغة الجديدة فوراً
+        notifyWidgetsLanguageChanged()
     }
 }
+
+// يدفع تحديثاً فورياً لكل الويدجتات المضافة فعلاً بالشاشة الرئيسية عند
+// تغيير لغة التطبيق — خاص بأندرويد (لا ويدجتات على iOS بعد)
+internal expect fun notifyWidgetsLanguageChanged()
 
 // دالة الترجمة: تُستدعى مكان أي نص عربي مباشر — t("نص عربي", "English text")
 internal fun t(ar: String, en: String): String = if (AppLanguage.current == AppLang.EN) en else ar

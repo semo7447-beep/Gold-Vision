@@ -3,6 +3,7 @@ package com.goldvision
 import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.widget.RemoteViews
@@ -122,4 +123,23 @@ internal fun widgetUpdatedAtText(): String {
     val hour = now.hour.toString().padStart(2, '0')
     val minute = now.minute.toString().padStart(2, '0')
     return t("آخر تحديث: $hour:$minute", "Updated: $hour:$minute")
+}
+
+private var widgetLanguageNotifierContext: Context? = null
+
+internal fun initWidgetLanguageNotifier(context: Context) {
+    widgetLanguageNotifierContext = context.applicationContext
+}
+
+// يعيد بناء نصوص كل ويدجت مضاف فعلاً (السعر والمحفظة) فوراً بلغة
+// التطبيق الجديدة، بدل انتظار دورة التحديث الدورية القادمة
+internal actual fun notifyWidgetsLanguageChanged() {
+    val context = widgetLanguageNotifierContext ?: return
+    val appWidgetManager = AppWidgetManager.getInstance(context)
+
+    val priceIds = appWidgetManager.getAppWidgetIds(ComponentName(context, GoldPriceWidgetProvider::class.java))
+    priceIds.forEach { id -> appWidgetManager.updateAppWidget(id, buildWidgetRemoteViews(context)) }
+
+    val portfolioIds = appWidgetManager.getAppWidgetIds(ComponentName(context, GoldPortfolioWidgetProvider::class.java))
+    portfolioIds.forEach { id -> appWidgetManager.updateAppWidget(id, buildPortfolioWidgetRemoteViews(context)) }
 }
