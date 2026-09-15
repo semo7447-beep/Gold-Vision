@@ -8,7 +8,7 @@ import java.util.concurrent.TimeUnit
 
 private const val DAILY_PRICE_WORK_NAME = "gold_vision_daily_price_notification"
 
-// يجدول عملاً دورياً كل 24 ساعة عبر WorkManager يستمر حتى لو أُغلق
+// يجدول عملاً دورياً كل ساعة عبر WorkManager يستمر حتى لو أُغلق
 // التطبيق تماماً (بعكس أي مؤقّت داخل التطبيق نفسه فقط، يتوقف بمجرد إغلاقه)
 internal actual object PriceNotificationScheduler {
     private var appContext: Context? = null
@@ -22,7 +22,7 @@ internal actual object PriceNotificationScheduler {
         val context = appContext ?: return
         val workManager = WorkManager.getInstance(context)
         if (enabled) {
-            val request = PeriodicWorkRequestBuilder<DailyPriceNotificationWorker>(24, TimeUnit.HOURS).build()
+            val request = PeriodicWorkRequestBuilder<DailyPriceNotificationWorker>(1, TimeUnit.HOURS).build()
             workManager.enqueueUniquePeriodicWork(
                 DAILY_PRICE_WORK_NAME,
                 ExistingPeriodicWorkPolicy.KEEP,

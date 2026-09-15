@@ -30,7 +30,7 @@ internal fun persistNotificationSettings(settings: NotificationSettings) {
     AppStorage.writeText(notificationSettingsStorageFile, Json.encodeToString(settings))
 }
 
-// يجدول أو يلغي إشعاراً يومياً واحداً بسعري الافتتاح والإغلاق (عيار 24
+// يجدول أو يلغي إشعاراً كل ساعة بسعري الافتتاح والإغلاق (عيار 24
 // و21)، بناءً على آخر شمعة يومية حقيقية متوفرة من GoldHistory. التطبيق
 // الفعلي مختلف لكل منصة (WorkManager على أندرويد؛ لا تأثير على iOS بعد)
 internal expect object PriceNotificationScheduler {
