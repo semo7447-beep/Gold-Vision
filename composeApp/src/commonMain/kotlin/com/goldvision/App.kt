@@ -1747,119 +1747,111 @@ private fun DealEvaluatorScreen(
             if (showMore) {
                 Spacer(Modifier.height(10.dp))
 
-                // بوكسين جنباً إلى جنب، بنفس المستوى بالضبط (عنوان فوق كل
-                // بوكس، ثم حقل بارتفاع 42.dp): الأول (60%) يمين — ملاحظة
-                // باسم المحل، الثاني (40%) يسار — سعر الجرام. أيقونة تصدير
-                // عرض السعر PDF أصبحت فوق البوكس (بجانب عنوانه) بدل داخله،
-                // حتى لا تتداخل مع محتوى البوكس ولتكون واضحة كزر مستقل
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    // بوكس 1 (60%): ملاحظة باسم المحل (اختياري)
-                    Column(modifier = Modifier.weight(0.6f)) {
-                        Text(t("ملاحظة (اسم المحل)", "Note (shop name)"), color = Gray, fontSize = 10.sp)
-                        Spacer(Modifier.height(6.dp))
-                        SelectableTextField(
-                            value = shopNote,
-                            onValueChange = { shopNote = it },
-                            placeholder = t("اسم المحل", "Shop name"),
-                            fontSize = 11.sp,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(42.dp)
-                        )
-                    }
+                // بوكسين جنباً إلى جنب، بنفس المستوى بالضبط: عنوانا
+                // البوكسين متطابقان تماماً بالبنية (نص واحد بلا أي عنصر
+                // إضافي بجانبه)، حتى لا يختلف ارتفاعهما ويختل التطابق —
+                // أيقونة PDF ليست جزءاً من عمود البوكس الثاني إطلاقاً، بل
+                // تطفو خارج الصف كله فوق ركنه الخارجي (Box منفصل بعده
+                // مباشرة، بمحاذاة TopEnd + إزاحة للأعلى)
+                Box(modifier = Modifier.fillMaxWidth()) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        // بوكس 1 (60%): ملاحظة باسم المحل (اختياري)
+                        Column(modifier = Modifier.weight(0.6f)) {
+                            Text(t("ملاحظة (اسم المحل)", "Note (shop name)"), color = Gray, fontSize = 10.sp)
+                            Spacer(Modifier.height(6.dp))
+                            SelectableTextField(
+                                value = shopNote,
+                                onValueChange = { shopNote = it },
+                                placeholder = t("اسم المحل", "Shop name"),
+                                fontSize = 11.sp,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(42.dp)
+                            )
+                        }
 
-                    // بوكس 2 (40%): سعر جرام العيار المحدد حالياً (يتبع نفس
-                    // السعر الحي المعروض بالشاشة الرئيسية، ويتحدّث تلقائياً
-                    // عند تغيير العيار أعلاه لأنه نفس karatPrice المستخدَم
-                    // بحسابات الشاشة كاملة)
-                    Column(modifier = Modifier.weight(0.4f)) {
-                        // عنوان "سعر الجرام" ممركز فعلياً بعرض العمود كاملاً
-                        // (fillMaxWidth + TextAlign.Center)، بمعزل تماماً عن
-                        // أيقونة PDF التي تطفو فوقه في نفس ارتفاع السطر لكن
-                        // بمحاذاة الطرف الخارجي (Alignment.CenterEnd) — بهذا
-                        // لا يزيح وجود الأيقونة توسيط العنوان أبداً، وتبقى
-                        // نفس ارتفاع صف العنوان في البوكس المجاور (بوكس
-                        // الملاحظة) فيتطابق ارتفاع البوكسين. الأيقونة نفسها
-                        // مكبّرة وداخل دائرة بيضاء بارزة لوضوح رمز PDF عليها
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(26.dp)
-                        ) {
+                        // بوكس 2 (40%): سعر جرام العيار المحدد حالياً (يتبع
+                        // نفس السعر الحي المعروض بالشاشة الرئيسية، ويتحدّث
+                        // تلقائياً عند تغيير العيار أعلاه لأنه نفس
+                        // karatPrice المستخدَم بحسابات الشاشة كاملة)
+                        Column(modifier = Modifier.weight(0.4f)) {
                             Text(
                                 t("سعر الجرام", "Price/gram"),
                                 color = Gray,
                                 fontSize = 10.sp,
                                 textAlign = TextAlign.Center,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .align(Alignment.Center)
+                                modifier = Modifier.fillMaxWidth()
                             )
+                            Spacer(Modifier.height(6.dp))
                             Box(
                                 modifier = Modifier
-                                    .align(Alignment.CenterEnd)
-                                    .size(26.dp)
-                                    .clip(CircleShape)
-                                    .background(White)
-                                    .clickable {
-                                        PdfExport.exportReport(
-                                            title = t("عرض سعر — Gold Vision", "Price Quote — Gold Vision"),
-                                            generatedAt = t("تاريخ التصدير: ${todayDateText()}", "Export date: ${todayDateText()}"),
-                                            summary = listOfNotNull(
-                                                shopNote.takeIf { it.isNotBlank() }
-                                                    ?.let { PdfReportRow(t("اسم المحل", "Shop name"), it) },
-                                                PdfReportRow(t("العيار", "Karat"), karatLabel(karat)),
-                                                PdfReportRow(t("الوزن", "Weight"), "${fmt(weight, 2)} ${t("جرام", "g")}"),
-                                                PdfReportRow(t("سعر الجرام", "Price per gram"), "${fmt(karatPrice, 2)} ${t("ريال", "SAR")}")
-                                            ),
-                                            rows = listOf(
-                                                PdfReportRow(t("عرض المحل", "Shop offer"), "${fmt(shopPriceWithTax, 2, grouped = true)} ${t("ريال", "SAR")}"),
-                                                PdfReportRow(t("السعر العادل (شامل الضريبة)", "Fair price (incl. tax)"), "${fmt(fairTotal, 2, grouped = true)} ${t("ريال", "SAR")}"),
-                                                PdfReportRow(
-                                                    if (savings >= 0) t("وفرت", "You saved") else t("دفعت أكثر بمقدار", "You paid more by"),
-                                                    "${fmt(kotlin.math.abs(savings), 2, grouped = true)} ${t("ريال", "SAR")}"
-                                                ),
-                                                PdfReportRow(t("التقييم", "Verdict"), tierLabel)
-                                            )
-                                        )
-                                    },
+                                    .fillMaxWidth()
+                                    .height(42.dp)
+                                    .clip(RoundedCornerShape(9.dp))
+                                    .border(1.dp, Border, RoundedCornerShape(9.dp))
+                                    .background(CardBlack),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Icon(
-                                    imageVector = Icons.Outlined.PictureAsPdf,
-                                    contentDescription = t("تصدير عرض السعر PDF", "Export price quote PDF"),
-                                    tint = Black,
-                                    modifier = Modifier.size(17.dp)
-                                )
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text(
+                                        fmt(karatPrice, 2),
+                                        color = Gold,
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    Text(
+                                        t("ريال (${karatLabel(karat)})", "SAR (${karatLabel(karat)})"),
+                                        color = Gray,
+                                        fontSize = 7.5.sp
+                                    )
+                                }
                             }
                         }
-                        Spacer(Modifier.height(6.dp))
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(42.dp)
-                                .clip(RoundedCornerShape(9.dp))
-                                .border(1.dp, Border, RoundedCornerShape(9.dp))
-                                .background(CardBlack),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text(
-                                    fmt(karatPrice, 2),
-                                    color = Gold,
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.Bold
+                    }
+
+                    // شارة تصدير PDF: دائرة بيضاء بارزة تطفو فوق الركن
+                    // الخارجي لبوكس السعر، خارج الصف تماماً، فلا تؤثر على
+                    // عرض أو ارتفاع أي من البوكسين
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .offset(y = (-10).dp)
+                            .size(26.dp)
+                            .clip(CircleShape)
+                            .background(White)
+                            .clickable {
+                                PdfExport.exportReport(
+                                    title = t("عرض سعر — Gold Vision", "Price Quote — Gold Vision"),
+                                    generatedAt = t("تاريخ التصدير: ${todayDateText()}", "Export date: ${todayDateText()}"),
+                                    summary = listOfNotNull(
+                                        shopNote.takeIf { it.isNotBlank() }
+                                            ?.let { PdfReportRow(t("اسم المحل", "Shop name"), it) },
+                                        PdfReportRow(t("العيار", "Karat"), karatLabel(karat)),
+                                        PdfReportRow(t("الوزن", "Weight"), "${fmt(weight, 2)} ${t("جرام", "g")}"),
+                                        PdfReportRow(t("سعر الجرام", "Price per gram"), "${fmt(karatPrice, 2)} ${t("ريال", "SAR")}")
+                                    ),
+                                    rows = listOf(
+                                        PdfReportRow(t("عرض المحل", "Shop offer"), "${fmt(shopPriceWithTax, 2, grouped = true)} ${t("ريال", "SAR")}"),
+                                        PdfReportRow(t("السعر العادل (شامل الضريبة)", "Fair price (incl. tax)"), "${fmt(fairTotal, 2, grouped = true)} ${t("ريال", "SAR")}"),
+                                        PdfReportRow(
+                                            if (savings >= 0) t("وفرت", "You saved") else t("دفعت أكثر بمقدار", "You paid more by"),
+                                            "${fmt(kotlin.math.abs(savings), 2, grouped = true)} ${t("ريال", "SAR")}"
+                                        ),
+                                        PdfReportRow(t("التقييم", "Verdict"), tierLabel)
+                                    )
                                 )
-                                Text(
-                                    t("ريال (${karatLabel(karat)})", "SAR (${karatLabel(karat)})"),
-                                    color = Gray,
-                                    fontSize = 7.5.sp
-                                )
-                            }
-                        }
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.PictureAsPdf,
+                            contentDescription = t("تصدير عرض السعر PDF", "Export price quote PDF"),
+                            tint = Black,
+                            modifier = Modifier.size(17.dp)
+                        )
                     }
                 }
             }
