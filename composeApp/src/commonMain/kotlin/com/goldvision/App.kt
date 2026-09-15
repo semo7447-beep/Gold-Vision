@@ -60,7 +60,6 @@ import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.MoreHoriz
 import androidx.compose.material.icons.outlined.Notifications
-import androidx.compose.material.icons.outlined.PictureAsPdf
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.outlined.Store
@@ -1267,40 +1266,35 @@ private fun CalculatorFullScreen(
                 )
             }
 
-            Icon(
-                imageVector = Icons.Outlined.PictureAsPdf,
-                contentDescription = t("تصدير PDF", "Export PDF"),
-                tint = Gold,
-                modifier = Modifier
-                    .size(18.dp)
-                    .clickable {
-                        val manufacturingTotal = if (buyMode) manufacturing * weight else 0.0
-                        PdfExport.exportReport(
-                            title = t("تقرير الصفقة — Gold Vision", "Deal Report — Gold Vision"),
-                            generatedAt = t("تاريخ التصدير: ${todayDateText()}", "Export date: ${todayDateText()}"),
-                            summary = listOf(
-                                PdfReportRow(t("نوع العملية", "Transaction type"), if (buyMode) t("شراء", "Buy") else t("بيع", "Sell")),
-                                PdfReportRow(t("العيار", "Karat"), karatLabel(selectedKarat)),
-                                PdfReportRow(t("الوزن", "Weight"), "${fmt(weight, 2)} ${t("جرام", "g")}"),
-                                PdfReportRow(t("الإجمالي (شامل الضريبة)", "Total (incl. tax)"), "${fmt(total, 2, grouped = true)} ${t("ريال", "SAR")}")
-                            ),
-                            rows = buildList {
-                                add(PdfReportRow(t("سعر الذهب", "Gold price"), "${fmt(beforeVat, 2, grouped = true)} ${t("ريال", "SAR")}"))
-                                if (buyMode) {
-                                    add(PdfReportRow(t("المصنعية (للجرام)", "Workmanship (per gram)"), "${fmt(manufacturing, 2)} ${t("ريال", "SAR")}"))
-                                    add(PdfReportRow(t("إجمالي المصنعية", "Total workmanship"), "${fmt(manufacturingTotal, 2, grouped = true)} ${t("ريال", "SAR")}"))
-                                } else {
-                                    add(PdfReportRow(t("المصنعية", "Workmanship"), "0.00 ${t("ريال", "SAR")}"))
-                                }
-                                add(
-                                    PdfReportRow(
-                                        if (isTaxExempt) t("ضريبة القيمة المضافة (معفى)", "VAT (exempt)") else t("ضريبة القيمة المضافة (${fmt(taxPercent, 0)}%)", "VAT (${fmt(taxPercent, 0)}%)"),
-                                        "${fmt(vat, 2, grouped = true)} ${t("ريال", "SAR")}"
-                                    )
-                                )
+            PdfExportIcon(
+                onClick = {
+                    val manufacturingTotal = if (buyMode) manufacturing * weight else 0.0
+                    PdfExport.exportReport(
+                        title = t("تقرير الصفقة — Gold Vision", "Deal Report — Gold Vision"),
+                        generatedAt = t("تاريخ التصدير: ${todayDateText()}", "Export date: ${todayDateText()}"),
+                        summary = listOf(
+                            PdfReportRow(t("نوع العملية", "Transaction type"), if (buyMode) t("شراء", "Buy") else t("بيع", "Sell")),
+                            PdfReportRow(t("العيار", "Karat"), karatLabel(selectedKarat)),
+                            PdfReportRow(t("الوزن", "Weight"), "${fmt(weight, 2)} ${t("جرام", "g")}"),
+                            PdfReportRow(t("الإجمالي (شامل الضريبة)", "Total (incl. tax)"), "${fmt(total, 2, grouped = true)} ${t("ريال", "SAR")}")
+                        ),
+                        rows = buildList {
+                            add(PdfReportRow(t("سعر الذهب", "Gold price"), "${fmt(beforeVat, 2, grouped = true)} ${t("ريال", "SAR")}"))
+                            if (buyMode) {
+                                add(PdfReportRow(t("المصنعية (للجرام)", "Workmanship (per gram)"), "${fmt(manufacturing, 2)} ${t("ريال", "SAR")}"))
+                                add(PdfReportRow(t("إجمالي المصنعية", "Total workmanship"), "${fmt(manufacturingTotal, 2, grouped = true)} ${t("ريال", "SAR")}"))
+                            } else {
+                                add(PdfReportRow(t("المصنعية", "Workmanship"), "0.00 ${t("ريال", "SAR")}"))
                             }
-                        )
-                    }
+                            add(
+                                PdfReportRow(
+                                    if (isTaxExempt) t("ضريبة القيمة المضافة (معفى)", "VAT (exempt)") else t("ضريبة القيمة المضافة (${fmt(taxPercent, 0)}%)", "VAT (${fmt(taxPercent, 0)}%)"),
+                                    "${fmt(vat, 2, grouped = true)} ${t("ريال", "SAR")}"
+                                )
+                            )
+                        }
+                    )
+                }
             )
         }
 
@@ -1606,6 +1600,104 @@ private fun CalculatorFullScreen(
     }
 }
 
+// أيقونة تصدير PDF موحّدة تُستخدم في كل مكان بالتطبيق (الحاسبة، محل
+// أعطاك سعر، المحفظة، الزكاة): مستند أبيض بزاوية مطوية + شارة "PDF"
+// بيضاء بحدّ أسود ونص أسود + سطرا محتوى + سهم تحميل، مرسومة يدوياً
+// عبر Canvas بدل أيقونة عامة، لتكون مميزة وواضحة كرمز تصدير مستند
+@Composable
+private fun PdfExportIcon(
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
+    val textMeasurer = rememberTextMeasurer()
+    Canvas(
+        modifier = modifier
+            .width(24.dp)
+            .height(26.dp)
+            .clickable(onClick = onClick)
+    ) {
+        // نظام إحداثيات مرجعي مطابق للتصميم الأصلي (عرض من -10 إلى
+        // 100، ارتفاع 0 إلى 120) يُحوَّل لأبعاد الرسم الفعلية
+        val sx = size.width / 110f
+        val sy = size.height / 120f
+        fun px(x: Float) = (x + 10f) * sx
+        fun py(y: Float) = y * sy
+
+        val docPath = Path().apply {
+            moveTo(px(15f), py(4f))
+            lineTo(px(68f), py(4f))
+            lineTo(px(96f), py(32f))
+            lineTo(px(96f), py(106f))
+            quadraticTo(px(96f), py(116f), px(86f), py(116f))
+            lineTo(px(14f), py(116f))
+            quadraticTo(px(4f), py(116f), px(4f), py(106f))
+            lineTo(px(4f), py(14f))
+            quadraticTo(px(4f), py(4f), px(15f), py(4f))
+            close()
+        }
+        drawPath(docPath, color = White)
+
+        val flapPath = Path().apply {
+            moveTo(px(68f), py(4f))
+            lineTo(px(96f), py(32f))
+            lineTo(px(74f), py(32f))
+            quadraticTo(px(68f), py(32f), px(68f), py(26f))
+            close()
+        }
+        drawPath(flapPath, color = Color(0xFFD8D8D8))
+
+        drawRoundRect(
+            color = Black,
+            topLeft = Offset(px(24f), py(62f)),
+            size = androidx.compose.ui.geometry.Size(58f * sx, 7f * sy),
+            cornerRadius = androidx.compose.ui.geometry.CornerRadius(3.5f * sx, 3.5f * sy)
+        )
+        drawRoundRect(
+            color = Black,
+            topLeft = Offset(px(24f), py(75f)),
+            size = androidx.compose.ui.geometry.Size(58f * sx, 7f * sy),
+            cornerRadius = androidx.compose.ui.geometry.CornerRadius(3.5f * sx, 3.5f * sy)
+        )
+
+        drawRect(
+            color = Black,
+            topLeft = Offset(px(43f), py(88f)),
+            size = androidx.compose.ui.geometry.Size(14f * sx, 16f * sy)
+        )
+        val arrowPath = Path().apply {
+            moveTo(px(32f), py(102f))
+            lineTo(px(68f), py(102f))
+            lineTo(px(50f), py(118f))
+            close()
+        }
+        drawPath(arrowPath, color = Black)
+
+        val tagTopLeft = Offset(px(-6f), py(24f))
+        val tagSize = androidx.compose.ui.geometry.Size(58f * sx, 26f * sy)
+        val tagCorner = androidx.compose.ui.geometry.CornerRadius(5f * sx, 5f * sy)
+        drawRoundRect(color = White, topLeft = tagTopLeft, size = tagSize, cornerRadius = tagCorner)
+        drawRoundRect(
+            color = Black,
+            topLeft = tagTopLeft,
+            size = tagSize,
+            cornerRadius = tagCorner,
+            style = Stroke(width = 2.5f * sx)
+        )
+
+        val label = textMeasurer.measure(
+            text = "PDF",
+            style = TextStyle(color = Black, fontSize = 11.sp, fontWeight = FontWeight.Black)
+        )
+        drawText(
+            label,
+            topLeft = Offset(
+                tagTopLeft.x + (tagSize.width - label.size.width) / 2f,
+                tagTopLeft.y + (tagSize.height - label.size.height) / 2f
+            )
+        )
+    }
+}
+
 // ==================== شاشة "المحل أعطاك سعراً؟" (تقييم عرض المحل) ====================
 @Composable
 private fun DealEvaluatorScreen(
@@ -1746,43 +1838,36 @@ private fun DealEvaluatorScreen(
             if (showMore) {
                 Spacer(Modifier.height(10.dp))
 
-                // أيقونة تصدير PDF في تدفّق طبيعي بالكامل، بصف مستقل فوق
+                // أيقونة تصدير PDF الموحّدة، بصف مستقل بتدفّق طبيعي فوق
                 // البوكسين — بلا أي تموضع مطلق أو إزاحات سلبية (كانت هذه
-                // الحيل تُنتج نتائج غير متوقعة)، ومباشرة على خلفية
-                // التطبيق السوداء بلا فقاعة، بنفس أسلوب بقية أيقونات
-                // التطبيق (أبيض بلا خلفية)
+                // الحيل تُنتج نتائج غير متوقعة)
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.End
                 ) {
-                    Icon(
-                        imageVector = Icons.Outlined.PictureAsPdf,
-                        contentDescription = t("تصدير عرض السعر PDF", "Export price quote PDF"),
-                        tint = White,
-                        modifier = Modifier
-                            .size(20.dp)
-                            .clickable {
-                                PdfExport.exportReport(
-                                    title = t("عرض سعر — Gold Vision", "Price Quote — Gold Vision"),
-                                    generatedAt = t("تاريخ التصدير: ${todayDateText()}", "Export date: ${todayDateText()}"),
-                                    summary = listOfNotNull(
-                                        shopNote.takeIf { it.isNotBlank() }
-                                            ?.let { PdfReportRow(t("اسم المحل", "Shop name"), it) },
-                                        PdfReportRow(t("العيار", "Karat"), karatLabel(karat)),
-                                        PdfReportRow(t("الوزن", "Weight"), "${fmt(weight, 2)} ${t("جرام", "g")}"),
-                                        PdfReportRow(t("سعر الجرام", "Price per gram"), "${fmt(karatPrice, 2)} ${t("ريال", "SAR")}")
+                    PdfExportIcon(
+                        onClick = {
+                            PdfExport.exportReport(
+                                title = t("عرض سعر — Gold Vision", "Price Quote — Gold Vision"),
+                                generatedAt = t("تاريخ التصدير: ${todayDateText()}", "Export date: ${todayDateText()}"),
+                                summary = listOfNotNull(
+                                    shopNote.takeIf { it.isNotBlank() }
+                                        ?.let { PdfReportRow(t("اسم المحل", "Shop name"), it) },
+                                    PdfReportRow(t("العيار", "Karat"), karatLabel(karat)),
+                                    PdfReportRow(t("الوزن", "Weight"), "${fmt(weight, 2)} ${t("جرام", "g")}"),
+                                    PdfReportRow(t("سعر الجرام", "Price per gram"), "${fmt(karatPrice, 2)} ${t("ريال", "SAR")}")
+                                ),
+                                rows = listOf(
+                                    PdfReportRow(t("عرض المحل", "Shop offer"), "${fmt(shopPriceWithTax, 2, grouped = true)} ${t("ريال", "SAR")}"),
+                                    PdfReportRow(t("السعر العادل (شامل الضريبة)", "Fair price (incl. tax)"), "${fmt(fairTotal, 2, grouped = true)} ${t("ريال", "SAR")}"),
+                                    PdfReportRow(
+                                        if (savings >= 0) t("وفرت", "You saved") else t("دفعت أكثر بمقدار", "You paid more by"),
+                                        "${fmt(kotlin.math.abs(savings), 2, grouped = true)} ${t("ريال", "SAR")}"
                                     ),
-                                    rows = listOf(
-                                        PdfReportRow(t("عرض المحل", "Shop offer"), "${fmt(shopPriceWithTax, 2, grouped = true)} ${t("ريال", "SAR")}"),
-                                        PdfReportRow(t("السعر العادل (شامل الضريبة)", "Fair price (incl. tax)"), "${fmt(fairTotal, 2, grouped = true)} ${t("ريال", "SAR")}"),
-                                        PdfReportRow(
-                                            if (savings >= 0) t("وفرت", "You saved") else t("دفعت أكثر بمقدار", "You paid more by"),
-                                            "${fmt(kotlin.math.abs(savings), 2, grouped = true)} ${t("ريال", "SAR")}"
-                                        ),
-                                        PdfReportRow(t("التقييم", "Verdict"), tierLabel)
-                                    )
+                                    PdfReportRow(t("التقييم", "Verdict"), tierLabel)
                                 )
-                            }
+                            )
+                        }
                     )
                 }
                 Spacer(Modifier.height(8.dp))
@@ -4307,29 +4392,24 @@ private fun PortfolioScreen(
                     fontWeight = FontWeight.Bold
                 )
             }
-            Icon(
-                imageVector = Icons.Outlined.PictureAsPdf,
-                contentDescription = t("تصدير PDF", "Export PDF"),
-                tint = Gold,
-                modifier = Modifier
-                    .size(20.dp)
-                    .clickable {
-                        PdfExport.exportReport(
-                            title = t("تقرير المحفظة — Gold Vision", "Portfolio Report — Gold Vision"),
-                            generatedAt = t("تاريخ التصدير: ${todayDateText()}", "Export date: ${todayDateText()}"),
-                            summary = listOf(
-                                PdfReportRow(t("قيمة المحفظة", "Portfolio Value"), "${fmt(totalValue, 2, grouped = true)} ${t("ريال", "SAR")}"),
-                                PdfReportRow(t("عدد المنتجات", "Item Count"), t("$itemCount منتجات", "$itemCount items")),
-                                PdfReportRow(t("إجمالي الوزن", "Total Weight"), "${fmt(totalWeight, 2)} ${t("جرام", "g")}")
-                            ),
-                            rows = savedValues.map { (item, value) ->
-                                PdfReportRow(
-                                    "${item.name} (${karatLabel(item.karat)} • ${fmt(item.weightGrams, 2)} ${t("جم", "g")})${if (item.isSold) t(" — مباعة", " — sold") else ""}",
-                                    "${fmt(value, 2, grouped = true)} ${t("ريال", "SAR")}"
-                                )
-                            }
-                        )
-                    }
+            PdfExportIcon(
+                onClick = {
+                    PdfExport.exportReport(
+                        title = t("تقرير المحفظة — Gold Vision", "Portfolio Report — Gold Vision"),
+                        generatedAt = t("تاريخ التصدير: ${todayDateText()}", "Export date: ${todayDateText()}"),
+                        summary = listOf(
+                            PdfReportRow(t("قيمة المحفظة", "Portfolio Value"), "${fmt(totalValue, 2, grouped = true)} ${t("ريال", "SAR")}"),
+                            PdfReportRow(t("عدد المنتجات", "Item Count"), t("$itemCount منتجات", "$itemCount items")),
+                            PdfReportRow(t("إجمالي الوزن", "Total Weight"), "${fmt(totalWeight, 2)} ${t("جرام", "g")}")
+                        ),
+                        rows = savedValues.map { (item, value) ->
+                            PdfReportRow(
+                                "${item.name} (${karatLabel(item.karat)} • ${fmt(item.weightGrams, 2)} ${t("جم", "g")})${if (item.isSold) t(" — مباعة", " — sold") else ""}",
+                                "${fmt(value, 2, grouped = true)} ${t("ريال", "SAR")}"
+                            )
+                        }
+                    )
+                }
             )
         }
 
@@ -4546,36 +4626,31 @@ private fun ZakatScreen(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                Icon(
-                    imageVector = Icons.Outlined.PictureAsPdf,
-                    contentDescription = t("تصدير PDF", "Export PDF"),
-                    tint = Gold,
-                    modifier = Modifier
-                        .size(20.dp)
-                        .clickable {
-                            PdfExport.exportReport(
-                                title = t("تقرير الزكاة — Gold Vision", "Zakat Report — Gold Vision"),
-                                generatedAt = t("تاريخ التصدير: ${todayDateText()}", "Export date: ${todayDateText()}"),
-                                summary = listOf(
-                                    PdfReportRow(t("نصاب الزكاة", "Zakat Nisab"), "${fmt(nisabValue, 2, grouped = true)} ${t("ريال", "SAR")}"),
-                                    PdfReportRow(t("إجمالي قيمة الذهب", "Total Gold Value"), "${fmt(totalGoldValue, 2, grouped = true)} ${t("ريال", "SAR")}"),
-                                    PdfReportRow(t("إجمالي الوزن", "Total Weight"), "${fmt(totalWeight, 2)} ${t("جرام", "g")}"),
-                                    PdfReportRow(
-                                        t("حالة الزكاة", "Zakat Status"),
-                                        if (exceedsNisab) t("واجبة", "Due") else t("غير واجبة (أقل من النصاب)", "Not due (below Nisab)")
-                                    ),
-                                    PdfReportRow(t("مبلغ الزكاة (${fmt(zakatPercent, 1)}%)", "Zakat Amount (${fmt(zakatPercent, 1)}%)"), "${fmt(totalZakat, 2, grouped = true)} ${t("ريال", "SAR")}")
+                PdfExportIcon(
+                    onClick = {
+                        PdfExport.exportReport(
+                            title = t("تقرير الزكاة — Gold Vision", "Zakat Report — Gold Vision"),
+                            generatedAt = t("تاريخ التصدير: ${todayDateText()}", "Export date: ${todayDateText()}"),
+                            summary = listOf(
+                                PdfReportRow(t("نصاب الزكاة", "Zakat Nisab"), "${fmt(nisabValue, 2, grouped = true)} ${t("ريال", "SAR")}"),
+                                PdfReportRow(t("إجمالي قيمة الذهب", "Total Gold Value"), "${fmt(totalGoldValue, 2, grouped = true)} ${t("ريال", "SAR")}"),
+                                PdfReportRow(t("إجمالي الوزن", "Total Weight"), "${fmt(totalWeight, 2)} ${t("جرام", "g")}"),
+                                PdfReportRow(
+                                    t("حالة الزكاة", "Zakat Status"),
+                                    if (exceedsNisab) t("واجبة", "Due") else t("غير واجبة (أقل من النصاب)", "Not due (below Nisab)")
                                 ),
-                                rows = allZakatItems.map { item ->
-                                    val price = GoldMarket.prices.first { it.karat == item.karat }.price
-                                    val itemValue = price * item.weightGrams
-                                    PdfReportRow(
-                                        "${item.name} (${karatLabel(item.karat)} • ${fmt(item.weightGrams, 2)} ${t("جم", "g")})",
-                                        "${fmt(itemValue, 2, grouped = true)} ${t("ريال", "SAR")}"
-                                    )
-                                }
-                            )
-                        }
+                                PdfReportRow(t("مبلغ الزكاة (${fmt(zakatPercent, 1)}%)", "Zakat Amount (${fmt(zakatPercent, 1)}%)"), "${fmt(totalZakat, 2, grouped = true)} ${t("ريال", "SAR")}")
+                            ),
+                            rows = allZakatItems.map { item ->
+                                val price = GoldMarket.prices.first { it.karat == item.karat }.price
+                                val itemValue = price * item.weightGrams
+                                PdfReportRow(
+                                    "${item.name} (${karatLabel(item.karat)} • ${fmt(item.weightGrams, 2)} ${t("جم", "g")})",
+                                    "${fmt(itemValue, 2, grouped = true)} ${t("ريال", "SAR")}"
+                                )
+                            }
+                        )
+                    }
                 )
                 Icon(
                     imageVector = Icons.Outlined.Info,
