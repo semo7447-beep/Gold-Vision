@@ -120,6 +120,7 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.Dp
@@ -1175,6 +1176,15 @@ private fun CalculatorFullScreen(
     val selectedPrice = GoldMarket.prices.first { it.karat == selectedKarat }
     val marketScope = rememberCoroutineScope()
 
+    // تكبير خط شاشة الحاسبة فقط (بناءً على طلب صريح لهذه الشاشة تحديداً،
+    // لا كل التطبيق) — آمن هنا تحديداً لأن الشاشة كلها Column قابل للتمرير
+    // عمودياً أصلاً (verticalScroll)، فأي زيادة بارتفاع النص تُترجم لتمرير
+    // إضافي بدل قصّ محتوى، خلافاً لبطاقات الشاشة الرئيسية ذات الارتفاع الثابت
+    val baseDensity = LocalDensity.current
+    val calculatorDensity = remember(baseDensity) {
+        Density(density = baseDensity.density, fontScale = baseDensity.fontScale * 1.15f)
+    }
+    CompositionLocalProvider(LocalDensity provides calculatorDensity) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -1612,6 +1622,7 @@ private fun CalculatorFullScreen(
         }
 
         Spacer(Modifier.height(16.dp))
+    }
     }
 }
 
