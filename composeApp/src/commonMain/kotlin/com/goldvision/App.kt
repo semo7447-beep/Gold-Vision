@@ -829,7 +829,7 @@ private fun GoldVisionApp() {
                 DealEvaluatorScreen(
                     initialKarat = selectedKarat,
                     initialWeight = weight,
-                    manufacturing = manufacturing,
+                    initialManufacturing = manufacturing,
                     onBack = { showDealEvaluator = false },
                     onSaveDeal = { deal -> savedDeals.add(0, deal) }
                 )
@@ -1703,12 +1703,15 @@ private fun PdfExportIcon(
 private fun DealEvaluatorScreen(
     initialKarat: String,
     initialWeight: Double,
-    manufacturing: Double,
+    initialManufacturing: Double,
     onBack: () -> Unit,
     onSaveDeal: (SavedDeal) -> Unit
 ) {
     var karat by remember { mutableStateOf(initialKarat) }
     var weight by remember { mutableDoubleStateOf(initialWeight) }
+    // قابلة للتعديل هنا مباشرة (بدل قيمة ثابتة من شاشة الحاسبة فقط)،
+    // عبر حقل "المصنعية (للجرام)" الجديد ضمن قسم "إظهار المزيد"
+    var manufacturing by remember { mutableDoubleStateOf(initialManufacturing) }
     var shopPrice by remember { mutableDoubleStateOf(0.0) }
     var includingTax by remember { mutableStateOf(true) }
     var showMore by remember { mutableStateOf(false) }
@@ -1872,16 +1875,16 @@ private fun DealEvaluatorScreen(
                 }
                 Spacer(Modifier.height(8.dp))
 
-                // بوكسين جنباً إلى جنب، بنفس المستوى بالضبط: عنوانا
-                // البوكسين متطابقان تماماً بالبنية (نص واحد بلا أي عنصر
-                // إضافي بجانبه)، حتى لا يختلف ارتفاعهما ويختل التطابق
+                // ثلاث بوكسات جنباً إلى جنب، بنفس المستوى بالضبط: عناوين
+                // البوكسات متطابقة تماماً بالبنية (نص واحد بلا أي عنصر
+                // إضافي بجانبه)، حتى لا يختلف ارتفاعها ويختل التطابق
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    // بوكس 1 (60%): ملاحظة باسم المحل (اختياري)
-                    Column(modifier = Modifier.weight(0.6f)) {
-                        Text(t("ملاحظة (اسم المحل)", "Note (shop name)"), color = Gray, fontSize = 10.sp)
+                    // بوكس 1 (35%): ملاحظة باسم المحل (اختياري)
+                    Column(modifier = Modifier.weight(0.35f)) {
+                        Text(t("ملاحظة (اسم المحل)", "Note (shop name)"), color = Gray, fontSize = 9.sp)
                         Spacer(Modifier.height(6.dp))
                         SelectableTextField(
                             value = shopNote,
@@ -1894,15 +1897,54 @@ private fun DealEvaluatorScreen(
                         )
                     }
 
-                    // بوكس 2 (40%): سعر جرام العيار المحدد حالياً (يتبع
+                    // بوكس 2 (30%): مصنعية الجرام، قابلة للتعديل هنا مباشرة
+                    // (بدل الاعتماد فقط على القيمة القادمة من شاشة الحاسبة)
+                    Column(modifier = Modifier.weight(0.30f)) {
+                        Text(
+                            t("مصنعية/جم", "Workmanship/g"),
+                            color = Gray,
+                            fontSize = 9.sp,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Spacer(Modifier.height(6.dp))
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(42.dp)
+                                .clip(RoundedCornerShape(9.dp))
+                                .border(1.dp, Border, RoundedCornerShape(9.dp))
+                                .background(CardBlack),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(3.dp)
+                            ) {
+                                NumericInputField(
+                                    value = manufacturing,
+                                    onValueChanged = { manufacturing = it.coerceAtMost(500.0) },
+                                    fontSize = 12.sp,
+                                    minValue = 0.0,
+                                    placeholderStyle = true,
+                                    modifier = Modifier
+                                        .width(34.dp)
+                                        .height(20.dp)
+                                )
+                                Text(t("ريال", "SAR"), color = Gray, fontSize = 9.sp)
+                            }
+                        }
+                    }
+
+                    // بوكس 3 (35%): سعر جرام العيار المحدد حالياً (يتبع
                     // نفس السعر الحي المعروض بالشاشة الرئيسية، ويتحدّث
                     // تلقائياً عند تغيير العيار أعلاه لأنه نفس
                     // karatPrice المستخدَم بحسابات الشاشة كاملة)
-                    Column(modifier = Modifier.weight(0.4f)) {
+                    Column(modifier = Modifier.weight(0.35f)) {
                         Text(
                             t("سعر الجرام", "Price/gram"),
                             color = Gray,
-                            fontSize = 10.sp,
+                            fontSize = 9.sp,
                             textAlign = TextAlign.Center,
                             modifier = Modifier.fillMaxWidth()
                         )
