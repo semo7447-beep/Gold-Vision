@@ -35,6 +35,7 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -1775,18 +1776,22 @@ private fun DealEvaluatorScreen(
                     // عند تغيير العيار أعلاه لأنه نفس karatPrice المستخدَم
                     // بحسابات الشاشة كاملة)
                     Column(modifier = Modifier.weight(0.4f)) {
+                        // العنوان وأيقونة تصدير PDF معاً كمجموعة واحدة
+                        // ممركزة أفقياً فوق البوكس (بدل SpaceBetween الذي
+                        // كان يدفع العنوان بعيداً عن مركز القيمة أسفله)،
+                        // والأيقونة داخل دائرة بيضاء بارزة وحجم أكبر لوضوحها
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
+                            horizontalArrangement = Arrangement.Center,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(t("سعر الجرام", "Price/gram"), color = Gray, fontSize = 10.sp)
-                            Icon(
-                                imageVector = Icons.Outlined.PictureAsPdf,
-                                contentDescription = t("تصدير عرض السعر PDF", "Export price quote PDF"),
-                                tint = Gold,
+                            Spacer(Modifier.width(6.dp))
+                            Box(
                                 modifier = Modifier
-                                    .size(15.dp)
+                                    .size(22.dp)
+                                    .clip(CircleShape)
+                                    .background(White)
                                     .clickable {
                                         PdfExport.exportReport(
                                             title = t("عرض سعر — Gold Vision", "Price Quote — Gold Vision"),
@@ -1808,8 +1813,16 @@ private fun DealEvaluatorScreen(
                                                 PdfReportRow(t("التقييم", "Verdict"), tierLabel)
                                             )
                                         )
-                                    }
-                            )
+                                    },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Outlined.PictureAsPdf,
+                                    contentDescription = t("تصدير عرض السعر PDF", "Export price quote PDF"),
+                                    tint = Black,
+                                    modifier = Modifier.size(14.dp)
+                                )
+                            }
                         }
                         Spacer(Modifier.height(6.dp))
                         Box(
