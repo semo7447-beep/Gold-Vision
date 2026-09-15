@@ -88,6 +88,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.rotate
@@ -1271,6 +1272,7 @@ private fun CalculatorFullScreen(
             }
 
             PdfExportIcon(
+                enabled = weight > 0,
                 onClick = {
                     val manufacturingTotal = if (buyMode) manufacturing * weight else 0.0
                     PdfExport.exportReport(
@@ -1616,6 +1618,7 @@ private fun CalculatorFullScreen(
 @Composable
 private fun PdfExportIcon(
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
     onClick: () -> Unit
 ) {
     val textMeasurer = rememberTextMeasurer()
@@ -1623,7 +1626,8 @@ private fun PdfExportIcon(
         modifier = modifier
             .width(24.dp)
             .height(26.dp)
-            .clickable(onClick = onClick)
+            .alpha(if (enabled) 1f else 0.35f)
+            .clickable(enabled = enabled, onClick = onClick)
     ) {
         // نظام إحداثيات مرجعي مطابق للتصميم الأصلي (عرض من -10 إلى
         // 100، ارتفاع 0 إلى 120) يُحوَّل لأبعاد الرسم الفعلية
@@ -1851,6 +1855,7 @@ private fun DealEvaluatorScreen(
                     horizontalArrangement = Arrangement.End
                 ) {
                     PdfExportIcon(
+                        enabled = weight > 0,
                         onClick = {
                             PdfExport.exportReport(
                                 title = t("عرض سعر — Gold Vision", "Price Quote — Gold Vision"),
@@ -2836,8 +2841,8 @@ private fun AddGoldItemScreen(
                     .weight(2f)
                     .height(48.dp)
                     .clip(RoundedCornerShape(10.dp))
-                    .background(Gold)
-                    .clickable {
+                    .background(if (weight > 0) Gold else Border)
+                    .clickable(enabled = weight > 0) {
                         val finalName = name.trim().ifEmpty { t("قطعة ذهب", "Gold item") }
                         onSave(
                             GoldItem(
@@ -2857,7 +2862,7 @@ private fun AddGoldItemScreen(
             ) {
                 Text(
                     if (isEditing) t("حفظ التعديلات", "Save Changes") else t("حفظ في المحفظة", "Save to Portfolio"),
-                    color = Black,
+                    color = if (weight > 0) Black else Gray,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Bold
                 )
