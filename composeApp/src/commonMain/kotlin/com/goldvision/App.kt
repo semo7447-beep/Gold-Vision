@@ -2485,6 +2485,13 @@ private fun AddGoldItemScreen(
     val profit = currentTotal - purchasePriceWithTax
     val profitPercent = if (purchasePriceWithTax > 0) (profit / purchasePriceWithTax) * 100.0 else 0.0
 
+    // تكبير خط شاشة إضافة/تعديل القطعة فقط، بنفس أسلوب شاشتي الحاسبة
+    // والأخبار — آمن هنا لأن النموذج كله داخل عمود قابل للتمرير عمودياً
+    val baseDensity = LocalDensity.current
+    val addItemDensity = remember(baseDensity) {
+        Density(density = baseDensity.density, fontScale = baseDensity.fontScale * 1.15f)
+    }
+    CompositionLocalProvider(LocalDensity provides addItemDensity) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -2968,6 +2975,7 @@ private fun AddGoldItemScreen(
                 }
             }
         }
+    }
     }
 }
 
