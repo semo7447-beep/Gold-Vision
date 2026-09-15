@@ -5615,6 +5615,13 @@ private fun MoreScreen(
 ) {
     var showLanguageDialog by remember { mutableStateOf(false) }
 
+    // تكبير خط شاشة "المزيد" فقط، بنفس أسلوب الشاشات السابقة — آمن هنا
+    // لأن كل المحتوى داخل عمود قابل للتمرير عمودياً
+    val baseDensity = LocalDensity.current
+    val moreDensity = remember(baseDensity) {
+        Density(density = baseDensity.density, fontScale = baseDensity.fontScale * 1.15f)
+    }
+    CompositionLocalProvider(LocalDensity provides moreDensity) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -5780,6 +5787,7 @@ private fun MoreScreen(
     if (showLanguageDialog) {
         LanguagePickerDialog(onDismiss = { showLanguageDialog = false })
     }
+    }
 }
 
 @Composable
@@ -5849,6 +5857,13 @@ private fun ProfileScreen(
     var deleteError by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
 
+    // تكبير خط شاشة "الملف الشخصي" فقط، بنفس أسلوب الشاشات السابقة —
+    // آمن هنا لأن المحتوى داخل عمود قابل للتمرير عمودياً
+    val baseDensity = LocalDensity.current
+    val profileDensity = remember(baseDensity) {
+        Density(density = baseDensity.density, fontScale = baseDensity.fontScale * 1.15f)
+    }
+    CompositionLocalProvider(LocalDensity provides profileDensity) {
     Box(modifier = Modifier.fillMaxSize()) {
     Column(
         modifier = Modifier
@@ -6085,6 +6100,7 @@ private fun ProfileScreen(
                 }
             }
         )
+    }
     }
     }
 }
