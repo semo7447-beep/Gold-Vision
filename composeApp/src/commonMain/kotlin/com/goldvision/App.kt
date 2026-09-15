@@ -4242,6 +4242,13 @@ private fun NewsScreen(onBack: () -> Unit) {
     val newsList = fullNewsList
     val isLoading = GoldNews.isLoading
     val error = GoldNews.lastError
+    // تكبير خط شاشة الأخبار فقط، بنفس أسلوب شاشة الحاسبة — آمن هنا لأن
+    // كل الأخبار داخل LazyColumn تتمدّد بحرية (لا صناديق بارتفاع ثابت)
+    val baseDensity = LocalDensity.current
+    val newsDensity = remember(baseDensity) {
+        Density(density = baseDensity.density, fontScale = baseDensity.fontScale * 1.15f)
+    }
+    CompositionLocalProvider(LocalDensity provides newsDensity) {
     Column(modifier = Modifier.fillMaxSize()) {
         Row(
             modifier = Modifier
@@ -4273,28 +4280,29 @@ private fun NewsScreen(onBack: () -> Unit) {
                     fontSize = 12.sp
                 )
             }
-            return
-        }
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            items(newsList) { news ->
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(9.dp))
-                        .border(1.dp, Border, RoundedCornerShape(9.dp))
-                        .background(CardBlack)
-                        .padding(10.dp)
-                ) {
-                    NewsRow(dot = news.dot, text = news.text, time = news.time)
+        } else {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items(newsList) { news ->
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(9.dp))
+                            .border(1.dp, Border, RoundedCornerShape(9.dp))
+                            .background(CardBlack)
+                            .padding(10.dp)
+                    ) {
+                        NewsRow(dot = news.dot, text = news.text, time = news.time)
+                    }
                 }
+                item { Spacer(Modifier.height(16.dp)) }
             }
-            item { Spacer(Modifier.height(16.dp)) }
         }
+    }
     }
 }
 
