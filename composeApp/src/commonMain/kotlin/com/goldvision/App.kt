@@ -1439,13 +1439,18 @@ private fun CalculatorFullScreen(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
+                    val isLive = GoldMarket.lastError == null
                     Box(
                         modifier = Modifier
                             .size(8.dp)
                             .clip(RoundedCornerShape(4.dp))
-                            .background(Green)
+                            .background(if (isLive) Green else Red)
                     )
-                    Text(t("مباشر", "Live"), color = White, fontSize = 11.sp)
+                    Text(
+                        if (isLive) t("مباشر", "Live") else t("غير مباشر", "Not Live"),
+                        color = if (isLive) White else Red,
+                        fontSize = 11.sp
+                    )
                 }
 
                 Row(
