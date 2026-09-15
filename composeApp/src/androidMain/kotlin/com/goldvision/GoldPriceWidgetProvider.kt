@@ -70,6 +70,16 @@ internal class GoldPriceWidgetProvider : AppWidgetProvider() {
 // مشتركة بين onUpdate (عرض فوري) وGoldPriceWidgetWorker (بعد تحديث حقيقي)
 internal fun buildWidgetRemoteViews(context: Context): RemoteViews {
     val views = RemoteViews(context.packageName, R.layout.gold_price_widget)
+    // اتجاه صفوف السعر/العيار يتبع تلقائياً لغة *نظام* الجهاز (RTL/LTR)،
+    // لا لغة التطبيق الداخلية المستقلة (AppLanguage) — فلو كانا مختلفين
+    // (مثلاً نظام الجهاز عربي والتطبيق إنجليزي)، يصير ترتيب العناصر
+    // بالصف معكوساً بشكل خاطئ ويلتصق السعر بالعيار بلا مسافة. نفرض هنا
+    // اتجاهاً صريحاً يطابق لغة التطبيق نفسها دائماً، بغض النظر عن لغة النظام
+    views.setInt(
+        R.id.widget_root,
+        "setLayoutDirection",
+        if (AppLanguage.current == AppLang.EN) android.view.View.LAYOUT_DIRECTION_LTR else android.view.View.LAYOUT_DIRECTION_RTL
+    )
     // تسميات "24 عيار"...إلخ ثابتة داخل XML كقيمة افتراضية عربية؛ تُستبدل
     // هنا فعلياً عند كل بناء حتى تتبع اللغة الحالية بدل البقاء عربية دائماً
     views.setTextViewText(R.id.widget_label_24, t("24 عيار", "24K"))
