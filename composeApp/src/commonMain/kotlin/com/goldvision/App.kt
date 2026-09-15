@@ -7496,6 +7496,7 @@ private fun NumericInputField(
         mutableStateOf(if (placeholderStyle) TextFieldValue("") else TextFieldValue(fmt(value, 2)))
     }
     var userEdited by remember { mutableStateOf(!placeholderStyle) }
+    var isFocused by remember { mutableStateOf(false) }
 
     LaunchedEffect(value) {
         if (placeholderStyle && !userEdited) {
@@ -7546,12 +7547,9 @@ private fun NumericInputField(
                 textAlign = TextAlign.Center
             ),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-            // المؤشر الوامض لحقل فارغ يُرسم في منتصف الصندوق تماماً (نفس مكان
-            // تمركز نص التلميح الرمادي)، فيبدو للمستخدم وكأن التلميح "يختفي"
-            // فور التركيز عليه قبل أي كتابة فعلية — نُخفي المؤشر تماماً بهذه
-            // الحالة فقط، فيبقى التلميح ظاهراً بلا أي تعارض بصري حتى يكتب رقماً
-            cursorBrush = SolidColor(if (placeholderStyle && fieldValue.text.isEmpty()) Color.Transparent else Gold),
+            cursorBrush = SolidColor(Gold),
             modifier = Modifier.fillMaxSize().onFocusChanged { focusState ->
+                isFocused = focusState.isFocused
                 // إذا ترك المستخدم الحقل فارغاً عند الخروج منه: في وضع التلميح
                 // يعود الحقل لعرض الرقم المبدئي كتلميح رمادي (والقيمة الفعلية
                 // تعود لقيمتها المبدئية)، وإلا يُصحَّح للحد الأدنى كالسابق —
@@ -7580,11 +7578,12 @@ private fun NumericInputField(
             },
             // decorationBox يوحّد قياس التلميح الرمادي مع الحقل الفعلي في تمريرة
             // تخطيط واحدة (بدل عنصرين منفصلين مكدّسين فوق بعض في Box) — هذا هو
-            // الأسلوب الرسمي الموصى به من Compose لعرض تلميح داخل BasicTextField،
-            // ويمنع أي وميض/اختفاء بصري عابر للنص عند التركيز على بعض الأجهزة
+            // الأسلوب الرسمي الموصى به من Compose لعرض تلميح داخل BasicTextField.
+            // التلميح يختفي فور الضغط على الحقل (التركيز)، فيظهر مكانه المؤشر
+            // الوامض فوراً جاهزاً للكتابة — ويعود التلميح فور مغادرة الحقل فارغاً
             decorationBox = { innerTextField ->
                 Box(contentAlignment = Alignment.Center) {
-                    if (placeholderStyle && !userEdited) {
+                    if (placeholderStyle && !userEdited && !isFocused) {
                         Text(fmt(defaultValue, 2), color = Gray, fontSize = fontSize, textAlign = TextAlign.Center)
                     }
                     innerTextField()
