@@ -22,6 +22,9 @@ internal actual object AuthService {
 
     actual fun signOut() {
     }
+
+    actual suspend fun deleteAccount(): String? =
+        "غير مفعّل على iOS بعد"
 }
 
 internal actual object GoogleSignInLauncher {

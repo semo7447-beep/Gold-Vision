@@ -882,6 +882,9 @@ private fun GoldVisionApp() {
                         AuthService.signOut()
                         signedInEmail = AuthService.currentUserEmail
                     },
+                    onAccountDeleted = {
+                        signedInEmail = AuthService.currentUserEmail
+                    },
                     onBack = { showProfileScreen = false },
                     onSave = { profile ->
                         userProfile = profile
@@ -5533,6 +5536,7 @@ private fun ProfileScreen(
     signedInEmail: String?,
     onNavigateAuth: () -> Unit,
     onSignOut: () -> Unit,
+    onAccountDeleted: () -> Unit,
     onBack: () -> Unit,
     onSave: (UserProfile) -> Unit
 ) {
@@ -5542,6 +5546,9 @@ private fun ProfileScreen(
     var isResendingVerification by remember { mutableStateOf(false) }
     var resendMessage by remember { mutableStateOf<String?>(null) }
     var resendSuccess by remember { mutableStateOf(false) }
+    var showDeleteConfirm by remember { mutableStateOf(false) }
+    var isDeleting by remember { mutableStateOf(false) }
+    var deleteError by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -5701,6 +5708,41 @@ private fun ProfileScreen(
             ) {
                 Text(t("حفظ", "Save"), color = Black, fontSize = 13.sp, fontWeight = FontWeight.Bold)
             }
+
+            // حذف الحساب: مطلوب من سياسة جوجل بلاي لأي تطبيق فيه تسجيل
+            // حساب — يحذف حساب Firebase وبيانات المحفظة السحابية فقط،
+            // ولا يمسّ البيانات المحفوظة محلياً على هذا الجهاز
+            Spacer(Modifier.height(28.dp))
+            Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(Border))
+            Spacer(Modifier.height(16.dp))
+            Text(
+                t("حذف الحساب نهائياً", "Delete account permanently"),
+                color = Red,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.clickable(enabled = !isDeleting) {
+                    deleteError = null
+                    showDeleteConfirm = true
+                }
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                t(
+                    "يحذف حسابك ونسخة محفظتك السحابية نهائياً بلا رجعة. البيانات المحفوظة محلياً على هذا الجهاز تبقى كما هي.",
+                    "Permanently deletes your account and cloud portfolio backup. Data saved locally on this device stays as-is."
+                ),
+                color = Gray,
+                fontSize = 9.5.sp,
+                lineHeight = 14.sp
+            )
+            if (isDeleting) {
+                Spacer(Modifier.height(4.dp))
+                Text(t("جارٍ الحذف...", "Deleting..."), color = Gray, fontSize = 9.sp)
+            }
+            deleteError?.let {
+                Spacer(Modifier.height(4.dp))
+                Text(it, color = Red, fontSize = 9.sp)
+            }
         }
 
         Spacer(Modifier.height(16.dp))
@@ -5716,6 +5758,33 @@ private fun ProfileScreen(
             onConfirm = {
                 showSignOutConfirm = false
                 onSignOut()
+            }
+        )
+    }
+
+    if (showDeleteConfirm) {
+        ConfirmDialog(
+            title = t("حذف الحساب نهائياً", "Delete Account Permanently"),
+            message = t(
+                "هذا الإجراء لا يمكن التراجع عنه. سيُحذف حسابك ونسخة محفظتك السحابية نهائياً. هل أنت متأكد؟",
+                "This action cannot be undone. Your account and cloud portfolio backup will be permanently deleted. Are you sure?"
+            ),
+            confirmLabel = t("حذف نهائياً", "Delete Permanently"),
+            confirmColor = Red,
+            onDismiss = { showDeleteConfirm = false },
+            onConfirm = {
+                showDeleteConfirm = false
+                isDeleting = true
+                deleteError = null
+                scope.launch {
+                    val error = AuthService.deleteAccount()
+                    isDeleting = false
+                    if (error == null) {
+                        onAccountDeleted()
+                    } else {
+                        deleteError = error
+                    }
+                }
             }
         )
     }

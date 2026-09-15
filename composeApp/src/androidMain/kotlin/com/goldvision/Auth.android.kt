@@ -3,7 +3,9 @@ package com.goldvision
 import com.google.android.gms.tasks.Task
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseAuthException
+import com.google.firebase.auth.FirebaseAuthRecentLoginRequiredException
 import com.google.firebase.auth.GoogleAuthProvider
+import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
@@ -71,6 +73,31 @@ internal actual object AuthService {
 
     actual fun signOut() {
         auth.signOut()
+    }
+
+    actual suspend fun deleteAccount(): String? {
+        val user = auth.currentUser
+            ?: return t("لا يوجد مستخدم مسجَّل دخوله حالياً", "No signed-in user")
+        return try {
+            // حذف نسخة المحفظة السحابية أولاً (لا يُوقِف العملية لو فشل —
+            // حذف حساب Firebase Auth نفسه هو الجزء الأهم والإلزامي)
+            try {
+                FirebaseFirestore.getInstance()
+                    .collection("users").document(user.uid).collection("data").document("portfolio")
+                    .delete().awaitResult()
+            } catch (e: Exception) {
+                reportSilentError("deleteAccount: Firestore cleanup failed: ${e.message}")
+            }
+            user.delete().awaitResult()
+            null
+        } catch (e: FirebaseAuthRecentLoginRequiredException) {
+            t(
+                "لأسباب أمان، لازم تسجّل دخولك من جديد قبل حذف الحساب — سجّل خروج ثم دخول وحاول مرة أخرى",
+                "For security, you need to sign in again before deleting your account — sign out, sign back in, then try again"
+            )
+        } catch (e: Exception) {
+            localizedAuthError(e, "تعذر حذف الحساب", "Couldn't delete the account")
+        }
     }
 }
 
