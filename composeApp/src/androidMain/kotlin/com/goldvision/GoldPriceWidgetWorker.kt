@@ -16,6 +16,10 @@ internal class GoldPriceWidgetWorker(
     override suspend fun doWork(): Result {
         return try {
             GoldMarket.refresh(force = inputData.getBoolean("force", false))
+            // يجلب شمعة اليوم الحقيقية (افتتاح/إغلاق) لعرضها في بوكسي
+            // الافتتاح/الإغلاق بالويدجت الجديد — نفس المصدر المستخدَم أصلاً
+            // لإشعار "أسعار الذهب كل ساعة"
+            GoldHistory.refresh(todayLocalDate())
             val appWidgetManager = AppWidgetManager.getInstance(applicationContext)
             val componentName = ComponentName(applicationContext, GoldPriceWidgetProvider::class.java)
             val appWidgetIds = appWidgetManager.getAppWidgetIds(componentName)

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- خلفية شارة نسبة التغيّر الموجبة داخل الويدجت -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="#2635D12F" />
+    <corners android:radius="14dp" />
+</shape>

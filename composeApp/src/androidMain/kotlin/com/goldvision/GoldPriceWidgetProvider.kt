@@ -70,40 +70,98 @@ internal class GoldPriceWidgetProvider : AppWidgetProvider() {
 // مشتركة بين onUpdate (عرض فوري) وGoldPriceWidgetWorker (بعد تحديث حقيقي)
 internal fun buildWidgetRemoteViews(context: Context): RemoteViews {
     val views = RemoteViews(context.packageName, R.layout.gold_price_widget)
-    // اتجاه صفوف السعر/العيار يتبع تلقائياً لغة *نظام* الجهاز (RTL/LTR)،
-    // لا لغة التطبيق الداخلية المستقلة (AppLanguage) — فلو كانا مختلفين
-    // (مثلاً نظام الجهاز عربي والتطبيق إنجليزي)، يصير ترتيب العناصر
-    // بالصف معكوساً بشكل خاطئ ويلتصق السعر بالعيار بلا مسافة. نفرض هنا
-    // اتجاهاً صريحاً يطابق لغة التطبيق نفسها دائماً، بغض النظر عن لغة النظام
+    // اتجاه الويدجت يتبع لغة التطبيق الداخلية (AppLanguage)، لا لغة نظام
+    // الجهاز — فلو كانا مختلفين يصير ترتيب العناصر معكوساً بشكل خاطئ
     views.setInt(
         R.id.widget_root,
         "setLayoutDirection",
         if (AppLanguage.current == AppLang.EN) android.view.View.LAYOUT_DIRECTION_LTR else android.view.View.LAYOUT_DIRECTION_RTL
     )
-    // تسميات "24 عيار"...إلخ ثابتة داخل XML كقيمة افتراضية عربية؛ تُستبدل
-    // هنا فعلياً عند كل بناء حتى تتبع اللغة الحالية بدل البقاء عربية دائماً
-    views.setTextViewText(R.id.widget_label_24, t("24 عيار", "24K"))
-    views.setTextViewText(R.id.widget_label_22, t("22 عيار", "22K"))
-    views.setTextViewText(R.id.widget_label_21, t("21 عيار", "21K"))
-    views.setTextViewText(R.id.widget_label_18, t("18 عيار", "18K"))
-    GoldMarket.prices.forEach { price ->
+
+    views.setTextViewText(R.id.widget_date, widgetDateText())
+
+    val prices = GoldMarket.prices
+    val price24 = prices.firstOrNull { it.karat == "24K" }
+    views.setTextViewText(R.id.widget_big_karat_label, t("24 عيار", "24K"))
+    views.setTextViewText(R.id.widget_big_price, price24?.let { fmt(it.price, 2) } ?: "--")
+    views.setTextViewText(R.id.widget_big_unit, t("ريال/جرام", "SAR/gram"))
+
+    views.setTextViewText(R.id.widget_small_label_18, t("18 عيار", "18K"))
+    views.setTextViewText(R.id.widget_small_label_21, t("21 عيار", "21K"))
+    views.setTextViewText(R.id.widget_small_label_22, t("22 عيار", "22K"))
+    prices.forEach { price ->
         val priceId = when (price.karat) {
-            "24K" -> R.id.widget_price_24
-            "22K" -> R.id.widget_price_22
-            "21K" -> R.id.widget_price_21
-            "18K" -> R.id.widget_price_18
+            "18K" -> R.id.widget_small_price_18
+            "21K" -> R.id.widget_small_price_21
+            "22K" -> R.id.widget_small_price_22
             else -> return@forEach
         }
-        views.setTextViewText(priceId, "${fmt(price.price, 2)} ${t("ريال", "SAR")}")
+        views.setTextViewText(priceId, fmt(price.price, 2))
     }
-    views.setTextViewText(R.id.widget_updated_at, widgetUpdatedAtText())
-    // نقطة حالة الاتصال: تتبع نفس حالة GoldMarket.lastError الحقيقية
-    // المستخدَمة في شريط "أسعار الذهب الآن" داخل التطبيق نفسه، بدل عدم
-    // وجود أي مؤشر بالويدجت إطلاقاً
+
+    // نسبة تغيّر اليوم لعيار 24: تقارن آخر سعر حي بسعر افتتاح شمعة اليوم
+    // نفسها (من GoldHistory)، لا "منذ آخر تحديث" كسعر بطاقات الأعيرة
+    val todayBar = GoldHistory.dailyBarsUsdPerOunce.maxByOrNull { it.date }
+    val todayOpen24 = todayBar?.let { usdPerOunceToSarPerGram(it.open, "24K") }
+    if (price24 != null && todayOpen24 != null && todayOpen24 > 0.0) {
+        val changePercent = (price24.price - todayOpen24) / todayOpen24 * 100.0
+        setChangePill(
+            context, views,
+            bgId = R.id.widget_big_change_bg,
+            textId = R.id.widget_big_change,
+            text = "${fmt(kotlin.math.abs(changePercent), 2)}% ${t("اليوم", "today")} ${if (changePercent >= 0) "▲" else "▼"}",
+            positive = changePercent >= 0
+        )
+    } else {
+        views.setTextViewText(R.id.widget_big_change, "")
+    }
+
+    // بوكسا الافتتاح/الإغلاق لعياري 21 و24 من نفس شمعة اليوم
+    views.setTextViewText(R.id.widget_oc21_title, t("سعر الذهب عيار 21", "21K Gold Price"))
+    views.setTextViewText(R.id.widget_oc24_title, t("سعر الذهب عيار 24", "24K Gold Price"))
+    val labelOpen = t("افتتاح", "Open")
+    val labelClose = t("إغلاق", "Close")
+    views.setTextViewText(R.id.widget_oc21_open_label, labelOpen)
+    views.setTextViewText(R.id.widget_oc21_close_label, labelClose)
+    views.setTextViewText(R.id.widget_oc24_open_label, labelOpen)
+    views.setTextViewText(R.id.widget_oc24_close_label, labelClose)
+    if (todayBar != null) {
+        val open21 = usdPerOunceToSarPerGram(todayBar.open, "21K")
+        val close21 = usdPerOunceToSarPerGram(todayBar.close, "21K")
+        val open24 = usdPerOunceToSarPerGram(todayBar.open, "24K")
+        val close24 = usdPerOunceToSarPerGram(todayBar.close, "24K")
+        views.setTextViewText(R.id.widget_oc21_open, "${fmt(open21, 2)} ${t("ريال", "SAR")}")
+        views.setTextViewText(R.id.widget_oc21_close, "${fmt(close21, 2)} ${t("ريال", "SAR")}")
+        views.setTextViewText(R.id.widget_oc24_open, "${fmt(open24, 2)} ${t("ريال", "SAR")}")
+        views.setTextViewText(R.id.widget_oc24_close, "${fmt(close24, 2)} ${t("ريال", "SAR")}")
+        val change21 = if (open21 > 0.0) (close21 - open21) / open21 * 100.0 else 0.0
+        val change24 = if (open24 > 0.0) (close24 - open24) / open24 * 100.0 else 0.0
+        setChangePill(
+            context, views, R.id.widget_oc21_change_bg, R.id.widget_oc21_change,
+            "${if (change21 >= 0) "+" else ""}${fmt(change21, 2)}%", change21 >= 0
+        )
+        setChangePill(
+            context, views, R.id.widget_oc24_change_bg, R.id.widget_oc24_change,
+            "${if (change24 >= 0) "+" else ""}${fmt(change24, 2)}%", change24 >= 0
+        )
+    } else {
+        views.setTextViewText(R.id.widget_oc21_open, "--")
+        views.setTextViewText(R.id.widget_oc21_close, "--")
+        views.setTextViewText(R.id.widget_oc24_open, "--")
+        views.setTextViewText(R.id.widget_oc24_close, "--")
+        views.setTextViewText(R.id.widget_oc21_change, "")
+        views.setTextViewText(R.id.widget_oc24_change, "")
+    }
+
+    // نقطة حالة الاتصال + تسمية "مباشر"/"غير محدث": تتبع نفس حالة
+    // GoldMarket.lastError الحقيقية المستخدَمة في شريط "أسعار الذهب الآن"
+    // داخل التطبيق نفسه
+    val isLive = GoldMarket.lastError == null
+    views.setTextViewText(R.id.widget_updated_at, if (isLive) t("مباشر", "Live") else t("غير محدث", "Outdated"))
     views.setInt(
         R.id.widget_status_dot,
         "setColorFilter",
-        if (GoldMarket.lastError == null) context.getColor(R.color.widget_green) else context.getColor(R.color.widget_red)
+        if (isLive) context.getColor(R.color.widget_green) else context.getColor(R.color.widget_red)
     )
 
     // FLAG_ACTIVITY_NEW_TASK إلزامي لإطلاق Activity من سياق غير Activity
@@ -134,6 +192,49 @@ internal fun buildWidgetRemoteViews(context: Context): RemoteViews {
     views.setOnClickPendingIntent(R.id.widget_refresh, refreshPendingIntent)
 
     return views
+}
+
+// يلوّن خلفية ونص شارة نسبة التغيّر أخضر/أحمر حسب الإشارة — drawable
+// منفصل لكل لون بدل تلوين وقت التشغيل (أبسط وأضمن عبر RemoteViews)
+private fun setChangePill(context: Context, views: RemoteViews, bgId: Int, textId: Int, text: String, positive: Boolean) {
+    views.setTextViewText(textId, text)
+    views.setInt(bgId, "setBackgroundResource", if (positive) R.drawable.pill_bg_green else R.drawable.pill_bg_red)
+    views.setTextColor(textId, if (positive) context.getColor(R.color.widget_green) else context.getColor(R.color.widget_red))
+}
+
+// تاريخ اليوم بصيغة "اسم اليوم DD/MM/YYYY"، بلغة التطبيق الداخلية
+// (AppLanguage) لا لغة نظام الجهاز — بلا مكتبة SimpleDateFormat (تعتمد
+// على java.util غير متاحة بنفس الشكل على iOS مستقبلاً)
+private val widgetArabicDayNames = mapOf(
+    kotlinx.datetime.DayOfWeek.SATURDAY to "السبت",
+    kotlinx.datetime.DayOfWeek.SUNDAY to "الأحد",
+    kotlinx.datetime.DayOfWeek.MONDAY to "الاثنين",
+    kotlinx.datetime.DayOfWeek.TUESDAY to "الثلاثاء",
+    kotlinx.datetime.DayOfWeek.WEDNESDAY to "الأربعاء",
+    kotlinx.datetime.DayOfWeek.THURSDAY to "الخميس",
+    kotlinx.datetime.DayOfWeek.FRIDAY to "الجمعة"
+)
+
+private val widgetEnglishDayNames = mapOf(
+    kotlinx.datetime.DayOfWeek.SATURDAY to "Saturday",
+    kotlinx.datetime.DayOfWeek.SUNDAY to "Sunday",
+    kotlinx.datetime.DayOfWeek.MONDAY to "Monday",
+    kotlinx.datetime.DayOfWeek.TUESDAY to "Tuesday",
+    kotlinx.datetime.DayOfWeek.WEDNESDAY to "Wednesday",
+    kotlinx.datetime.DayOfWeek.THURSDAY to "Thursday",
+    kotlinx.datetime.DayOfWeek.FRIDAY to "Friday"
+)
+
+private fun widgetDateText(): String {
+    val today = todayLocalDate()
+    val dayName = if (AppLanguage.current == AppLang.EN) {
+        widgetEnglishDayNames[today.dayOfWeek] ?: ""
+    } else {
+        widgetArabicDayNames[today.dayOfWeek] ?: ""
+    }
+    val day = today.dayOfMonth.toString().padStart(2, '0')
+    val month = today.monthNumber.toString().padStart(2, '0')
+    return "$dayName $day/$month/${today.year}"
 }
 
 internal fun widgetUpdatedAtText(): String {
