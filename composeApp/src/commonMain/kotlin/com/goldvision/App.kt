@@ -60,6 +60,7 @@ import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.MoreHoriz
 import androidx.compose.material.icons.outlined.Notifications
+import androidx.compose.material.icons.outlined.PictureAsPdf
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.outlined.Store
@@ -1267,7 +1268,7 @@ private fun CalculatorFullScreen(
             }
 
             Icon(
-                imageVector = Icons.Outlined.Share,
+                imageVector = Icons.Outlined.PictureAsPdf,
                 contentDescription = t("تصدير PDF", "Export PDF"),
                 tint = Gold,
                 modifier = Modifier
@@ -1745,8 +1746,11 @@ private fun DealEvaluatorScreen(
             if (showMore) {
                 Spacer(Modifier.height(10.dp))
 
-                // بوكسين جنباً إلى جنب: الأول (60%) يمين — ملاحظة باسم
-                // المحل، الثاني (40%) يسار — سعر الجرام + تصدير PDF
+                // بوكسين جنباً إلى جنب، بنفس المستوى بالضبط (عنوان فوق كل
+                // بوكس، ثم حقل بارتفاع 42.dp): الأول (60%) يمين — ملاحظة
+                // باسم المحل، الثاني (40%) يسار — سعر الجرام. أيقونة تصدير
+                // عرض السعر PDF أصبحت فوق البوكس (بجانب عنوانه) بدل داخله،
+                // حتى لا تتداخل مع محتوى البوكس ولتكون واضحة كزر مستقل
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
@@ -1769,23 +1773,16 @@ private fun DealEvaluatorScreen(
                     // بوكس 2 (40%): سعر جرام العيار المحدد حالياً (يتبع نفس
                     // السعر الحي المعروض بالشاشة الرئيسية، ويتحدّث تلقائياً
                     // عند تغيير العيار أعلاه لأنه نفس karatPrice المستخدَم
-                    // بحسابات الشاشة كاملة) + تصدير عرض سعر PDF
-                    Column(
-                        modifier = Modifier
-                            .weight(0.4f)
-                            .clip(RoundedCornerShape(9.dp))
-                            .border(1.dp, Border, RoundedCornerShape(9.dp))
-                            .background(CardBlack)
-                            .padding(10.dp)
-                    ) {
+                    // بحسابات الشاشة كاملة)
+                    Column(modifier = Modifier.weight(0.4f)) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(t("سعر الجرام", "Price/gram"), color = Gray, fontSize = 9.sp)
+                            Text(t("سعر الجرام", "Price/gram"), color = Gray, fontSize = 10.sp)
                             Icon(
-                                imageVector = Icons.Outlined.Share,
+                                imageVector = Icons.Outlined.PictureAsPdf,
                                 contentDescription = t("تصدير عرض السعر PDF", "Export price quote PDF"),
                                 tint = Gold,
                                 modifier = Modifier
@@ -1814,18 +1811,30 @@ private fun DealEvaluatorScreen(
                                     }
                             )
                         }
-                        Spacer(Modifier.height(4.dp))
-                        Text(
-                            fmt(karatPrice, 2),
-                            color = Gold,
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            t("ريال (${karatLabel(karat)})", "SAR (${karatLabel(karat)})"),
-                            color = Gray,
-                            fontSize = 8.sp
-                        )
+                        Spacer(Modifier.height(6.dp))
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(42.dp)
+                                .clip(RoundedCornerShape(9.dp))
+                                .border(1.dp, Border, RoundedCornerShape(9.dp))
+                                .background(CardBlack),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(
+                                    fmt(karatPrice, 2),
+                                    color = Gold,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    t("ريال (${karatLabel(karat)})", "SAR (${karatLabel(karat)})"),
+                                    color = Gray,
+                                    fontSize = 7.5.sp
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -4289,7 +4298,7 @@ private fun PortfolioScreen(
                 )
             }
             Icon(
-                imageVector = Icons.Outlined.Share,
+                imageVector = Icons.Outlined.PictureAsPdf,
                 contentDescription = t("تصدير PDF", "Export PDF"),
                 tint = Gold,
                 modifier = Modifier
@@ -4528,7 +4537,7 @@ private fun ZakatScreen(
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 Icon(
-                    imageVector = Icons.Outlined.Share,
+                    imageVector = Icons.Outlined.PictureAsPdf,
                     contentDescription = t("تصدير PDF", "Export PDF"),
                     tint = Gold,
                     modifier = Modifier
