@@ -2044,15 +2044,13 @@ private fun DealEvaluatorScreen(
                 CalculatorRow(t("سعر الذهب", "Gold price"), "${fmt(fairBeforeVat, 2, grouped = true)} ${t("ريال", "SAR")}")
                 CalculatorRow(
                     t("المصنعية", "Workmanship"),
-                    "${fmt(fairManufacturing, 2, grouped = true)} ${t("ريال", "SAR")}",
-                    subValue = "${fmt(manufacturing, 2)} ${t("ريال/جم", "SAR/g")}"
+                    "${fmt(fairManufacturing, 2, grouped = true)} ${t("ريال", "SAR")} (${fmt(manufacturing, 2)} ${t("/جم", "/g")})"
                 )
                 val shopMargin = shopPriceWithTax - fairTotal
                 val shopMarginPerGram = if (weight > 0) shopMargin / weight else 0.0
                 CalculatorRow(
                     t("ربح المحل", "Shop profit"),
-                    "${fmt(shopMargin, 2, grouped = true)} ${t("ريال", "SAR")}",
-                    subValue = "${fmt(shopMarginPerGram, 2)} ${t("ريال/جم", "SAR/g")}"
+                    "${fmt(shopMargin, 2, grouped = true)} ${t("ريال", "SAR")} (${fmt(shopMarginPerGram, 2)} ${t("/جم", "/g")})"
                 )
                 CalculatorRow(
                     if (isDealTaxExempt) t("ضريبة القيمة المضافة (معفى)", "VAT (exempt)") else t("ضريبة القيمة المضافة (${fmt(dealTaxPercent, 0)}%)", "VAT (${fmt(dealTaxPercent, 0)}%)"),
@@ -7663,28 +7661,28 @@ private fun SelectableTextField(
 private fun CalculatorRow(
     label: String,
     value: String,
-    valueColor: Color = White,
-    // سطر ثانٍ اختياري (كسعر الجرام) يُرسم بصف مستقل تماماً عن value، لا
-    // مدمَجاً معه بقوسين داخل نص واحد — دمج نص عربي مع رقم إنجليزي بين
-    // قوسين بسلسلة واحدة يسبّب تشوّش بصري حقيقي في ترتيب الأرقام على
-    // الجهاز (خوارزمية Bidi تُعيد ترتيب المحتوى المختلط داخل الأقواس)،
-    // وفصلهما بسطرين منفصلين يتفادى المشكلة نهائياً
-    subValue: String? = null
+    valueColor: Color = White
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 2.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.Top
+        horizontalArrangement = Arrangement.SpaceBetween
     ) {
         Text(label, color = White, fontSize = 10.sp)
-        Column(horizontalAlignment = Alignment.End) {
-            Text(value, color = valueColor, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-            if (subValue != null) {
-                Text(subValue, color = Gray, fontSize = 8.sp)
-            }
-        }
+        // اتجاه الفقرة مفروض LTR صراحة (TextDirection.Ltr) بدل الاعتماد
+        // على الاتجاه المحيط — نص مختلط كـ"350.00 ريال (35.00 /جم)"
+        // يحتوي رقماً إنجليزياً وكلمة عربية داخل قوس واحد، وخوارزمية
+        // Bidi قد تُعيد ترتيب هذا المزيج بصرياً بشكل غير متوقع على بعض
+        // الأجهزة (مؤكَّد فعلياً على جهاز المستخدم). هذا يفرض قراءة
+        // السلسلة بالضبط بنفس ترتيب أحرفها بالكود، بسطر واحد كما كانت
+        Text(
+            value,
+            color = valueColor,
+            fontSize = 10.sp,
+            fontWeight = FontWeight.Bold,
+            style = TextStyle(textDirection = TextDirection.Ltr)
+        )
     }
 }
 
