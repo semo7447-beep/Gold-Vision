@@ -8099,20 +8099,6 @@ private fun FedSchedule(rows: List<FedMeetingRow>) {
                 }
             }
         }
-
-        Spacer(modifier = Modifier.weight(1f))
-
-        Text(
-            text = t("عرض الجدول الكامل", "View full schedule"),
-            color = White,
-            fontSize = 11.sp,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 2.dp),
-            textAlign = TextAlign.Center,
-            maxLines = 1
-        )
     }
 }
 
