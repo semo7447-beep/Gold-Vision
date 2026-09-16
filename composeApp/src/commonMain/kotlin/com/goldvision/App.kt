@@ -63,6 +63,7 @@ import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.outlined.Store
+import androidx.compose.material.icons.outlined.Upload
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -1007,6 +1008,13 @@ private fun GoldVisionApp() {
                     5 -> MoreScreen(
                         profile = userProfile,
                         signedInEmail = signedInEmail,
+                        portfolioItems = savedGoldItems,
+                        onImportPortfolio = { items ->
+                            savedGoldItems.clear()
+                            savedGoldItems.addAll(items)
+                            persistGoldItems(savedGoldItems)
+                            uploadPortfolioIfSignedIn(savedGoldItems, marketScope)
+                        },
                         onNavigateProfile = { showProfileScreen = true },
                         onNavigatePrivacyPolicy = { showPrivacyPolicy = true },
                         onNavigateNotifications = { showNotificationSettings = true },
@@ -5462,12 +5470,33 @@ private fun PlaceholderScreen(title: String) {
 private fun MoreScreen(
     profile: UserProfile,
     signedInEmail: String?,
+    portfolioItems: List<GoldItem>,
+    onImportPortfolio: (List<GoldItem>) -> Unit,
     onNavigateProfile: () -> Unit,
     onNavigatePrivacyPolicy: () -> Unit,
     onNavigateNotifications: () -> Unit,
     onBack: () -> Unit
 ) {
     var showLanguageDialog by remember { mutableStateOf(false) }
+    var pendingImportItems by remember { mutableStateOf<List<GoldItem>?>(null) }
+    var backupMessage by remember { mutableStateOf<String?>(null) }
+    val importLauncher = PortfolioBackupImport.rememberLauncher { jsonContent, error ->
+        when {
+            jsonContent != null -> {
+                try {
+                    val items = Json.decodeFromString<List<GoldItem>>(jsonContent)
+                    if (items.isEmpty()) {
+                        backupMessage = t("ملف النسخة الاحتياطية فارغ", "The backup file is empty")
+                    } else {
+                        pendingImportItems = items
+                    }
+                } catch (e: Exception) {
+                    backupMessage = t("هذا الملف ليس نسخة احتياطية صالحة", "This file is not a valid backup")
+                }
+            }
+            error != null -> backupMessage = error
+        }
+    }
 
     // تكبير خط شاشة "المزيد" فقط، بنفس أسلوب الشاشات السابقة — آمن هنا
     // لأن كل المحتوى داخل عمود قابل للتمرير عمودياً
@@ -5636,10 +5665,76 @@ private fun MoreScreen(
         }
 
         Spacer(Modifier.height(16.dp))
+
+        Text(t("النسخ الاحتياطي", "Backup"), color = Gray, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+        Spacer(Modifier.height(6.dp))
+        Text(
+            t(
+                "بياناتك محفوظة على هذا الجهاز فقط. صدّري نسخة احتياطية واحفظيها بمكان آمن (جوجل درايف مثلاً) لحمايتها من الضياع",
+                "Your data is stored on this device only. Export a backup and save it somewhere safe (like Google Drive) to protect it from being lost"
+            ),
+            color = Gray,
+            fontSize = 9.5.sp,
+            lineHeight = 14.sp
+        )
+        Spacer(Modifier.height(8.dp))
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(9.dp))
+                .border(1.dp, Border, RoundedCornerShape(9.dp))
+                .background(CardBlack)
+        ) {
+            SettingsRow(
+                icon = Icons.Outlined.Download,
+                label = t("تصدير نسخة احتياطية", "Export Backup"),
+                onClick = {
+                    PortfolioBackupExport.exportBackup(Json.encodeToString(portfolioItems))
+                }
+            )
+            SettingsDivider()
+            SettingsRow(
+                icon = Icons.Outlined.Upload,
+                label = t("استيراد نسخة احتياطية", "Import Backup"),
+                onClick = importLauncher
+            )
+        }
+
+        Spacer(Modifier.height(16.dp))
     }
 
     if (showLanguageDialog) {
         LanguagePickerDialog(onDismiss = { showLanguageDialog = false })
+    }
+
+    if (pendingImportItems != null) {
+        val items = pendingImportItems!!
+        ConfirmDialog(
+            title = t("استيراد النسخة الاحتياطية؟", "Import backup?"),
+            message = t(
+                "سيتم استبدال كل القطع الحالية (${portfolioItems.size}) بـ ${items.size} قطعة من الملف المختار. لا يمكن التراجع عن هذا.",
+                "This will replace all current items (${portfolioItems.size}) with ${items.size} items from the selected file. This cannot be undone."
+            ),
+            confirmLabel = t("استيراد", "Import"),
+            confirmColor = Red,
+            onConfirm = {
+                onImportPortfolio(items)
+                pendingImportItems = null
+                backupMessage = t("تم استيراد النسخة الاحتياطية بنجاح", "Backup imported successfully")
+            },
+            onDismiss = { pendingImportItems = null }
+        )
+    }
+
+    if (backupMessage != null) {
+        ConfirmDialog(
+            title = t("النسخ الاحتياطي", "Backup"),
+            message = backupMessage!!,
+            confirmLabel = t("حسناً", "OK"),
+            confirmColor = Gold,
+            onConfirm = { backupMessage = null },
+            onDismiss = { backupMessage = null }
+        )
     }
     }
 }
