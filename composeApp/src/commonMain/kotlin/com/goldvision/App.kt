@@ -8235,17 +8235,21 @@ private fun FedSchedule(rows: List<FedMeetingRow>) {
                 color = Gray,
                 fontSize = 9.sp,
                 fontWeight = FontWeight.Bold,
-                modifier = Modifier.weight(0.7f),
+                modifier = Modifier.weight(0.65f),
                 textAlign = TextAlign.Center,
                 maxLines = 1
             )
 
+            // وزن أكبر عمداً: نص التاريخ ("2027/1/27") كان يُقصّ بصمت لعمود
+            // أضيق (weight 1f سابقاً، بلا overflow صريح) فيظهر مثلاً
+            // "2027/1/2" بدل "2027/1/27" — قص خطير لأنه ينتج تاريخاً يبدو
+            // صحيحاً ظاهرياً بدل خطأ واضح
             Text(
                 text = t("التاريخ", "Date"),
                 color = Gray,
                 fontSize = 9.sp,
                 fontWeight = FontWeight.Bold,
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.weight(1.3f),
                 textAlign = TextAlign.Center,
                 maxLines = 1
             )
@@ -8255,7 +8259,7 @@ private fun FedSchedule(rows: List<FedMeetingRow>) {
                 color = Gray,
                 fontSize = 9.sp,
                 fontWeight = FontWeight.Bold,
-                modifier = Modifier.weight(0.75f),
+                modifier = Modifier.weight(0.7f),
                 textAlign = TextAlign.Center,
                 maxLines = 1
             )
@@ -8293,7 +8297,7 @@ private fun FedSchedule(rows: List<FedMeetingRow>) {
                     text = row.day,
                     color = White,
                     fontSize = 9.sp,
-                    modifier = Modifier.weight(0.7f),
+                    modifier = Modifier.weight(0.65f),
                     textAlign = TextAlign.Center,
                     maxLines = 1
                 )
@@ -8302,7 +8306,7 @@ private fun FedSchedule(rows: List<FedMeetingRow>) {
                     text = row.date,
                     color = White,
                     fontSize = 9.sp,
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.weight(1.3f),
                     textAlign = TextAlign.Center,
                     maxLines = 1
                 )
@@ -8311,7 +8315,7 @@ private fun FedSchedule(rows: List<FedMeetingRow>) {
                     text = timeDisplayLabel(row.time),
                     color = White,
                     fontSize = 9.sp,
-                    modifier = Modifier.weight(0.75f),
+                    modifier = Modifier.weight(0.7f),
                     textAlign = TextAlign.Center,
                     maxLines = 1
                 )
