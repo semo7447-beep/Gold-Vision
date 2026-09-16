@@ -20,8 +20,10 @@ import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
+// link افتراضيه "" حتى تبقى نسخة مخزَّنة محلياً بصيغة سابقة (بلا هذا
+// الحقل) قابلة للقراءة دون كسر بدل استثناء فك تشفير
 @Serializable
-internal data class GoldNewsArticle(val title: String, val source: String, val publishedAt: String)
+internal data class GoldNewsArticle(val title: String, val source: String, val publishedAt: String, val link: String = "")
 
 private const val lastArticlesStorageFile = "gold_news_last_articles.json"
 
@@ -117,10 +119,11 @@ private val itemRegex = Regex("<item>(.*?)</item>", RegexOption.DOT_MATCHES_ALL)
 private val titleRegex = Regex("<title>(?:<!\\[CDATA\\[)?(.*?)(?:]]>)?</title>", RegexOption.DOT_MATCHES_ALL)
 private val sourceRegex = Regex("<source[^>]*>(?:<!\\[CDATA\\[)?(.*?)(?:]]>)?</source>", RegexOption.DOT_MATCHES_ALL)
 private val pubDateRegex = Regex("<pubDate>(.*?)</pubDate>", RegexOption.DOT_MATCHES_ALL)
+private val linkRegex = Regex("<link>(?:<!\\[CDATA\\[)?(.*?)(?:]]>)?</link>", RegexOption.DOT_MATCHES_ALL)
 
 // تحليل RSS دفاعي بالـ regex بدل مكتبة XML: يكتفي باستخراج العنوان
-// والمصدر وتاريخ النشر من كل <item>، ويتجاهل أي عنصر ناقص العنوان بدل
-// تعطّل التحديث بالكامل بسبب عنصر واحد غير متوقّع الشكل
+// والمصدر وتاريخ النشر والرابط من كل <item>، ويتجاهل أي عنصر ناقص
+// العنوان بدل تعطّل التحديث بالكامل بسبب عنصر واحد غير متوقّع الشكل
 private fun parseRssItems(xml: String): List<GoldNewsArticle> {
     return itemRegex.findAll(xml).mapNotNull { match ->
         val block = match.groupValues[1]
@@ -128,7 +131,8 @@ private fun parseRssItems(xml: String): List<GoldNewsArticle> {
             ?.takeIf { it.isNotEmpty() } ?: return@mapNotNull null
         val source = sourceRegex.find(block)?.groupValues?.get(1)?.let(::decodeXmlEntities)?.trim() ?: ""
         val pubDate = pubDateRegex.find(block)?.groupValues?.get(1)?.trim() ?: ""
-        GoldNewsArticle(title = title, source = source, publishedAt = relativeTimeFromRfc822(pubDate))
+        val link = linkRegex.find(block)?.groupValues?.get(1)?.let(::decodeXmlEntities)?.trim() ?: ""
+        GoldNewsArticle(title = title, source = source, publishedAt = relativeTimeFromRfc822(pubDate), link = link)
     }.toList()
 }
 

@@ -108,6 +108,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
@@ -4272,10 +4273,10 @@ private fun KaratChartCanvas(
 // ==================== شاشة الأخبار الكاملة ====================
 // أخبار حقيقية عن الذهب (GoldNews.kt) بدل قائمة وهمية ثابتة — بلا مؤشر
 // إيجابي/سلبي حقيقي (لا تحليل مشاعر فعلي)، فتُعرض كلها بنقطة ذهبية محايدة
-private data class NewsItem(val dot: Color, val text: String, val time: String)
+private data class NewsItem(val dot: Color, val text: String, val time: String, val link: String)
 
 private val fullNewsList: List<NewsItem>
-    get() = GoldNews.articles.map { NewsItem(Gold, it.title, it.publishedAt) }
+    get() = GoldNews.articles.map { NewsItem(Gold, it.title, it.publishedAt, it.link) }
 
 @Composable
 private fun NewsScreen(onBack: () -> Unit) {
@@ -4336,7 +4337,7 @@ private fun NewsScreen(onBack: () -> Unit) {
                             .background(CardBlack)
                             .padding(10.dp)
                     ) {
-                        NewsRow(dot = news.dot, text = news.text, time = news.time)
+                        NewsRow(dot = news.dot, text = news.text, time = news.time, link = news.link)
                     }
                 }
                 item { Spacer(Modifier.height(16.dp)) }
@@ -7960,17 +7961,19 @@ private fun ImportantNews() {
             )
         } else {
             topThree.forEach { article ->
-                NewsRow(dot = Gold, text = article.title, time = article.publishedAt)
+                NewsRow(dot = Gold, text = article.title, time = article.publishedAt, link = article.link)
             }
         }
     }
 }
 
 @Composable
-private fun NewsRow(dot: Color, text: String, time: String) {
+private fun NewsRow(dot: Color, text: String, time: String, link: String) {
+    val uriHandler = LocalUriHandler.current
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .clickable(enabled = link.isNotBlank()) { uriHandler.openUri(link) }
             .padding(vertical = 3.dp),
         horizontalArrangement = Arrangement.spacedBy(6.dp),
         verticalAlignment = Alignment.Top
