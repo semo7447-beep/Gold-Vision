@@ -48,6 +48,7 @@ import androidx.compose.material.icons.outlined.AttachMoney
 import androidx.compose.material.icons.outlined.Balance
 import androidx.compose.material.icons.outlined.Calculate
 import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.outlined.DarkMode
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Delete
@@ -148,16 +149,22 @@ import kotlinx.serialization.json.Json
 import kotlin.math.roundToInt
 import kotlin.time.Duration.Companion.seconds
 
-private val Black = Color(0xFF050505)
-private val CardBlack = Color(0xFF090909)
+// تُقرأ من LocalAppColors (AppTheme.kt) بدل قيم ثابتة، حتى يتغيّر
+// المظهر فوراً بتبديل الوضع الداكن/الفاتح بلا حاجة لتعديل كل موضع
+// استخدام لهذه الأسماء بكل الملف (مئات المواضع) — تبقى قابلة للقراءة
+// بنفس الطريقة تماماً (color = White مثلاً) لأنها خصائص، لا قيم ثابتة،
+// لذا يلزم قراءتها داخل سياق Composable فقط (وليس مثلاً داخل Canvas/
+// DrawScope مباشرة، أو دوال/خصائص عادية غير Composable)
+private val Black: Color @Composable get() = LocalAppColors.current.background
+private val CardBlack: Color @Composable get() = LocalAppColors.current.card
 private val Gold = Color(0xFFFFC21A)
 private val GoldDark = Color(0xFF7A5A00)
-private val White = Color(0xFFF4F4F4)
-private val Gray = Color(0xFFB8B8B8)
+private val White: Color @Composable get() = LocalAppColors.current.text
+private val Gray: Color @Composable get() = LocalAppColors.current.textSecondary
 private val Green = Color(0xFF35D12F)
 private val Red = Color(0xFFFF3B30)
 private val Yellow = Color(0xFFFFC21A)
-private val Border = Color(0xFF9B7300)
+private val Border: Color @Composable get() = LocalAppColors.current.border
 
 // يُستخدم من App.kt (واجهات الشاشات) ومن GoldMarket.kt (جلب الأسعار الحية) —
 // Serializable حتى يُحفَظ محلياً (GoldMarket.kt) ويبقى معروضاً حتى بعد
@@ -285,6 +292,7 @@ private data class ZakatStatus(val label: String, val color: Color, val caption:
 // حالة كل قطعة تُبنى من شرطين معاً: مرور الحول منذ تاريخ الشراء، وبلوغ
 // إجمالي محفظة الذهب النصاب الشرعي (exceedsNisab يُحسب على مستوى الشاشة
 // كاملة وليس لكل قطعة على حدة، لأن النصاب شرط إجمالي لكل ما يملكه الشخص)
+@Composable
 private fun zakatStatusFor(purchaseDateText: String, exceedsNisab: Boolean): ZakatStatus {
     val daysElapsed = daysSincePurchase(purchaseDateText)
     val hawlCompleted = daysElapsed >= HAWL_DAYS
@@ -396,6 +404,10 @@ private fun currentDateTimeText(): String {
 // (MainActivity على أندرويد، MainViewController على iOS)
 @Composable
 fun App() {
+    // يُوفَّر هنا (خارج Surface/MaterialTheme) قبل أي قراءة لألوان الثيم
+    // مثل Black بأسفل — لو كان داخل Surface لقُرئ اللون الافتراضي
+    // (الداكن) دائماً بدل الوضع الفعلي المختار وقت أول رسم للشاشة
+    CompositionLocalProvider(LocalAppColors provides currentAppColors) {
     MaterialTheme {
         Surface(
             modifier = Modifier.fillMaxSize(),
@@ -420,6 +432,7 @@ fun App() {
                 }
             }
         }
+    }
     }
 }
 
@@ -1701,7 +1714,9 @@ private fun PdfExportIcon(
             quadraticTo(px(4f), py(4f), px(15f), py(4f))
             close()
         }
-        drawPath(docPath, color = White)
+        // هذه الأيقونة تمثّل مستند ورق أبيض بحبر أسود كمجاز بصري ثابت —
+        // ألوان حرفية غير مرتبطة بالوضع الفاتح/الداكن للتطبيق عمداً
+        drawPath(docPath, color = Color.White)
 
         val flapPath = Path().apply {
             moveTo(px(68f), py(4f))
@@ -1713,20 +1728,20 @@ private fun PdfExportIcon(
         drawPath(flapPath, color = Color(0xFFD8D8D8))
 
         drawRoundRect(
-            color = Black,
+            color = Color.Black,
             topLeft = Offset(px(24f), py(62f)),
             size = androidx.compose.ui.geometry.Size(58f * sx, 7f * sy),
             cornerRadius = androidx.compose.ui.geometry.CornerRadius(3.5f * sx, 3.5f * sy)
         )
         drawRoundRect(
-            color = Black,
+            color = Color.Black,
             topLeft = Offset(px(24f), py(75f)),
             size = androidx.compose.ui.geometry.Size(58f * sx, 7f * sy),
             cornerRadius = androidx.compose.ui.geometry.CornerRadius(3.5f * sx, 3.5f * sy)
         )
 
         drawRect(
-            color = Black,
+            color = Color.Black,
             topLeft = Offset(px(43f), py(88f)),
             size = androidx.compose.ui.geometry.Size(14f * sx, 16f * sy)
         )
@@ -1736,14 +1751,14 @@ private fun PdfExportIcon(
             lineTo(px(50f), py(118f))
             close()
         }
-        drawPath(arrowPath, color = Black)
+        drawPath(arrowPath, color = Color.Black)
 
         val tagTopLeft = Offset(px(-6f), py(24f))
         val tagSize = androidx.compose.ui.geometry.Size(58f * sx, 26f * sy)
         val tagCorner = androidx.compose.ui.geometry.CornerRadius(5f * sx, 5f * sy)
-        drawRoundRect(color = White, topLeft = tagTopLeft, size = tagSize, cornerRadius = tagCorner)
+        drawRoundRect(color = Color.White, topLeft = tagTopLeft, size = tagSize, cornerRadius = tagCorner)
         drawRoundRect(
-            color = Black,
+            color = Color.Black,
             topLeft = tagTopLeft,
             size = tagSize,
             cornerRadius = tagCorner,
@@ -1752,7 +1767,7 @@ private fun PdfExportIcon(
 
         val label = textMeasurer.measure(
             text = "PDF",
-            style = TextStyle(color = Black, fontSize = 11.sp, fontWeight = FontWeight.Black)
+            style = TextStyle(color = Color.Black, fontSize = 11.sp, fontWeight = FontWeight.Black)
         )
         drawText(
             label,
@@ -2396,6 +2411,10 @@ private fun DealGauge(ratio: Float) {
             Text(t("مرتفع", "High"), color = Red, fontSize = 9.sp)
         }
         Spacer(Modifier.height(4.dp))
+        // يُقرآن هنا (سياق Composable) لا داخل Canvas، لأن الأخير DrawScope
+        // عادي لا يسمح بقراءة ألوان مرتبطة بالوضع الفاتح/الداكن مباشرة
+        val indicatorOuter = White
+        val indicatorInner = Black
         Canvas(
             modifier = Modifier
                 .fillMaxWidth()
@@ -2424,8 +2443,8 @@ private fun DealGauge(ratio: Float) {
             val clampedRatio = ratio.coerceIn(0.85f, 1.15f)
             val position = (clampedRatio - 0.85f) / (1.15f - 0.85f)
             val indicatorX = (size.width * position).coerceIn(6f, size.width - 6f)
-            drawCircle(color = White, radius = barHeight * 0.9f, center = Offset(indicatorX, barHeight / 2f))
-            drawCircle(color = Black, radius = barHeight * 0.45f, center = Offset(indicatorX, barHeight / 2f))
+            drawCircle(color = indicatorOuter, radius = barHeight * 0.9f, center = Offset(indicatorX, barHeight / 2f))
+            drawCircle(color = indicatorInner, radius = barHeight * 0.45f, center = Offset(indicatorX, barHeight / 2f))
         }
     }
 }
@@ -3760,11 +3779,12 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawAxisLabel(
     x: Float,
     y: Float,
     centered: Boolean,
+    color: Color,
     fontSize: androidx.compose.ui.unit.TextUnit = 9.sp
 ) {
     val layout = textMeasurer.measure(
         text = text,
-        style = TextStyle(color = Gray, fontSize = fontSize)
+        style = TextStyle(color = color, fontSize = fontSize)
     )
     val topLeftX = if (centered) x - layout.size.width / 2f else x
     val topLeftY = y - layout.size.height / 2f
@@ -3874,6 +3894,10 @@ private fun CandleTooltipCard(info: CandleTooltip) {
 private fun CandlestickChart(modifier: Modifier, bars: List<HistoryBar>, karat: String) {
     val textMeasurer = rememberTextMeasurer()
     val density = LocalDensity.current
+    // يُقرأ هنا (سياق Composable) لا داخل Canvas، لأن drawAxisLabel تُستدعى
+    // من DrawScope عادي لا يسمح بقراءة ألوان مرتبطة بالوضع الفاتح/الداكن
+    val axisLabelColor = Gray
+    val touchLineColor = White
     var scale by remember(bars) { mutableStateOf(1f) }
     var startIndexFloat by remember(bars) { mutableStateOf(0f) }
     var tooltip by remember(bars) { mutableStateOf<CandleTooltip?>(null) }
@@ -3957,7 +3981,7 @@ private fun CandlestickChart(modifier: Modifier, bars: List<HistoryBar>, karat: 
                     strokeWidth = 1f
                 )
                 val labelValue = maxPrice - (maxPrice - minPrice) * i / priceSteps
-                drawAxisLabel(textMeasurer, fmt(labelValue, 0), x = 0f, y = y, centered = false)
+                drawAxisLabel(textMeasurer, fmt(labelValue, 0), x = 0f, y = y, centered = false, color = axisLabelColor)
             }
 
             fun priceToY(price: Double): Float =
@@ -3997,13 +4021,13 @@ private fun CandlestickChart(modifier: Modifier, bars: List<HistoryBar>, karat: 
                 for (i in 0 until labelCount) {
                     val idx = (i * step).roundToInt().coerceIn(0, visibleBars.size - 1)
                     val x = left + slotWidth * idx + slotWidth / 2f
-                    drawAxisLabel(textMeasurer, dateLabel(visibleBars[idx]), x = x, y = bottom + 18f, centered = true)
+                    drawAxisLabel(textMeasurer, dateLabel(visibleBars[idx]), x = x, y = bottom + 18f, centered = true, color = axisLabelColor)
                 }
             }
 
             tooltip?.let { info ->
                 drawLine(
-                    color = White.copy(alpha = 0.4f),
+                    color = touchLineColor.copy(alpha = 0.4f),
                     start = Offset(info.x, top),
                     end = Offset(info.x, bottom),
                     strokeWidth = 1f
@@ -4085,6 +4109,10 @@ private fun KaratChartCanvas(
     }
     val textMeasurer = rememberTextMeasurer()
     val density = LocalDensity.current
+    // يُقرأ هنا (سياق Composable) لا داخل Canvas، لأن drawAxisLabel تُستدعى
+    // من DrawScope عادي لا يسمح بقراءة ألوان مرتبطة بالوضع الفاتح/الداكن
+    val axisLabelColor = Gray
+    val touchLineColor = White
     // نقطة حقيقية واحدة فقط (يحصل مع فترة "24 ساعة" حين لا يتوفر سوى سعر
     // إغلاق يوم واحد من مزوّد بيانات يومي) لا تكفي لرسم بيان فعلي — تُعامَل
     // مثل عدم توفر بيانات حقيقية أصلاً فينتقل تلقائياً للرسم التقديري
@@ -4196,7 +4224,7 @@ private fun KaratChartCanvas(
                     strokeWidth = 1f
                 )
                 val labelValue = maxPrice - (maxPrice - minPrice) * i / priceSteps
-                drawAxisLabel(textMeasurer, fmt(labelValue, 0), x = 0f, y = y, centered = false)
+                drawAxisLabel(textMeasurer, fmt(labelValue, 0), x = 0f, y = y, centered = false, color = axisLabelColor)
             }
 
             // شبكة عمودية بعدد تسميات المحور الأفقي
@@ -4247,19 +4275,19 @@ private fun KaratChartCanvas(
 
             tooltip?.let { info ->
                 drawLine(
-                    color = White.copy(alpha = 0.4f),
+                    color = touchLineColor.copy(alpha = 0.4f),
                     start = Offset(info.pointX, top),
                     end = Offset(info.pointX, bottom),
                     strokeWidth = 1f
                 )
-                drawCircle(color = White, radius = 4f, center = Offset(info.pointX, info.pointY))
+                drawCircle(color = touchLineColor, radius = 4f, center = Offset(info.pointX, info.pointY))
                 drawCircle(color = lineColor, radius = 2.2f, center = Offset(info.pointX, info.pointY))
             }
 
             // تسميات محور الوقت أسفل الرسم
             xLabels.forEachIndexed { index, label ->
                 val x = left + w * index / (xLabels.size - 1).coerceAtLeast(1)
-                drawAxisLabel(textMeasurer, label, x = x, y = bottom + 18f, centered = true)
+                drawAxisLabel(textMeasurer, label, x = x, y = bottom + 18f, centered = true, color = axisLabelColor)
             }
         }
 
@@ -4281,7 +4309,7 @@ private fun KaratChartCanvas(
 private data class NewsItem(val dot: Color, val text: String, val time: String, val link: String)
 
 private val fullNewsList: List<NewsItem>
-    get() = GoldNews.articles.map { NewsItem(Gold, it.title, it.publishedAt, it.link) }
+    @Composable get() = GoldNews.articles.map { NewsItem(Gold, it.title, it.publishedAt, it.link) }
 
 @Composable
 private fun NewsScreen(onBack: () -> Unit) {
@@ -5508,6 +5536,7 @@ private fun MoreScreen(
     onBack: () -> Unit
 ) {
     var showLanguageDialog by remember { mutableStateOf(false) }
+    var showThemeDialog by remember { mutableStateOf(false) }
     var pendingImportItems by remember { mutableStateOf<List<GoldItem>?>(null) }
     var backupMessage by remember { mutableStateOf<String?>(null) }
     val importLauncher = PortfolioBackupImport.rememberLauncher { jsonContent, error ->
@@ -5641,6 +5670,13 @@ private fun MoreScreen(
                 onClick = { showLanguageDialog = true }
             )
             SettingsDivider()
+            SettingsRow(
+                icon = Icons.Outlined.DarkMode,
+                label = t("المظهر", "Appearance"),
+                value = if (AppTheme.mode == AppThemeMode.LIGHT) t("فاتح", "Light") else t("داكن", "Dark"),
+                onClick = { showThemeDialog = true }
+            )
+            SettingsDivider()
             SettingsRow(icon = Icons.Outlined.Info, label = t("عن التطبيق", "About"))
             SettingsDivider()
             SettingsRow(
@@ -5735,6 +5771,10 @@ private fun MoreScreen(
 
     if (showLanguageDialog) {
         LanguagePickerDialog(onDismiss = { showLanguageDialog = false })
+    }
+
+    if (showThemeDialog) {
+        ThemePickerDialog(onDismiss = { showThemeDialog = false })
     }
 
     if (pendingImportItems != null) {
@@ -6154,6 +6194,56 @@ private fun LanguageOptionRow(label: String, selected: Boolean, onClick: () -> U
                 contentDescription = null,
                 tint = Gold,
                 modifier = Modifier.size(18.dp)
+            )
+        }
+    }
+}
+
+// نافذة اختيار مظهر التطبيق (داكن/فاتح) — بنفس تصميم LanguagePickerDialog تماماً
+@Composable
+private fun ThemePickerDialog(onDismiss: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.65f))
+            .clickable(
+                indication = null,
+                interactionSource = remember { MutableInteractionSource() }
+            ) { onDismiss() },
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            modifier = Modifier
+                .padding(horizontal = 28.dp)
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(14.dp))
+                .border(1.dp, Border, RoundedCornerShape(14.dp))
+                .background(CardBlack)
+                .clickable(
+                    indication = null,
+                    interactionSource = remember { MutableInteractionSource() }
+                ) { }
+                .padding(18.dp)
+        ) {
+            Text(t("المظهر", "Appearance"), color = White, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(14.dp))
+
+            LanguageOptionRow(
+                label = t("داكن", "Dark"),
+                selected = AppTheme.mode == AppThemeMode.DARK,
+                onClick = {
+                    AppTheme.set(AppThemeMode.DARK)
+                    onDismiss()
+                }
+            )
+            Spacer(Modifier.height(8.dp))
+            LanguageOptionRow(
+                label = t("فاتح", "Light"),
+                selected = AppTheme.mode == AppThemeMode.LIGHT,
+                onClick = {
+                    AppTheme.set(AppThemeMode.LIGHT)
+                    onDismiss()
+                }
             )
         }
     }
