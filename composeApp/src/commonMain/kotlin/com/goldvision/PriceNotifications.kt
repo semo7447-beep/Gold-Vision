@@ -12,7 +12,8 @@ import kotlinx.serialization.json.Json
 @Serializable
 internal data class NotificationSettings(
     val dailyPriceEnabled: Boolean = false,
-    val fedMeetingAlertsEnabled: Boolean = false
+    val fedMeetingAlertsEnabled: Boolean = false,
+    val newsAlertsEnabled: Boolean = false
 )
 
 private const val notificationSettingsStorageFile = "notification_settings.json"
@@ -45,6 +46,14 @@ internal expect object FedMeetingNotificationScheduler {
     fun setEnabled(enabled: Boolean)
 }
 
+// يجدول أو يلغي فحصاً دورياً كل 30 دقيقة لأحدث خبر عن الذهب (GoldNews)،
+// يُصدر إشعاراً فقط عند وجود خبر جديد فعلاً (غير الخبر الذي أُشعر به
+// آخر مرة) بدل تكرار نفس الخبر كل دورة. التطبيق الفعلي مختلف لكل منصة
+// (WorkManager على أندرويد؛ لا تأثير على iOS بعد)
+internal expect object GoldNewsNotificationScheduler {
+    fun setEnabled(enabled: Boolean)
+}
+
 // نص إشعار تذكير اجتماع الفيدرالي (عنوان + محتوى)، أو null إن لم يكن
 // الاجتماع القادم بعد أسبوع بالضبط أو غداً أو اليوم (لا داعي لإشعار في
 // أي يوم آخر بينهما)
@@ -60,6 +69,20 @@ internal fun buildFedMeetingNotificationText(): Pair<String, String>? {
     val title = "اجتماع الفيدرالي $whenText"
     val body = "قرار الفائدة الأمريكية يُعلن عادة الساعة 9:00 مساءً بتوقيت مكة المكرمة"
     return title to body
+}
+
+private const val lastNotifiedNewsStorageFile = "last_notified_news.txt"
+
+// نص إشعار أحدث خبر مؤثر على الذهب (عنوان + محتوى)، أو null إن لم يتغيّر
+// أحدث خبر عن آخر خبر أُشعر به فعلاً (بمقارنة الرابط، أو العنوان إن لم
+// يتوفر رابط)، أو لا توجد أخبار بعد. يحفظ معرّف الخبر الجديد فور بنائه
+// حتى لا يتكرر نفس الإشعار كل دورة فحص (كل 30 دقيقة)
+internal fun buildGoldNewsNotificationText(articles: List<GoldNewsArticle>): Pair<String, String>? {
+    val latest = articles.firstOrNull() ?: return null
+    val key = latest.link.ifBlank { latest.title }
+    if (key == AppStorage.readText(lastNotifiedNewsStorageFile)) return null
+    AppStorage.writeText(lastNotifiedNewsStorageFile, key)
+    return "خبر مؤثر على الذهب" to latest.title
 }
 
 // نص الإشعار (عنوان + محتوى) يعرض سعري الافتتاح والإغلاق الفعليين

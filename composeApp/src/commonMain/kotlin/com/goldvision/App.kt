@@ -955,6 +955,11 @@ private fun GoldVisionApp() {
                         notificationSettings = notificationSettings.copy(fedMeetingAlertsEnabled = enabled)
                         persistNotificationSettings(notificationSettings)
                         FedMeetingNotificationScheduler.setEnabled(enabled)
+                    },
+                    onToggleNewsAlerts = { enabled ->
+                        notificationSettings = notificationSettings.copy(newsAlertsEnabled = enabled)
+                        persistNotificationSettings(notificationSettings)
+                        GoldNewsNotificationScheduler.setEnabled(enabled)
                     }
                 )
             } else if (showFedSchedule) {
@@ -6566,7 +6571,8 @@ private fun NotificationSettingsScreen(
     settings: NotificationSettings,
     onBack: () -> Unit,
     onToggleDailyPrice: (Boolean) -> Unit,
-    onToggleFedMeetingAlerts: (Boolean) -> Unit
+    onToggleFedMeetingAlerts: (Boolean) -> Unit,
+    onToggleNewsAlerts: (Boolean) -> Unit
 ) {
     var priceAlerts by remember { mutableStateOf(loadPriceAlerts()) }
     var showAddAlertDialog by remember { mutableStateOf(false) }
@@ -6720,6 +6726,40 @@ private fun NotificationSettingsScreen(
             Switch(
                 checked = settings.fedMeetingAlertsEnabled,
                 onCheckedChange = onToggleFedMeetingAlerts,
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = Black,
+                    checkedTrackColor = Gold,
+                    uncheckedThumbColor = Gray,
+                    uncheckedTrackColor = CardBlack
+                )
+            )
+        }
+
+        Spacer(Modifier.height(12.dp))
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(10.dp))
+                .border(1.dp, Border, RoundedCornerShape(10.dp))
+                .background(CardBlack)
+                .padding(12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(t("أخبار الذهب المهمة", "Important Gold News"), color = White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    t("إشعار عند صدور خبر جديد مؤثر على سعر الذهب", "A notification when a new gold-affecting news article is published"),
+                    color = Gray,
+                    fontSize = 10.sp,
+                    lineHeight = 15.sp
+                )
+            }
+            Switch(
+                checked = settings.newsAlertsEnabled,
+                onCheckedChange = onToggleNewsAlerts,
                 colors = SwitchDefaults.colors(
                     checkedThumbColor = Black,
                     checkedTrackColor = Gold,

@@ -16,6 +16,7 @@ class GoldVisionApplication : Application() {
         initWidgetLanguageNotifier(this)
         PriceNotificationScheduler.init(this)
         FedMeetingNotificationScheduler.init(this)
+        GoldNewsNotificationScheduler.init(this)
         PriceAlertScheduler.init(this)
         PdfExport.init(this)
         PortfolioBackupExport.init(this)
@@ -24,6 +25,7 @@ class GoldVisionApplication : Application() {
         val notificationSettings = loadNotificationSettings()
         PriceNotificationScheduler.setEnabled(notificationSettings.dailyPriceEnabled)
         FedMeetingNotificationScheduler.setEnabled(notificationSettings.fedMeetingAlertsEnabled)
+        GoldNewsNotificationScheduler.setEnabled(notificationSettings.newsAlertsEnabled)
         PriceAlertScheduler.setActive(loadPriceAlerts().isNotEmpty())
 
         val config = PostHogAndroidConfig(
