@@ -123,17 +123,30 @@ private val linkRegex = Regex("<link>(?:<!\\[CDATA\\[)?(.*?)(?:]]>)?</link>", Re
 
 // تحليل RSS دفاعي بالـ regex بدل مكتبة XML: يكتفي باستخراج العنوان
 // والمصدر وتاريخ النشر والرابط من كل <item>، ويتجاهل أي عنصر ناقص
-// العنوان بدل تعطّل التحديث بالكامل بسبب عنصر واحد غير متوقّع الشكل
+// العنوان بدل تعطّل التحديث بالكامل بسبب عنصر واحد غير متوقّع الشكل.
+// ترتيب Google News RSS نفسه بالأهمية/الصلة أحياناً لا بتاريخ النشر
+// الفعلي (لاحظه المستخدم بنفسه فعلياً: خبر عمره 7 دقائق ظهر تحت خبر
+// عمره 13 ساعة) — فنرتّب هنا يدوياً بتاريخ النشر الحقيقي تنازلياً
+// (الأحدث أولاً) بدل الاعتماد على ترتيب الاستجابة كما هو
 private fun parseRssItems(xml: String): List<GoldNewsArticle> {
     return itemRegex.findAll(xml).mapNotNull { match ->
         val block = match.groupValues[1]
         val title = titleRegex.find(block)?.groupValues?.get(1)?.let(::decodeXmlEntities)?.trim()
             ?.takeIf { it.isNotEmpty() } ?: return@mapNotNull null
         val source = sourceRegex.find(block)?.groupValues?.get(1)?.let(::decodeXmlEntities)?.trim() ?: ""
-        val pubDate = pubDateRegex.find(block)?.groupValues?.get(1)?.trim() ?: ""
+        val pubDateText = pubDateRegex.find(block)?.groupValues?.get(1)?.trim() ?: ""
         val link = linkRegex.find(block)?.groupValues?.get(1)?.let(::decodeXmlEntities)?.trim() ?: ""
-        GoldNewsArticle(title = title, source = source, publishedAt = relativeTimeFromRfc822(pubDate), link = link)
-    }.toList()
+        val publishedInstant = parseRfc822Instant(pubDateText)
+        publishedInstant to GoldNewsArticle(
+            title = title,
+            source = source,
+            publishedAt = publishedInstant?.let(::relativeTimeFrom) ?: "",
+            link = link
+        )
+    }
+        .sortedByDescending { (instant, _) -> instant ?: Instant.DISTANT_PAST }
+        .map { (_, article) -> article }
+        .toList()
 }
 
 private fun decodeXmlEntities(text: String): String = text
@@ -149,25 +162,28 @@ private val rfc822MonthAbbreviations = mapOf(
 )
 
 // يحوّل تاريخاً بصيغة RFC 822 المعتادة في RSS (مثال: "Thu, 12 Sep 2026
-// 14:23:00 GMT") إلى نص عربي نسبي ("منذ 36 دقيقة")، بنفس أسلوب باقي
-// التطبيق. يرجع نصاً فارغاً إذا فشل التحليل بدل تعطّل الخبر كاملاً
-private fun relativeTimeFromRfc822(rfc822: String): String {
+// 14:23:00 GMT") إلى Instant فعلي قابل للترتيب والمقارنة — بدل الاكتفاء
+// بنص عرض نسبي فقط، حتى نقدر نرتّب الأخبار بتاريخ النشر الحقيقي
+private fun parseRfc822Instant(rfc822: String): Instant? {
     return try {
         val parts = rfc822.substringAfter(", ").trim().split(" ")
         val day = parts[0].toInt()
-        val month = rfc822MonthAbbreviations[parts[1]] ?: return ""
+        val month = rfc822MonthAbbreviations[parts[1]] ?: return null
         val year = parts[2].toInt()
         val timeParts = parts[3].split(":").map { it.toInt() }
-        val published = LocalDateTime(year, month, day, timeParts[0], timeParts[1], timeParts[2])
-            .toInstant(TimeZone.UTC)
-        val minutesAgo = (Clock.System.now() - published).inWholeMinutes.coerceAtLeast(0)
-        when {
-            minutesAgo < 1 -> t("الآن", "Now")
-            minutesAgo < 60 -> t("منذ $minutesAgo دقيقة", "$minutesAgo min ago")
-            minutesAgo < 60 * 24 -> t("منذ ${minutesAgo / 60} ساعة", "${minutesAgo / 60}h ago")
-            else -> t("منذ ${minutesAgo / (60 * 24)} يوم", "${minutesAgo / (60 * 24)}d ago")
-        }
+        LocalDateTime(year, month, day, timeParts[0], timeParts[1], timeParts[2]).toInstant(TimeZone.UTC)
     } catch (e: Exception) {
-        ""
+        null
+    }
+}
+
+// نص عربي نسبي ("منذ 36 دقيقة") من Instant فعلي، بنفس أسلوب باقي التطبيق
+private fun relativeTimeFrom(published: Instant): String {
+    val minutesAgo = (Clock.System.now() - published).inWholeMinutes.coerceAtLeast(0)
+    return when {
+        minutesAgo < 1 -> t("الآن", "Now")
+        minutesAgo < 60 -> t("منذ $minutesAgo دقيقة", "$minutesAgo min ago")
+        minutesAgo < 60 * 24 -> t("منذ ${minutesAgo / 60} ساعة", "${minutesAgo / 60}h ago")
+        else -> t("منذ ${minutesAgo / (60 * 24)} يوم", "${minutesAgo / (60 * 24)}d ago")
     }
 }
