@@ -4821,7 +4821,6 @@ private fun ZakatScreen(
     val nisabValue = GoldMarket.prices.first { it.karat == "24K" }.price * nisabGrams
     val exceedsNisab = pureGoldEquivalent >= nisabGrams || totalGoldValue >= nisabValue
     val totalZakat = if (exceedsNisab) totalGoldValue * (zakatPercent / 100.0) else 0.0
-    val marketScope = rememberCoroutineScope()
 
     Column(
         modifier = Modifier
@@ -4834,27 +4833,14 @@ private fun ZakatScreen(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
-                    contentDescription = t("رجوع", "Back"),
-                    tint = Gold,
-                    modifier = Modifier
-                        .size(20.dp)
-                        .clickable { onBack() }
-                )
-                Icon(
-                    imageVector = Icons.Outlined.Refresh,
-                    contentDescription = t("تحديث", "Refresh"),
-                    tint = Gold,
-                    modifier = Modifier
-                        .size(20.dp)
-                        .clickable { marketScope.launch { GoldMarket.refresh(force = true) } }
-                )
-            }
+            Icon(
+                imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
+                contentDescription = t("رجوع", "Back"),
+                tint = Gold,
+                modifier = Modifier
+                    .size(20.dp)
+                    .clickable { onBack() }
+            )
             Text(t("الزكاة", "Zakat"), color = White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
             Row(
                 verticalAlignment = Alignment.CenterVertically,
