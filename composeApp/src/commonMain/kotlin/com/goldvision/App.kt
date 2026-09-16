@@ -884,6 +884,10 @@ private fun GoldVisionApp() {
         showSharePriceCard = false
     }
 
+    // زر المشاركة بالرأس مخصَّص لمشاركة التطبيق نفسه فقط، بطلب صريح — بنفس
+    // نص/آلية مشاركة التطبيق المستخدمة بصفحة "المزيد" تماماً
+    val shareApp = AppShare.rememberShareTrigger()
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -903,10 +907,7 @@ private fun GoldVisionApp() {
                 closeOverlayScreens()
                 selectedBottom = 5
             },
-            onShareCardClick = {
-                closeOverlayScreens()
-                showSharePriceCard = true
-            }
+            onShareCardClick = shareApp
         )
 
         PullToRefreshBox(
