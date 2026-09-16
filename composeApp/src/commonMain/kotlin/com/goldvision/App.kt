@@ -157,7 +157,7 @@ import kotlin.time.Duration.Companion.seconds
 // DrawScope مباشرة، أو دوال/خصائص عادية غير Composable)
 private val Black: Color @Composable get() = LocalAppColors.current.background
 private val CardBlack: Color @Composable get() = LocalAppColors.current.card
-private val Gold = Color(0xFFFFC21A)
+private val Gold: Color @Composable get() = LocalAppColors.current.gold
 private val GoldDark = Color(0xFF7A5A00)
 private val White: Color @Composable get() = LocalAppColors.current.text
 private val Gray: Color @Composable get() = LocalAppColors.current.textSecondary

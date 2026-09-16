@@ -42,12 +42,15 @@ internal object AppTheme {
     }
 }
 
-// مجموعة الألوان الفعلية لكل وضع — Gold/GoldDark/Green/Red/Yellow تبقى
-// ثابتة بين الوضعين (ألوان علامة تجارية ودلالية عالمية: نجاح/خطر...)،
-// فقط الخلفية والبطاقات والنص والحدود تتغيّر فعلياً بين داكن وفاتح
+// مجموعة الألوان الفعلية لكل وضع — GoldDark/Green/Red/Yellow تبقى ثابتة
+// بين الوضعين (ألوان دلالية عالمية: نجاح/خطر...)، أما gold فتصبح أغمق
+// بالوضع الفاتح تحديداً (الأصفر الفاتح الأصلي غير مقروء على خلفية بيضاء
+// — نفس ملاحظة المستخدم الفعلية على جهازه الحقيقي)، بجانب الخلفية
+// والبطاقات والنص والحدود
 internal data class AppColorScheme(
     val background: Color,
     val card: Color,
+    val gold: Color,
     val text: Color,
     val textSecondary: Color,
     val border: Color
@@ -56,16 +59,20 @@ internal data class AppColorScheme(
 private val DarkAppColors = AppColorScheme(
     background = Color(0xFF050505),
     card = Color(0xFF090909),
+    gold = Color(0xFFFFC21A),
     text = Color(0xFFF4F4F4),
     textSecondary = Color(0xFFB8B8B8),
     border = Color(0xFF9B7300)
 )
 
 // أبيض ورمادي فاتح بناءً على طلب صريح — بلا حدود ذهبية داكنة (تُستبدل
-// بحد رمادي فاتح محايد يناسب الخلفية البيضاء بدل تباين قوي وغير مريح)
+// بحد رمادي فاتح محايد يناسب الخلفية البيضاء بدل تباين قوي وغير مريح).
+// gold أغمق (عنبري/ذهبي غامق) بدل الأصفر الفاتح الأصلي، ليبقى مقروءاً
+// كنص/حدّ فوق الأبيض بدل التلاشي الذي لاحظه المستخدم فعلياً
 private val LightAppColors = AppColorScheme(
     background = Color(0xFFFFFFFF),
     card = Color(0xFFF1F1F3),
+    gold = Color(0xFFB8860B),
     text = Color(0xFF1A1A1A),
     textSecondary = Color(0xFF6E6E6E),
     border = Color(0xFFE2E2E5)
