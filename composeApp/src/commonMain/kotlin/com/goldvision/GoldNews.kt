@@ -60,6 +60,23 @@ internal object GoldNews {
     var lastError by mutableStateOf<String?>(null)
         private set
 
+    private var offlineMarked = false
+
+    // يُستدعى فوراً من NetworkMonitor لحظة انقطاع الإنترنت، بلا أي طلب
+    // شبكي فعلي
+    fun markOffline() {
+        lastError = t("لا يوجد اتصال بالإنترنت", "No internet connection")
+        offlineMarked = true
+    }
+
+    // يُستدعى لحظة عودة الاتصال: يمسح خطأ "لا يوجد اتصال" الاصطناعي فقط
+    fun clearOfflineMark() {
+        if (offlineMarked) {
+            lastError = null
+            offlineMarked = false
+        }
+    }
+
     private val client = HttpClient {
         install(HttpTimeout) {
             requestTimeoutMillis = 10_000
@@ -67,6 +84,7 @@ internal object GoldNews {
     }
 
     suspend fun refresh() {
+        offlineMarked = false
         isLoading = true
         var rawBody = ""
         try {

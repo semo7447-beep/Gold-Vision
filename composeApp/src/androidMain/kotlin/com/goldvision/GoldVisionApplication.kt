@@ -11,6 +11,7 @@ class GoldVisionApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         AppStorage.init(this)
+        NetworkMonitor.init(this)
         initWidgetLanguageNotifier(this)
         PriceNotificationScheduler.init(this)
         FedMeetingNotificationScheduler.init(this)

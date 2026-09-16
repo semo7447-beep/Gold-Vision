@@ -2,6 +2,10 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- صلاحية عادية (تُمنح تلقائياً بلا نافذة إذن) لمراقبة حالة الاتصال
+         الفعلية بالشبكة، حتى تنعكس نقاط "مباشر/غير مباشر" فوراً لحظة
+         انقطاع الإنترنت بدل انتظار محاولة تحديث تالية -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <!-- مطلوبة من أندرويد 13 فأعلى لعرض إشعار سعر الذهب اليومي -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- مطلوبة فقط على أندرويد 9 فأقل (maxSdkVersion) لحفظ بطاقة السعر

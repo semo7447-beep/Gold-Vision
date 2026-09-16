@@ -718,6 +718,30 @@ private fun GoldVisionApp() {
     }
     val marketScope = rememberCoroutineScope()
 
+    // ينعكس انقطاع/عودة الإنترنت فوراً على نقاط "مباشر" بكل الشاشات
+    // (لحظة الانقطاع، لا عند محاولة تحديث تالية فقط) — بناءً على طلب
+    // صريح؛ GoldMarket تحديداً لا تحاول تحديثاً حقيقياً هنا (حصتها
+    // الشهرية صارمة)، فقط تُعلَّم كمنقطعة محلياً بلا أي طلب شبكي
+    var networkMonitorStarted by remember { mutableStateOf(false) }
+    LaunchedEffect(NetworkMonitor.isOnline) {
+        if (NetworkMonitor.isOnline) {
+            GoldMarket.clearOfflineMark()
+            GoldHistory.clearOfflineMark()
+            GoldNews.clearOfflineMark()
+            // إعادة تحديث فعلية فقط عند عودة اتصال بعد انقطاع حقيقي، لا
+            // عند أول تركيب للشاشة (يكفيه التحديث الأولي المنفصل أعلاه)
+            if (networkMonitorStarted) {
+                GoldNews.refresh()
+                GoldHistory.refresh(todayLocalDate())
+            }
+        } else {
+            GoldMarket.markOffline()
+            GoldHistory.markOffline()
+            GoldNews.markOffline()
+        }
+        networkMonitorStarted = true
+    }
+
     // AppLanguage.current مفتاح إلزامي هنا: أسماء الأيام بداخل upcomingFedMeetings()
     // تعتمد على اللغة الحالية، وremember بلا مفتاح كان يحسبها مرة واحدة فقط
     // عند أول تركيب للشاشة، فتبقى بلغة قديمة (إنجليزي) حتى لو تغيّرت لغة

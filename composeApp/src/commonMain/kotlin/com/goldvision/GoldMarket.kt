@@ -79,6 +79,28 @@ internal object GoldMarket {
     var lastError by mutableStateOf<String?>(null)
         private set
 
+    // true فقط عندما يكون lastError الحالي ناتجاً عن NetworkMonitor
+    // (انقطاع فعلي بالشبكة) لا عن فشل حقيقي بطلب — يميّز "لا يوجد اتصال"
+    // عن أي خطأ آخر حتى لا يُمحى خطأ حقيقي بالغلط لحظة عودة الاتصال
+    private var offlineMarked = false
+
+    // يُستدعى فوراً من NetworkMonitor لحظة انقطاع الإنترنت، بلا أي طلب
+    // شبكي فعلي — GoldMarket خصوصاً مقيّدة بحصة شهرية صارمة (100 طلب)
+    // فلا يصح جعلها تحاول تحديثاً حقيقياً فقط لاكتشاف انقطاع الشبكة
+    fun markOffline() {
+        lastError = t("لا يوجد اتصال بالإنترنت", "No internet connection")
+        offlineMarked = true
+    }
+
+    // يُستدعى لحظة عودة الاتصال: يمسح خطأ "لا يوجد اتصال" الاصطناعي فقط
+    // (وليس أي خطأ API حقيقي سابق)، إلى أن يحين موعد تحديث حقيقي تالٍ
+    fun clearOfflineMark() {
+        if (offlineMarked) {
+            lastError = null
+            offlineMarked = false
+        }
+    }
+
     private val client = HttpClient {
         install(HttpTimeout) {
             requestTimeoutMillis = 10_000
@@ -97,6 +119,7 @@ internal object GoldMarket {
                 return
             }
         }
+        offlineMarked = false
         AppStorage.writeText(lastFetchStorageFile, now.toString())
 
         isLoading = true
