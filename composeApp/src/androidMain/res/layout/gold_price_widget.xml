@@ -75,7 +75,7 @@
             android:textSize="11sp" />
     </LinearLayout>
 
-    <View
+    <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="1dp"
         android:layout_marginTop="10dp"
@@ -138,7 +138,7 @@
         </LinearLayout>
     </LinearLayout>
 
-    <View
+    <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="1dp"
         android:layout_marginTop="12dp"
@@ -256,7 +256,7 @@
                 android:textColor="#F4F4F4"
                 android:textSize="10sp"
                 android:textStyle="bold" />
-            <View
+            <FrameLayout
                 android:layout_width="match_parent"
                 android:layout_height="1dp"
                 android:layout_marginTop="6dp"
@@ -340,7 +340,7 @@
                 android:textColor="#F4F4F4"
                 android:textSize="10sp"
                 android:textStyle="bold" />
-            <View
+            <FrameLayout
                 android:layout_width="match_parent"
                 android:layout_height="1dp"
                 android:layout_marginTop="6dp"
