@@ -143,6 +143,7 @@ import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.daysUntil
 import kotlinx.datetime.minus
+import kotlinx.datetime.plus
 import kotlinx.datetime.toInstant
 import kotlinx.datetime.toLocalDateTime
 import kotlinx.serialization.Serializable
@@ -373,7 +374,32 @@ private fun timeDisplayLabel(time: String): String =
 internal fun todayLocalDate(): LocalDate =
     Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
 
-private data class FedMeetingRow(val day: String, val date: String, val time: String, val daysLeft: Int)
+private data class FedMeetingRow(val day: String, val date: String, val time: String, val daysLeft: Int, val isEstimated: Boolean = false)
+
+// أقل عدد صفوف نريد بقاءه ظاهراً بالجدول دائماً — القائمة الثابتة
+// اليدوية (fedMeetingsRaw) محدودة، فبمجرد نفادها تُستكمل بمواعيد تقديرية
+// (انظر generateEstimatedFedMeetingDates) حتى لا تختفي القائمة فجأة أو
+// تُظهر أقل من هذا العدد بمرور الوقت
+private const val minFedMeetingRowsShown = 4
+
+// معدّل تقريبي بين اجتماعات الفيدرالي الفعلية (~7 أسابيع) — يُستخدم فقط
+// لتوليد مواعيد تقديرية بعد نفاد القائمة اليدوية المؤكدة رسمياً، وليس
+// بديلاً عن التقويم الرسمي (لا يوجد مصدر بيانات حي لهذه المواعيد)
+private const val estimatedFedMeetingCadenceDays = 49
+
+private fun generateEstimatedFedMeetingDates(afterDate: LocalDate, count: Int): List<LocalDate> {
+    val dates = mutableListOf<LocalDate>()
+    var cursor = afterDate
+    repeat(count) {
+        cursor = cursor.plus(estimatedFedMeetingCadenceDays, DateTimeUnit.DAY)
+        // القرار يُعلن دائماً يوم أربعاء فعلياً بكل المواعيد المؤكدة —
+        // نضبط التاريخ التقديري لأقرب أربعاء بعده حتى يبقى متسقاً بالشكل
+        val diffToWednesday = (DayOfWeek.WEDNESDAY.ordinal - cursor.dayOfWeek.ordinal + 7) % 7
+        cursor = cursor.plus(diffToWednesday, DateTimeUnit.DAY)
+        dates += cursor
+    }
+    return dates
+}
 
 // لحظة انتهاء اجتماع اليوم فعلياً (9:30 مساءً بتوقيت مكة — نهاية
 // المؤتمر الصحفي، لا وقت إعلان القرار فقط) — بعدها يُستبعد اجتماع
@@ -387,7 +413,7 @@ private fun fedMeetingEndInstant(date: LocalDate): Instant {
 private fun upcomingFedMeetings(): List<FedMeetingRow> {
     val today = todayLocalDate()
     val now = Clock.System.now()
-    return fedMeetingsRaw
+    val realRows = fedMeetingsRaw
         .map { it to LocalDate(it.year, it.month, it.day) }
         .filter { (_, date) -> date > today || (date == today && now < fedMeetingEndInstant(date)) }
         .sortedBy { (_, date) -> date }
@@ -399,6 +425,22 @@ private fun upcomingFedMeetings(): List<FedMeetingRow> {
                 daysLeft = today.daysUntil(date)
             )
         }
+    if (realRows.size >= minFedMeetingRowsShown) return realRows
+
+    // القائمة اليدوية المؤكدة أوشكت على النفاد — نستكمل بمواعيد تقديرية
+    // (isEstimated = true) حتى يبقى الجدول متسلسلاً بلا انقطاع فجائي
+    val lastKnownDate = fedMeetingsRaw.maxOf { LocalDate(it.year, it.month, it.day) }
+    val estimatedRows = generateEstimatedFedMeetingDates(lastKnownDate, minFedMeetingRowsShown - realRows.size)
+        .map { date ->
+            FedMeetingRow(
+                day = dayNameFor(date.dayOfWeek),
+                date = "${date.year}/${date.monthNumber}/${date.dayOfMonth}",
+                time = "09:00 م",
+                daysLeft = today.daysUntil(date),
+                isEstimated = true
+            )
+        }
+    return realRows + estimatedRows
 }
 
 private fun currentDateTimeText(): String {
@@ -3770,10 +3812,16 @@ private fun periodRangeText(period: String): String {
 internal fun nextFedMeetingDate(): LocalDate? {
     val today = todayLocalDate()
     val now = Clock.System.now()
-    return fedMeetingsRaw
+    val realDates = fedMeetingsRaw
         .map { LocalDate(it.year, it.month, it.day) }
         .filter { date -> date > today || (date == today && now < fedMeetingEndInstant(date)) }
-        .minOrNull()
+    realDates.minOrNull()?.let { return it }
+
+    // نفس منطق upcomingFedMeetings: بعد نفاد القائمة اليدوية المؤكدة،
+    // نرجّع أقرب موعد تقديري بدل null (يبقى العدّ التنازلي بالتحليل
+    // الفني وإشعار التذكير يعملان بدل التوقف فجأة)
+    val lastKnownDate = fedMeetingsRaw.maxOf { LocalDate(it.year, it.month, it.day) }
+    return generateEstimatedFedMeetingDates(lastKnownDate, 1).firstOrNull()
 }
 
 // تسميات محور الوقت أسفل الرسم، حسب الفترة المختارة (زي فيديو المرجع)
@@ -8304,7 +8352,9 @@ private fun FedSchedule(rows: List<FedMeetingRow>) {
 
                 Text(
                     text = row.date,
-                    color = White,
+                    // موعد تقديري (بعد نفاد القائمة الرسمية المؤكدة) يُعرض
+                    // بلون مخفَّف مميَّز عن المواعيد المؤكدة رسمياً
+                    color = if (row.isEstimated) Gray else White,
                     fontSize = 9.sp,
                     modifier = Modifier.weight(1.3f),
                     textAlign = TextAlign.Center,
@@ -8343,6 +8393,18 @@ private fun FedSchedule(rows: List<FedMeetingRow>) {
                     }
                 }
             }
+        }
+
+        if (rows.any { it.isEstimated }) {
+            Text(
+                text = t(
+                    "المواعيد الرمادية تقديرية (لم تُعلن رسمياً بعد)",
+                    "Gray dates are estimated (not yet officially announced)"
+                ),
+                color = Gray,
+                fontSize = 7.5.sp,
+                modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+            )
         }
     }
 }
@@ -8434,8 +8496,12 @@ private fun FedMeetingsScreen(onBack: () -> Unit) {
                 ) {
                     Column {
                         Text(
-                            "${row.day} ${row.date}",
-                            color = White,
+                            if (row.isEstimated) {
+                                t("${row.day} ${row.date} (تقديري)", "${row.day} ${row.date} (est.)")
+                            } else {
+                                "${row.day} ${row.date}"
+                            },
+                            color = if (row.isEstimated) Gray else White,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold
                         )
