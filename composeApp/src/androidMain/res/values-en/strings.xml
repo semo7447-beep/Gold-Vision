@@ -4,4 +4,5 @@
     <string name="portfolio_widget_description">Your live portfolio value</string>
     <string name="shortcut_share_app_short">Share app</string>
     <string name="shortcut_share_app_long">Share Gold Vision</string>
+    <string name="widget_share_whatsapp">Share price card via WhatsApp</string>
 </resources>

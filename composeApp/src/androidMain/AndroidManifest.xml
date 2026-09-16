@@ -20,6 +20,15 @@
         android:name="android.permission.WRITE_EXTERNAL_STORAGE"
         android:maxSdkVersion="28" />
 
+    <!-- مطلوبة من أندرويد 11 (API 30) فأعلى للتحقق من تثبيت واتساب فعلياً
+         قبل مشاركة بطاقة السعر مباشرة إليه من زر الويدجت — بدونها،
+         getApplicationInfo لحزمة تطبيق آخر يفشل دائماً بسبب تقييد رؤية
+         الحزم (Package Visibility) حتى لو كان واتساب مثبَّتاً فعلاً -->
+    <queries>
+        <package android:name="com.whatsapp" />
+        <package android:name="com.whatsapp.w4b" />
+    </queries>
+
     <application
         android:name=".GoldVisionApplication"
         android:allowBackup="false"

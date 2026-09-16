@@ -4,4 +4,5 @@
     <string name="portfolio_widget_description">عرض قيمة محفظتك الحية</string>
     <string name="shortcut_share_app_short">مشاركة التطبيق</string>
     <string name="shortcut_share_app_long">مشاركة تطبيق Gold Vision</string>
+    <string name="widget_share_whatsapp">مشاركة بطاقة السعر عبر واتساب</string>
 </resources>

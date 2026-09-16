@@ -45,6 +45,11 @@
             android:textColor="@color/widget_gold"
             android:textSize="18sp"
             android:textStyle="bold" />
+        <ImageView
+            android:layout_width="26dp"
+            android:layout_height="26dp"
+            android:src="@drawable/ic_whatsapp"
+            android:contentDescription="@null" />
     </LinearLayout>
 
     <LinearLayout

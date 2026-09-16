@@ -27,17 +27,24 @@ internal class GoldPriceWidgetProvider : AppWidgetProvider() {
         // إجراء مخصّص لزر "تحديث يدوي" داخل الويدجت نفسه، بالإضافة للتحديث
         // التلقائي الدوري — يُرسَل كـ broadcast صريح لهذا المكوّن نفسه
         const val ACTION_REFRESH = "com.goldvision.widget.ACTION_REFRESH"
+
+        // إجراء زر مشاركة بطاقة السعر عبر واتساب مباشرة من الويدجت
+        const val ACTION_SHARE_WHATSAPP = "com.goldvision.widget.ACTION_SHARE_WHATSAPP"
     }
 
     override fun onReceive(context: Context, intent: Intent) {
         super.onReceive(context, intent)
-        if (intent.action == ACTION_REFRESH) {
-            // ضغط يدوي صريح من المستخدم على زر التحديث — يتجاوز الحد الأدنى
-            // بين طلبات التحديث التلقائية (حماية حصة GoldAPI.io الشهرية)
-            val request = OneTimeWorkRequestBuilder<GoldPriceWidgetWorker>()
-                .setInputData(workDataOf("force" to true))
-                .build()
-            WorkManager.getInstance(context).enqueue(request)
+        when (intent.action) {
+            ACTION_REFRESH -> {
+                // ضغط يدوي صريح من المستخدم على زر التحديث — يتجاوز الحد
+                // الأدنى بين طلبات التحديث التلقائية (حماية حصة GoldAPI.io
+                // الشهرية)
+                val request = OneTimeWorkRequestBuilder<GoldPriceWidgetWorker>()
+                    .setInputData(workDataOf("force" to true))
+                    .build()
+                WorkManager.getInstance(context).enqueue(request)
+            }
+            ACTION_SHARE_WHATSAPP -> shareWidgetPriceCardToWhatsApp(context)
         }
     }
 
@@ -184,6 +191,19 @@ internal fun buildWidgetRemoteViews(context: Context): RemoteViews {
     )
     views.setOnClickPendingIntent(R.id.widget_refresh, refreshPendingIntent)
 
+    // زر مشاركة بطاقة السعر عبر واتساب — نفس آلية broadcast صريح لهذا
+    // المزوّد نفسه المستخدمة أعلاه لزر التحديث تماماً
+    val shareIntent = Intent(context, GoldPriceWidgetProvider::class.java).apply {
+        action = GoldPriceWidgetProvider.ACTION_SHARE_WHATSAPP
+    }
+    val sharePendingIntent = PendingIntent.getBroadcast(
+        context,
+        1,
+        shareIntent,
+        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+    )
+    views.setOnClickPendingIntent(R.id.widget_whatsapp_share, sharePendingIntent)
+
     return views
 }
 
@@ -218,7 +238,7 @@ private val widgetEnglishDayNames = mapOf(
     kotlinx.datetime.DayOfWeek.FRIDAY to "Friday"
 )
 
-private fun widgetDateText(): String {
+internal fun widgetDateText(): String {
     val today = todayLocalDate()
     val dayName = if (AppLanguage.current == AppLang.EN) {
         widgetEnglishDayNames[today.dayOfWeek] ?: ""
