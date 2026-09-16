@@ -1748,6 +1748,14 @@ private fun PdfExportIcon(
     enabled: Boolean = true,
     onClick: () -> Unit
 ) {
+    // fontScale ثابت على 1 هنا صراحة، بغض النظر عن أي تكبير خط مفروض
+    // بالشاشة المحيطة (كشاشة الحاسبة اللي تكبّر الخط 1.15x) — هذه
+    // الأيقونة رسم يدوي بحجم فعلي ثابت (24×26dp)، ونص "PDF" بداخلها
+    // مقيس بإحداثيات صندوقه الثابتة؛ بدون هذا التثبيت، نص "PDF" يكبر
+    // مع فونت سكيل الشاشة المحيطة ويفيض خارج صندوقه الصغير فيظهر
+    // متراكباً/مشوَّهاً (لوحظ فعلياً بشاشة الحاسبة تحديداً، بعكس بقية
+    // الشاشات التي لا تفرض تكبير خط)
+    CompositionLocalProvider(LocalDensity provides Density(LocalDensity.current.density, fontScale = 1f)) {
     val textMeasurer = rememberTextMeasurer()
     Canvas(
         modifier = modifier
@@ -1841,6 +1849,7 @@ private fun PdfExportIcon(
                 tagTopLeft.y + (tagSize.height - label.size.height) / 2f
             )
         )
+    }
     }
 }
 
