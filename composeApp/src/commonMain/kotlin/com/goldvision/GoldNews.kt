@@ -6,7 +6,9 @@ import androidx.compose.runtime.setValue
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.request.get
+import io.ktor.client.request.header
 import io.ktor.client.statement.bodyAsText
+import io.ktor.http.HttpHeaders
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDateTime
@@ -68,7 +70,15 @@ internal object GoldNews {
         isLoading = true
         var rawBody = ""
         try {
-            rawBody = client.get(FEED_URL).bodyAsText()
+            // بعض خوادم Google News RSS ترفض أو تعيد استجابة مختلفة لطلبات
+            // بلا User-Agent يشبه المتصفح — أضيف هنا كإصلاح احترازي لخطأ
+            // "تعذر تحديث الأخبار" الذي أبلغ عنه المستخدم فعلياً على جهازه
+            rawBody = client.get(FEED_URL) {
+                header(
+                    HttpHeaders.UserAgent,
+                    "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0 Mobile Safari/537.36"
+                )
+            }.bodyAsText()
             val parsed = parseRssItems(rawBody)
             if (parsed.isEmpty()) error("لم يُعثر على أي عنصر أخبار في الاستجابة")
             articles = parsed

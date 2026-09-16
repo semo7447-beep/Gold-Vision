@@ -709,11 +709,11 @@ private fun GoldVisionApp() {
     }
 
     // يجلب أخبار الذهب الحقيقية (GoldNews.kt) عند فتح التطبيق، ثم كل
-    // 30 دقيقة — أخبار مالية لا تحتاج تحديثاً شبه لحظي كالأسعار
+    // 3 دقائق — بناءً على طلب صريح لتحديث أسرع من كل 30 دقيقة سابقاً
     LaunchedEffect(Unit) {
         while (true) {
             GoldNews.refresh()
-            delay(1800.seconds)
+            delay(180.seconds)
         }
     }
     val marketScope = rememberCoroutineScope()
