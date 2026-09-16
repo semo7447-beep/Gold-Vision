@@ -8783,7 +8783,11 @@ private fun BottomNav(
                     .width(65.dp)
                     .height(60.dp)
                     .clip(RoundedCornerShape(10.dp))
-                    .background(if (active) Color(0xFF211900) else Color.Transparent)
+                    // نفس نمط زري "شراء/بيع" (ChoiceButton) بالضبط: خلفية Gold
+                    // صلبة + محتوى بلون Black — يبقى متبايناً وواضحاً بكلا
+                    // الوضعين تلقائياً، بدل لون داكن ثابت كان يختفي مع
+                    // النص الكحلي بالوضع الفاتح
+                    .background(if (active) Gold else Color.Transparent)
                     .clickable { onSelected(index) }
                     .padding(4.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -8792,13 +8796,13 @@ private fun BottomNav(
                 Icon(
                     imageVector = tab.second,
                     contentDescription = tab.first,
-                    tint = if (active) Gold else Gray,
+                    tint = if (active) Black else Gray,
                     modifier = Modifier.size(22.dp)
                 )
                 Spacer(Modifier.height(2.dp))
                 Text(
                     tab.first,
-                    color = if (active) Gold else White,
+                    color = if (active) Black else White,
                     fontSize = 11.sp,
                     fontWeight = if (active) FontWeight.Bold else FontWeight.Normal,
                     maxLines = 1
