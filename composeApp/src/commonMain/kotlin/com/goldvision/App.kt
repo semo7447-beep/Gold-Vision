@@ -1165,7 +1165,9 @@ private fun HomeScreen(
                 PriceChart(
                     selectedPeriod = selectedPeriod,
                     onPeriodSelected = onPeriodSelected,
-                    selectedKarat = selectedKarat,
+                    // ثابتة على عيار 24 دائماً بطلب صريح، بغض النظر عن
+                    // العيار المختار فعلياً بحاسبة الذهب المجاورة (selectedKarat)
+                    selectedKarat = "24K",
                     onChartClick = onNavigateChart
                 )
             }
@@ -4130,7 +4132,11 @@ private fun KaratChartCanvas(
     // يُقرأ هنا (سياق Composable) لا داخل Canvas، لأن drawAxisLabel تُستدعى
     // من DrawScope عادي لا يسمح بقراءة ألوان مرتبطة بالوضع الفاتح/الداكن
     val axisLabelColor = Gray
-    val touchLineColor = White
+    // لون محايد لحالة "الإقفال" (السعر ثابت بلا ارتفاع أو انخفاض): أبيض
+    // بالوضع الداكن، رمادي بالوضع الفاتح — بطلب صريح، وليس نفس رمزَي
+    // White/Gray الثابتين لأن White بالوضع الفاتح يصبح كحلياً غامقاً
+    // (نص) لا أبيض، وهنا نحتاج أبيض فعلي بالداكن تحديداً
+    val neutralChartColor = if (AppTheme.mode == AppThemeMode.LIGHT) Gray else White
     // نقطة حقيقية واحدة فقط (يحصل مع فترة "24 ساعة" حين لا يتوفر سوى سعر
     // إغلاق يوم واحد من مزوّد بيانات يومي) لا تكفي لرسم بيان فعلي — تُعامَل
     // مثل عدم توفر بيانات حقيقية أصلاً فينتقل تلقائياً للرسم التقديري
@@ -4149,7 +4155,15 @@ private fun KaratChartCanvas(
             generateSeriesRatios(seed, period)
         }
     }
-    val lineColor = Color(0xFFEDE6B0)
+    // لون الخط والمؤشر يتبع اتجاه السعر خلال الفترة المعروضة: أخضر عند
+    // الارتفاع (آخر نقطة أعلى من أول نقطة)، أحمر عند الانخفاض، ومحايد
+    // (أبيض/رمادي حسب الوضع) عند الإقفال بلا تغيّر فعلي — بطلب صريح
+    val lineColor = when {
+        points.last() > points.first() -> Green
+        points.last() < points.first() -> Red
+        else -> neutralChartColor
+    }
+    val touchLineColor = lineColor
     val xLabels = if (useReal) {
         val allLabels = realPoints!!.map { it.first }
         val labelCount = 6.coerceAtMost(allLabels.size)
