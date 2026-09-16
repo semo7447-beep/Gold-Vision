@@ -139,9 +139,11 @@ import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.daysUntil
 import kotlinx.datetime.minus
+import kotlinx.datetime.toInstant
 import kotlinx.datetime.toLocalDateTime
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
@@ -373,11 +375,21 @@ internal fun todayLocalDate(): LocalDate =
 
 private data class FedMeetingRow(val day: String, val date: String, val time: String, val daysLeft: Int)
 
+// لحظة انتهاء اجتماع اليوم فعلياً (9:30 مساءً بتوقيت مكة — نهاية
+// المؤتمر الصحفي، لا وقت إعلان القرار فقط) — بعدها يُستبعد اجتماع
+// اليوم من القائمة تلقائياً وتظهر بدلاً منه أقرب المواعيد المتبقية،
+// بدل بقاء "اليوم" ظاهراً طوال اليوم حتى بعد انتهاء الاجتماع فعلياً
+private fun fedMeetingEndInstant(date: LocalDate): Instant {
+    val meccaZone = TimeZone.of("Asia/Riyadh")
+    return LocalDateTime(date.year, date.monthNumber, date.dayOfMonth, 21, 30, 0).toInstant(meccaZone)
+}
+
 private fun upcomingFedMeetings(): List<FedMeetingRow> {
     val today = todayLocalDate()
+    val now = Clock.System.now()
     return fedMeetingsRaw
         .map { it to LocalDate(it.year, it.month, it.day) }
-        .filter { (_, date) -> date >= today }
+        .filter { (_, date) -> date > today || (date == today && now < fedMeetingEndInstant(date)) }
         .sortedBy { (_, date) -> date }
         .map { (raw, date) ->
             FedMeetingRow(
@@ -3755,9 +3767,10 @@ private fun periodRangeText(period: String): String {
 // اجتماع الفيدرالي (PriceNotifications.kt)
 internal fun nextFedMeetingDate(): LocalDate? {
     val today = todayLocalDate()
+    val now = Clock.System.now()
     return fedMeetingsRaw
         .map { LocalDate(it.year, it.month, it.day) }
-        .filter { it >= today }
+        .filter { date -> date > today || (date == today && now < fedMeetingEndInstant(date)) }
         .minOrNull()
 }
 
