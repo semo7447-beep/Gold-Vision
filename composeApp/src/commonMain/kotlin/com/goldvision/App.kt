@@ -165,6 +165,11 @@ private val Green = Color(0xFF35D12F)
 private val Red = Color(0xFFFF3B30)
 private val Yellow = Color(0xFFFFC21A)
 private val Border: Color @Composable get() = LocalAppColors.current.border
+// خاصتان بالشريط العلوي (Header) فقط — خلفيته ومحتواه لا يتبعان ألوان
+// الصفحة العامة (Black/Gold)، لأنه يبقى داكناً بكلا الوضعين (يندمج
+// بالخلفية بالداكن، كحلي مميَّز بالفاتح) بمحتوى فاتح ثابت دائماً
+private val HeaderBackground: Color @Composable get() = LocalAppColors.current.headerBackground
+private val HeaderContent: Color @Composable get() = LocalAppColors.current.headerContent
 
 // يُستخدم من App.kt (واجهات الشاشات) ومن GoldMarket.kt (جلب الأسعار الحية) —
 // Serializable حتى يُحفَظ محلياً (GoldMarket.kt) ويبقى معروضاً حتى بعد
@@ -7091,6 +7096,7 @@ private fun Header(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .background(HeaderBackground)
                 .height(62.dp)
                 .padding(horizontal = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -7109,7 +7115,7 @@ private fun Header(
                     GoldLogo()
                     Text(
                         text = "GOLD VISION",
-                        color = Gold,
+                        color = HeaderContent,
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
                         maxLines = 1
@@ -7144,7 +7150,7 @@ private fun NotificationBell(showBadge: Boolean, onClick: () -> Unit) {
         Icon(
             imageVector = Icons.Outlined.Notifications,
             contentDescription = t("الإشعارات", "Notifications"),
-            tint = Gold,
+            tint = HeaderContent,
             modifier = Modifier
                 .size(24.dp)
                 .align(Alignment.Center)
@@ -7180,14 +7186,14 @@ private fun CircleButton(icon: ImageVector, onClick: () -> Unit = {}) {
         modifier = Modifier
             .size(42.dp)
             .clip(RoundedCornerShape(22.dp))
-            .border(1.dp, Gold, RoundedCornerShape(22.dp))
+            .border(1.dp, HeaderContent, RoundedCornerShape(22.dp))
             .clickable { onClick() },
         contentAlignment = Alignment.Center
     ) {
         Icon(
             imageVector = icon,
             contentDescription = null,
-            tint = Gold,
+            tint = HeaderContent,
             modifier = Modifier.size(19.dp)
         )
     }
@@ -7199,10 +7205,10 @@ private fun SmallGoldButton(text: String) {
         modifier = Modifier
             .height(42.dp)
             .width(92.dp)
-            .border(1.dp, Gold, RoundedCornerShape(8.dp)),
+            .border(1.dp, HeaderContent, RoundedCornerShape(8.dp)),
         contentAlignment = Alignment.Center
     ) {
-        Text(text, color = Gold, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+        Text(text, color = HeaderContent, fontSize = 13.sp, fontWeight = FontWeight.Bold)
     }
 }
 
