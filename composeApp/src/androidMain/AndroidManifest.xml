@@ -8,6 +8,11 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <!-- مطلوبة من أندرويد 13 فأعلى لعرض إشعار سعر الذهب اليومي -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- تسمح بعرض نافذة النظام الرسمية لطلب استثناء التطبيق من تحسين
+         البطارية — ضرورية حتى تصل إشعارات سعر الذهب/الفيدرالي بموثوقية
+         عندما يكون التطبيق مغلقاً تماماً، خصوصاً على أنظمة مخصّصة (مثل
+         MIUI) تقتل العمل المجدوَل بالخلفية بقوة أكبر من أندرويد الأصلي -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
     <!-- مطلوبة فقط على أندرويد 9 فأقل (maxSdkVersion) لحفظ بطاقة السعر
          بالمعرض عبر MediaStore — من أندرويد 10 (Q) فأعلى التخزين النطاقي
          (Scoped Storage) يسمح بهذا دون أي صلاحية -->

@@ -12,6 +12,7 @@ class GoldVisionApplication : Application() {
         super.onCreate()
         AppStorage.init(this)
         NetworkMonitor.init(this)
+        BatteryOptimization.init(this)
         initWidgetLanguageNotifier(this)
         PriceNotificationScheduler.init(this)
         FedMeetingNotificationScheduler.init(this)

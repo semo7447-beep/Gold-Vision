@@ -6616,6 +6616,53 @@ private fun NotificationSettingsScreen(
 
         Spacer(Modifier.height(16.dp))
 
+        // تحذير يظهر فقط لو النظام لسه يعتبر التطبيق خاضعاً لتحسين
+        // البطارية — السبب الأشيع لعدم وصول إشعارات دورية عند إغلاق
+        // التطبيق تماماً على أجهزة كثيرة (خصوصاً شاومي/MIUI)
+        if (!BatteryOptimization.isExempted) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(10.dp))
+                    .border(1.dp, Red, RoundedCornerShape(10.dp))
+                    .background(CardBlack)
+                    .padding(12.dp)
+            ) {
+                Text(
+                    t("لضمان وصول الإشعارات والتطبيق مغلق", "To make sure notifications arrive while the app is closed"),
+                    color = White,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    t(
+                        "بعض الأجهزة توقف الإشعارات الدورية إذا اعتُبر التطبيق موفّراً للبطارية. استثنيه من توفير البطارية حتى تصل الإشعارات بانتظام",
+                        "Some devices stop periodic notifications when the app is battery-optimized. Exempt it from battery optimization so notifications arrive reliably"
+                    ),
+                    color = Gray,
+                    fontSize = 10.sp,
+                    lineHeight = 15.sp
+                )
+                Spacer(Modifier.height(10.dp))
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(Gold)
+                        .clickable { BatteryOptimization.openExemptionSettings() }
+                        .padding(horizontal = 14.dp, vertical = 8.dp)
+                ) {
+                    Text(
+                        t("فتح إعدادات البطارية", "Open Battery Settings"),
+                        color = Black,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+            Spacer(Modifier.height(12.dp))
+        }
+
         Row(
             modifier = Modifier
                 .fillMaxWidth()
