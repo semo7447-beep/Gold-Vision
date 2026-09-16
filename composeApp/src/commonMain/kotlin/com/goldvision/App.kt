@@ -7490,7 +7490,7 @@ private fun GoldCalculator(
         Spacer(Modifier.height(3.dp))
         CalculatorRow(t("سعر الجرام", "Price per gram"), "${fmt(selectedPrice(selectedKarat), 2)} ${t("ريال", "SAR")}")
         CalculatorRow(
-            t("السعر قبل الضريبة ⓘ", "Price before tax ⓘ"),
+            t("السعر قبل الضريبة", "Price before tax"),
             "${fmt(beforeVat, 2, grouped = true)} ${t("ريال", "SAR")}",
             valueColor = Gold
         )
@@ -7505,7 +7505,16 @@ private fun GoldCalculator(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(3.dp)
             ) {
-                Text(t("ريال", "SAR"), color = Gray, fontSize = 9.sp)
+                // ارتفاع مطابق تماماً لحقل الإدخال المجاور (16.dp) + توسيط
+                // صريح، بدل الاعتماد على ارتفاع السطر الطبيعي للخط (9sp)
+                // الذي كان يجعل نص "ريال" يظهر أعلى من صندوق الحقل المجاور
+                // بدل نفس المستوى فعلياً
+                Box(
+                    modifier = Modifier.height(16.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(t("ريال", "SAR"), color = Gray, fontSize = 9.sp)
+                }
                 NumericInputField(
                     value = manufacturing,
                     onValueChanged = { onManufacturingChanged(it.coerceAtMost(500.0)) },
