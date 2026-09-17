@@ -54,21 +54,38 @@ internal expect object GoldNewsNotificationScheduler {
     fun setEnabled(enabled: Boolean)
 }
 
-// نص إشعار تذكير اجتماع الفيدرالي (عنوان + محتوى)، أو null إن لم يكن
-// الاجتماع القادم بعد أسبوع بالضبط أو غداً أو اليوم (لا داعي لإشعار في
-// أي يوم آخر بينهما)
+// نص إشعار تذكير بأقرب موعد اقتصادي مهم (عنوان + محتوى)، أو null إن لم
+// يكن أي موعد قادم بعد أسبوع بالضبط أو غداً أو اليوم (لا داعي لإشعار في
+// أي يوم آخر بينهما). يفحص اجتماع الفيدرالي أولاً (منطقه الخاص القائم
+// أصلاً)، ثم بقية المؤشرات الاقتصادية (NFP/CPI/Core PCE/GDP) بنفس
+// القاعدة — أول موعد مطابق فقط يُشعِر به، تفادياً لتكديس أكثر من
+// إشعار بنفس اليوم لو تصادف موعدان معاً
+private fun reminderWhenText(daysLeft: Int): String = when (daysLeft) {
+    0 -> "اليوم"
+    1 -> "غداً"
+    else -> "بعد أسبوع"
+}
+
 internal fun buildFedMeetingNotificationText(): Pair<String, String>? {
-    val date = nextFedMeetingDate() ?: return null
-    val daysLeft = todayLocalDate().daysUntil(date)
-    if (daysLeft != 0 && daysLeft != 1 && daysLeft != 7) return null
-    val whenText = when (daysLeft) {
-        0 -> "اليوم"
-        1 -> "غداً"
-        else -> "بعد أسبوع"
+    nextFedMeetingDate()?.let { date ->
+        val daysLeft = todayLocalDate().daysUntil(date)
+        if (daysLeft == 0 || daysLeft == 1 || daysLeft == 7) {
+            val title = "اجتماع الفيدرالي ${reminderWhenText(daysLeft)}"
+            val body = "قرار الفائدة الأمريكية يُعلن عادة الساعة 9:00 مساءً بتوقيت مكة المكرمة"
+            return title to body
+        }
     }
-    val title = "اجتماع الفيدرالي $whenText"
-    val body = "قرار الفائدة الأمريكية يُعلن عادة الساعة 9:00 مساءً بتوقيت مكة المكرمة"
-    return title to body
+
+    listOf(EconomicEventTab.NFP, EconomicEventTab.CPI, EconomicEventTab.CORE_PCE, EconomicEventTab.GDP).forEach { tab ->
+        val row = upcomingEconomicEvents(tab).firstOrNull()
+        if (row != null && (row.daysLeft == 0 || row.daysLeft == 1 || row.daysLeft == 7)) {
+            val title = "موعد ${tab.label} ${reminderWhenText(row.daysLeft)}"
+            val body = "الإصدار الرسمي: ${row.date} الساعة ${row.time} بتوقيت مكة المكرمة"
+            return title to body
+        }
+    }
+
+    return null
 }
 
 private const val lastNotifiedNewsStorageFile = "last_notified_news.txt"

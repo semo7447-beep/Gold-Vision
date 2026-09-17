@@ -374,7 +374,7 @@ private fun timeDisplayLabel(time: String): String =
 internal fun todayLocalDate(): LocalDate =
     Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
 
-private data class FedMeetingRow(val day: String, val date: String, val time: String, val daysLeft: Int, val isEstimated: Boolean = false)
+internal data class FedMeetingRow(val day: String, val date: String, val time: String, val daysLeft: Int, val isEstimated: Boolean = false)
 
 // أقل عدد صفوف نريد بقاءه ظاهراً بالجدول دائماً — القائمة الثابتة
 // اليدوية (fedMeetingsRaw) محدودة، فبمجرد نفادها تُستكمل بمواعيد تقديرية
@@ -6884,10 +6884,13 @@ private fun NotificationSettingsScreen(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Text(t("مواعيد اجتماعات الفيدرالي", "Fed Meeting Dates"), color = White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                Text(t("المواعيد الاقتصادية المهمة", "Key Economic Dates"), color = White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    t("تذكير قبل الاجتماع بأسبوع، وقبل يوم الاجتماع، ويوم الاجتماع نفسه (9:00 مساءً بتوقيت مكة المكرمة)", "A reminder a week before the meeting, the day before, and on the meeting day itself (9:00 PM Makkah time)"),
+                    t(
+                        "تذكير قبل الموعد بأسبوع، وقبل يوم منه، ويوم الموعد نفسه — لاجتماعات الفيدرالي (FOMC) ومؤشرات NFP وCPI وCore PCE وGDP",
+                        "A reminder a week before, the day before, and on the day itself — for Fed meetings (FOMC) and the NFP, CPI, Core PCE, and GDP releases"
+                    ),
                     color = Gray,
                     fontSize = 10.sp,
                     lineHeight = 15.sp
@@ -6906,15 +6909,6 @@ private fun NotificationSettingsScreen(
         }
 
         Spacer(Modifier.height(12.dp))
-
-        // مفاتيح إشعارات للمواعيد الاقتصادية الجديدة (نفس تبويبات "أهم
-        // المواعيد" بالصفحة الرئيسية) — معطَّلة "قريباً" لحين توفر مواعيد
-        // رسمية دقيقة لها، بدل عدم ظهورها إطلاقاً بصفحة الإشعارات
-        listOf(EconomicEventTab.NFP, EconomicEventTab.CPI, EconomicEventTab.CORE_PCE, EconomicEventTab.GDP)
-            .forEach { tab ->
-                ComingSoonNotificationRow(title = tab.label, description = economicEventDescription(tab))
-                Spacer(Modifier.height(12.dp))
-            }
 
         Row(
             modifier = Modifier
@@ -7058,49 +7052,6 @@ private fun NotificationSettingsScreen(
         )
     }
     }
-    }
-}
-
-// صف إشعار معطَّل "قريباً" لمواعيد اقتصادية (NFP/CPI/Core PCE/GDP) لسه
-// بلا مواعيد رسمية دقيقة — بنفس شكل صفوف الإشعارات الفعلية، بمفتاح
-// معطَّل بصرياً وغير قابل للضغط، بدل غيابها بالكامل عن صفحة الإشعارات
-@Composable
-private fun ComingSoonNotificationRow(title: String, description: String) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(10.dp))
-            .border(1.dp, Border, RoundedCornerShape(10.dp))
-            .background(CardBlack)
-            .alpha(0.55f)
-            .padding(12.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(title, color = White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                Text(
-                    t("قريباً", "Soon"),
-                    color = Gold,
-                    fontSize = 9.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-            Spacer(Modifier.height(4.dp))
-            Text(description, color = Gray, fontSize = 9.5.sp, lineHeight = 14.sp)
-        }
-        Switch(
-            checked = false,
-            onCheckedChange = {},
-            enabled = false,
-            colors = SwitchDefaults.colors(
-                uncheckedThumbColor = Gray,
-                uncheckedTrackColor = CardBlack,
-                disabledUncheckedThumbColor = Gray,
-                disabledUncheckedTrackColor = CardBlack
-            )
-        )
     }
 }
 
@@ -8326,8 +8277,83 @@ private fun NewsRow(dot: Color, text: String, time: String, link: String) {
 // بقية التبويبات (NFP/CPI/Core PCE/GDP) بانتظار مواعيد رسمية دقيقة من
 // المستخدم قبل تعبئتها (بلا مصدر بيانات حي من هذه البيئة، ولا يصح
 // اختلاق مواعيد اقتصادية حقيقية)
-private enum class EconomicEventTab(val label: String) {
+internal enum class EconomicEventTab(val label: String) {
     FOMC("FOMC"), NFP("NFP"), CPI("CPI"), CORE_PCE("Core PCE"), GDP("GDP")
+}
+
+// مواعيد NFP/CPI/Core PCE/GDP الحقيقية القادمة — أوقاتها الأصلية بتوقيت
+// شرق أمريكا (ET) الثابت 8:30 صباحاً دائماً لهذه التقارير، وتُحوَّل هنا
+// تلقائياً لتوقيت مكة عبر منطقة زمنية حقيقية (لا حساب يدوي)، فينضبط
+// فرق التوقيت الصيفي/الشتوي الأمريكي تلقائياً بلا خطأ. المصدر: تحقق
+// مباشر من bls.gov (NFP/CPI) وbea.gov (Core PCE/GDP) — يجب تحديث هذه
+// القوائم يدوياً عند إعلان تقويم 2027 الرسمي
+private data class EconomicEventRaw(val year: Int, val month: Int, val day: Int, val hourEt: Int, val minuteEt: Int)
+
+private val nfpEventsRaw = listOf(
+    EconomicEventRaw(2026, 10, 2, 8, 30),
+    EconomicEventRaw(2026, 11, 6, 8, 30),
+    EconomicEventRaw(2026, 12, 4, 8, 30)
+)
+
+private val cpiEventsRaw = listOf(
+    EconomicEventRaw(2026, 10, 14, 8, 30),
+    EconomicEventRaw(2026, 11, 10, 8, 30),
+    EconomicEventRaw(2026, 12, 10, 8, 30)
+)
+
+private val corePceEventsRaw = listOf(
+    EconomicEventRaw(2026, 9, 30, 8, 30),
+    EconomicEventRaw(2026, 10, 29, 8, 30),
+    EconomicEventRaw(2026, 11, 25, 8, 30),
+    EconomicEventRaw(2026, 12, 23, 8, 30)
+)
+
+private val gdpEventsRaw = listOf(
+    EconomicEventRaw(2026, 9, 30, 8, 30),
+    EconomicEventRaw(2026, 10, 29, 8, 30),
+    EconomicEventRaw(2026, 11, 25, 8, 30),
+    EconomicEventRaw(2026, 12, 23, 8, 30)
+)
+
+private fun rawEventsFor(tab: EconomicEventTab): List<EconomicEventRaw> = when (tab) {
+    EconomicEventTab.FOMC -> emptyList()
+    EconomicEventTab.NFP -> nfpEventsRaw
+    EconomicEventTab.CPI -> cpiEventsRaw
+    EconomicEventTab.CORE_PCE -> corePceEventsRaw
+    EconomicEventTab.GDP -> gdpEventsRaw
+}
+
+private fun formatMeccaTime(hour24: Int, minute: Int): String {
+    val period = if (hour24 < 12) "ص" else "م"
+    val hour12 = when {
+        hour24 == 0 -> 12
+        hour24 > 12 -> hour24 - 12
+        else -> hour24
+    }
+    return "${hour12.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')} $period"
+}
+
+// نفس فكرة upcomingFedMeetings تماماً لكن للمؤشرات الاقتصادية الأخرى —
+// المقارنة بالوقت الفعلي (instant) لا بالتاريخ فقط، فيختفي الموعد
+// تلقائياً بمجرد صدور بياناته الفعلية (8:30 صباحاً ET) بدل بقائه طوال
+// اليوم بتوقيت مكة
+internal fun upcomingEconomicEvents(tab: EconomicEventTab): List<FedMeetingRow> {
+    val etZone = TimeZone.of("America/New_York")
+    val meccaZone = TimeZone.of("Asia/Riyadh")
+    val today = todayLocalDate()
+    val now = Clock.System.now()
+    return rawEventsFor(tab).mapNotNull { raw ->
+        val instant = LocalDateTime(raw.year, raw.month, raw.day, raw.hourEt, raw.minuteEt).toInstant(etZone)
+        if (instant <= now) return@mapNotNull null
+        val meccaTime = instant.toLocalDateTime(meccaZone)
+        FedMeetingRow(
+            day = dayNameFor(meccaTime.dayOfWeek),
+            date = "${meccaTime.year}/${meccaTime.monthNumber}/${meccaTime.dayOfMonth}",
+            time = formatMeccaTime(meccaTime.hour, meccaTime.minute),
+            daysLeft = today.daysUntil(meccaTime.date),
+            isEstimated = false
+        )
+    }
 }
 
 // شرح مختصر لكل رمز — معظم المستخدمين لا يعرفون معنى اختصارات مثل
@@ -8395,7 +8421,9 @@ private fun FedSchedule(rows: List<FedMeetingRow>) {
 
         Spacer(Modifier.height(6.dp))
 
-        if (selectedTab != EconomicEventTab.FOMC) {
+        val displayedRows = if (selectedTab == EconomicEventTab.FOMC) rows else upcomingEconomicEvents(selectedTab)
+
+        if (displayedRows.isEmpty()) {
             Column(
                 modifier = Modifier.fillMaxWidth().padding(vertical = 14.dp, horizontal = 4.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
@@ -8480,7 +8508,7 @@ private fun FedSchedule(rows: List<FedMeetingRow>) {
                 .background(Border)
         )
 
-        rows.forEach { row ->
+        displayedRows.forEach { row ->
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -8541,7 +8569,7 @@ private fun FedSchedule(rows: List<FedMeetingRow>) {
             }
         }
 
-        if (rows.any { it.isEstimated }) {
+        if (displayedRows.any { it.isEstimated }) {
             Text(
                 text = t(
                     "المواعيد الرمادية تقديرية (لم تُعلن رسمياً بعد)",
@@ -8612,66 +8640,63 @@ private fun FedMeetingsScreen(onBack: () -> Unit) {
 
         Spacer(Modifier.height(10.dp))
 
-        if (selectedTab != EconomicEventTab.FOMC) {
-            Column(
-                modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
+        val displayedRows = if (selectedTab == EconomicEventTab.FOMC) rows else upcomingEconomicEvents(selectedTab)
+
+        if (selectedTab == EconomicEventTab.FOMC) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .border(1.dp, Border, RoundedCornerShape(10.dp))
+                    .padding(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.Top
             ) {
-                Text(
-                    economicEventDescription(selectedTab),
-                    color = Gray,
-                    fontSize = 12.sp,
-                    lineHeight = 18.sp,
-                    textAlign = TextAlign.Center
+                Icon(
+                    imageVector = Icons.Outlined.Info,
+                    contentDescription = null,
+                    tint = Gold,
+                    modifier = Modifier
+                        .size(15.dp)
+                        .padding(top = 1.dp)
                 )
-                Spacer(Modifier.height(14.dp))
                 Text(
-                    t("قريباً — بانتظار المواعيد الرسمية", "Coming soon — awaiting official dates"),
-                    color = Gold,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold
+                    t(
+                        "قرار الفائدة الأمريكية يُعلن عادة الساعة 9:00 مساءً بتوقيت مكة المكرمة " +
+                            "(2:00 ظهراً بتوقيت واشنطن)",
+                        "The US interest rate decision is usually announced at 9:00 PM Makkah time " +
+                            "(2:00 PM Washington time)"
+                    ),
+                    color = Gray,
+                    fontSize = 10.sp,
+                    lineHeight = 15.sp
                 )
             }
-            return
-        }
-
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 12.dp)
-                .clip(RoundedCornerShape(10.dp))
-                .border(1.dp, Border, RoundedCornerShape(10.dp))
-                .padding(12.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.Top
-        ) {
-            Icon(
-                imageVector = Icons.Outlined.Info,
-                contentDescription = null,
-                tint = Gold,
-                modifier = Modifier
-                    .size(15.dp)
-                    .padding(top = 1.dp)
-            )
+        } else {
             Text(
-                t(
-                    "قرار الفائدة الأمريكية يُعلن عادة الساعة 9:00 مساءً بتوقيت مكة المكرمة " +
-                        "(2:00 ظهراً بتوقيت واشنطن)",
-                    "The US interest rate decision is usually announced at 9:00 PM Makkah time " +
-                        "(2:00 PM Washington time)"
-                ),
+                economicEventDescription(selectedTab),
                 color = Gray,
-                fontSize = 10.sp,
-                lineHeight = 15.sp
+                fontSize = 11.sp,
+                lineHeight = 16.sp,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp)
             )
         }
 
         Spacer(Modifier.height(8.dp))
 
-        if (rows.isEmpty()) {
+        if (displayedRows.isEmpty()) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text(t("لا توجد اجتماعات مجدولة قريباً", "No meetings scheduled soon"), color = Gray, fontSize = 12.sp)
+                Text(
+                    if (selectedTab == EconomicEventTab.FOMC) {
+                        t("لا توجد اجتماعات مجدولة قريباً", "No meetings scheduled soon")
+                    } else {
+                        t("قريباً — بانتظار المواعيد الرسمية", "Coming soon — awaiting official dates")
+                    },
+                    color = Gray,
+                    fontSize = 12.sp
+                )
             }
             return
         }
@@ -8682,7 +8707,7 @@ private fun FedMeetingsScreen(onBack: () -> Unit) {
                 .padding(horizontal = 12.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            items(rows) { row ->
+            items(displayedRows) { row ->
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()

@@ -18,9 +18,9 @@ private const val FED_MEETING_CHANNEL_ID = "gold_vision_fed_meeting"
 private const val FED_MEETING_NOTIFICATION_ID = 1002
 
 // يعمل حتى لو كان التطبيق مغلقاً تماماً (مُشغَّل من WorkManager): يفحص
-// يومياً أقرب اجتماع فيدرالي، ويُصدر إشعار تذكير فقط إن كان الاجتماع
-// بعد أسبوع بالضبط أو غداً أو اليوم (بدل إشعار يومي دائم لا فائدة منه
-// أغلب أيام السنة)
+// يومياً أقرب موعد اقتصادي مهم (اجتماع الفيدرالي، أو NFP/CPI/Core
+// PCE/GDP)، ويُصدر إشعار تذكير فقط إن كان الموعد بعد أسبوع بالضبط أو
+// غداً أو اليوم (بدل إشعار يومي دائم لا فائدة منه أغلب أيام السنة)
 internal class FedMeetingNotificationWorker(
     context: Context,
     params: WorkerParameters
