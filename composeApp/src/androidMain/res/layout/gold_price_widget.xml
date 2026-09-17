@@ -87,59 +87,55 @@
         android:layout_marginTop="10dp"
         android:background="#9B7300" />
 
-    <!-- سعر عيار 24 البارز + نسبة تغيّر اليوم -->
+    <!-- سعر عيار 24 البارز + نسبة تغيّر اليوم — الكل بمستوى أفقي واحد
+         (بطلب صريح: كانت ثلاثة أسطر متراصّة عمودياً، تُسبب تراكب نص
+         الوحدة مع السعر الكبير على الشاشات الضيقة) -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="12dp"
-        android:orientation="vertical"
-        android:gravity="center_horizontal">
+        android:orientation="horizontal"
+        android:gravity="center_vertical|center_horizontal">
         <TextView
             android:id="@+id/widget_big_karat_label"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:layout_marginEnd="8dp"
             android:text="24 عيار"
             android:textColor="@color/widget_gold"
-            android:textSize="14sp"
+            android:textSize="13sp"
             android:textStyle="bold" />
-        <LinearLayout
+        <TextView
+            android:id="@+id/widget_big_unit"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="2dp"
-            android:orientation="horizontal"
-            android:gravity="center_vertical">
-            <TextView
-                android:id="@+id/widget_big_unit"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginEnd="6dp"
-                android:text="ريال/جرام"
-                android:textColor="#B8B8B8"
-                android:textSize="11sp" />
-            <TextView
-                android:id="@+id/widget_big_price"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="--"
-                android:textColor="#F4F4F4"
-                android:textSize="30sp"
-                android:textStyle="bold" />
-        </LinearLayout>
+            android:layout_marginEnd="6dp"
+            android:text="ريال/جرام"
+            android:textColor="#B8B8B8"
+            android:textSize="10sp" />
+        <TextView
+            android:id="@+id/widget_big_price"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="8dp"
+            android:text="--"
+            android:textColor="#F4F4F4"
+            android:textSize="22sp"
+            android:textStyle="bold" />
         <LinearLayout
             android:id="@+id/widget_big_change_bg"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
             android:background="@drawable/pill_bg_green"
-            android:paddingHorizontal="10dp"
-            android:paddingVertical="5dp">
+            android:paddingHorizontal="8dp"
+            android:paddingVertical="4dp">
             <TextView
                 android:id="@+id/widget_big_change"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text=""
                 android:textColor="@color/widget_green"
-                android:textSize="12sp"
+                android:textSize="10sp"
                 android:textStyle="bold" />
         </LinearLayout>
     </LinearLayout>
