@@ -257,16 +257,19 @@ internal fun widgetUpdatedAtText(): String {
     return t("آخر تحديث: $hour:$minute", "Updated: $hour:$minute")
 }
 
-private var widgetLanguageNotifierContext: Context? = null
+// يُخزَّن مرة واحدة عند إقلاع التطبيق (GoldVisionApplication)، ويُستخدم
+// من أكثر من مصدر تنبيه فوري للويدجتات (تغيّر اللغة، وتغيّر حالة
+// الاتصال بالإنترنت أدناه)، لا لغة التطبيق فقط رغم الاسم القديم
+private var widgetNotifierContext: Context? = null
 
 internal fun initWidgetLanguageNotifier(context: Context) {
-    widgetLanguageNotifierContext = context.applicationContext
+    widgetNotifierContext = context.applicationContext
 }
 
-// يعيد بناء نصوص كل ويدجت مضاف فعلاً (السعر والمحفظة) فوراً بلغة
-// التطبيق الجديدة، بدل انتظار دورة التحديث الدورية القادمة
-internal actual fun notifyWidgetsLanguageChanged() {
-    val context = widgetLanguageNotifierContext ?: return
+// يعيد بناء محتوى كل ويدجت مضاف فعلاً (السعر والمحفظة) فوراً بأحدث
+// حالة متوفرة بالذاكرة — يُستدعى من أي مصدر تغيّر فوري (لغة، اتصال)
+// بدل انتظار دورة التحديث الدورية القادمة (حتى 30 دقيقة)
+internal fun refreshAllWidgetsNow(context: Context) {
     val appWidgetManager = AppWidgetManager.getInstance(context)
 
     val priceIds = appWidgetManager.getAppWidgetIds(ComponentName(context, GoldPriceWidgetProvider::class.java))
@@ -274,4 +277,17 @@ internal actual fun notifyWidgetsLanguageChanged() {
 
     val portfolioIds = appWidgetManager.getAppWidgetIds(ComponentName(context, GoldPortfolioWidgetProvider::class.java))
     portfolioIds.forEach { id -> appWidgetManager.updateAppWidget(id, buildPortfolioWidgetRemoteViews(context)) }
+}
+
+internal actual fun notifyWidgetsLanguageChanged() {
+    val context = widgetNotifierContext ?: return
+    refreshAllWidgetsNow(context)
+}
+
+// يُستدعى من NetworkMonitor لحظة تغيّر حالة الاتصال فعلياً (متصل/منقطع)،
+// حتى تتبع نقطة "مباشر/غير محدث" بالويدجتات نفس فورية التطبيق تماماً
+// بدل انتظار دورة التحديث الدورية القادمة
+internal fun refreshWidgetsOnConnectivityChange() {
+    val context = widgetNotifierContext ?: return
+    refreshAllWidgetsNow(context)
 }

@@ -11,9 +11,12 @@ class GoldVisionApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         AppStorage.init(this)
+        // قبل NetworkMonitor.init عمداً: لو وصل أول رد اتصال فوراً عند
+        // التسجيل، لازم يكون سياق تنبيه الويدجتات جاهزاً أصلاً حتى ينعكس
+        // انقطاع/عودة الاتصال على الويدجتات من أول لحظة بلا تفويت
+        initWidgetLanguageNotifier(this)
         NetworkMonitor.init(this)
         BatteryOptimization.init(this)
-        initWidgetLanguageNotifier(this)
         PriceNotificationScheduler.init(this)
         FedMeetingNotificationScheduler.init(this)
         GoldNewsNotificationScheduler.init(this)
