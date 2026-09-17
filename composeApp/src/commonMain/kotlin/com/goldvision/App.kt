@@ -954,11 +954,12 @@ private fun GoldVisionApp() {
                     detectHorizontalDragGestures(
                         onDragStart = { accumulatedDrag = 0f },
                         onDragEnd = {
-                            // اتجاه RTL: سحب لليسار (تراكم سالب) ← الصفحة التالية
-                            // (1←2←3←4←5)، سحب لليمين (تراكم موجب) ← الصفحة السابقة
+                            // بطلب صريح (عكس الاتجاه الأول): سحب لليمين (تراكم موجب)
+                            // ← الصفحة التالية (1←2←3←4←5)، سحب لليسار (تراكم سالب)
+                            // ← الصفحة السابقة
                             when {
-                                accumulatedDrag <= -threshold -> goToSwipePage(page + 1)
-                                accumulatedDrag >= threshold -> goToSwipePage(page - 1)
+                                accumulatedDrag >= threshold -> goToSwipePage(page + 1)
+                                accumulatedDrag <= -threshold -> goToSwipePage(page - 1)
                             }
                             accumulatedDrag = 0f
                         }
