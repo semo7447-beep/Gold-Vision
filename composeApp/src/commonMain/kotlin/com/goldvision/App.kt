@@ -196,7 +196,7 @@ private data class UserProfile(
 
 private val profileAvatarOptions = listOf("👤", "😊", "🧑", "👨", "👩", "🧔", "👳", "🕵️")
 
-// بيانات صفقة محفوظة من شاشة "المحل أعطاك سعراً؟" (اسم المحل + السعر + مستوى التقييم)
+// بيانات صفقة محفوظة من شاشة "عرض سعر" (اسم المحل + السعر + مستوى التقييم)
 private data class SavedDeal(
     val shopName: String,
     val totalPrice: Double,
@@ -1713,7 +1713,7 @@ private fun CalculatorFullScreen(
                 horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 Text(
-                    if (buyMode) t("المحل أعطاك سعراً؟", "Shop gave you a price?") else t("المحل أعطاك سعراً للشراء؟", "Shop gave you a buy price?"),
+                    if (buyMode) t("عرض سعر", "Quotation") else t("عرض سعر للشراء", "Buy Quotation"),
                     color = Gold,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Bold
@@ -1901,7 +1901,7 @@ private fun PdfExportIcon(
     }
 }
 
-// ==================== شاشة "المحل أعطاك سعراً؟" (تقييم عرض المحل) ====================
+// ==================== شاشة "عرض سعر" (تقييم عرض المحل) ====================
 @Composable
 private fun DealEvaluatorScreen(
     initialKarat: String,
@@ -1961,7 +1961,7 @@ private fun DealEvaluatorScreen(
                         .clickable { onBack() }
                 )
                 Text(
-                    t("المحل أعطاك سعراً؟", "Shop gave you a price?"),
+                    t("عرض سعر", "Quotation"),
                     color = White,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
@@ -7674,7 +7674,7 @@ private fun ChoiceButton(
     }
 }
 
-// ==================== الدولة ونسبة الضريبة (حاسبة الذهب / المحل أعطاك سعراً) ====================
+// ==================== الدولة ونسبة الضريبة (حاسبة الذهب / عرض سعر) ====================
 private data class CountryTaxOption(val flag: String, val name: String, val vatPercent: Double)
 
 private val countryTaxOptions = listOf(
