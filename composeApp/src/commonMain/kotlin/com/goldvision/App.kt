@@ -6907,6 +6907,15 @@ private fun NotificationSettingsScreen(
 
         Spacer(Modifier.height(12.dp))
 
+        // مفاتيح إشعارات للمواعيد الاقتصادية الجديدة (نفس تبويبات "أهم
+        // المواعيد" بالصفحة الرئيسية) — معطَّلة "قريباً" لحين توفر مواعيد
+        // رسمية دقيقة لها، بدل عدم ظهورها إطلاقاً بصفحة الإشعارات
+        listOf(EconomicEventTab.NFP, EconomicEventTab.CPI, EconomicEventTab.CORE_PCE, EconomicEventTab.GDP)
+            .forEach { tab ->
+                ComingSoonNotificationRow(title = tab.label, description = economicEventDescription(tab))
+                Spacer(Modifier.height(12.dp))
+            }
+
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -7049,6 +7058,49 @@ private fun NotificationSettingsScreen(
         )
     }
     }
+    }
+}
+
+// صف إشعار معطَّل "قريباً" لمواعيد اقتصادية (NFP/CPI/Core PCE/GDP) لسه
+// بلا مواعيد رسمية دقيقة — بنفس شكل صفوف الإشعارات الفعلية، بمفتاح
+// معطَّل بصرياً وغير قابل للضغط، بدل غيابها بالكامل عن صفحة الإشعارات
+@Composable
+private fun ComingSoonNotificationRow(title: String, description: String) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(10.dp))
+            .border(1.dp, Border, RoundedCornerShape(10.dp))
+            .background(CardBlack)
+            .alpha(0.55f)
+            .padding(12.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(title, color = White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                Text(
+                    t("قريباً", "Soon"),
+                    color = Gold,
+                    fontSize = 9.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+            Spacer(Modifier.height(4.dp))
+            Text(description, color = Gray, fontSize = 9.5.sp, lineHeight = 14.sp)
+        }
+        Switch(
+            checked = false,
+            onCheckedChange = {},
+            enabled = false,
+            colors = SwitchDefaults.colors(
+                uncheckedThumbColor = Gray,
+                uncheckedTrackColor = CardBlack,
+                disabledUncheckedThumbColor = Gray,
+                disabledUncheckedTrackColor = CardBlack
+            )
+        )
     }
 }
 
