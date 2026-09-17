@@ -7,6 +7,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.gestures.drag
 import androidx.compose.foundation.horizontalScroll
@@ -736,6 +737,29 @@ private fun GoldVisionApp() {
     var showFedSchedule by remember { mutableStateOf(false) }
     var showSharePriceCard by remember { mutableStateOf(false) }
 
+    // تسلسل سحب مخصَّص بين 5 شاشات محددة بطلب صريح (لا كل شاشات التطبيق):
+    // 1) حاسبة الذهب ← 2) تتبع الأسعار الكامل ← 3) الأخبار ← 4) أهم
+    // المواعيد ← 5) المزيد. يعمل فقط وأنت بالفعل داخل إحدى هذه الخمس،
+    // بلا أي تأثير على الرئيسية/المحفظة/الزكاة أو أي شاشة أخرى
+    val currentSwipePage = when {
+        showChartFull -> 2
+        showFedSchedule -> 4
+        selectedBottom == 1 -> 1
+        selectedBottom == 2 -> 3
+        selectedBottom == 5 -> 5
+        else -> null
+    }
+    fun goToSwipePage(page: Int) {
+        val clamped = page.coerceIn(1, 5)
+        showChartFull = clamped == 2
+        showFedSchedule = clamped == 4
+        when (clamped) {
+            1 -> selectedBottom = 1
+            3 -> selectedBottom = 2
+            5 -> selectedBottom = 5
+        }
+    }
+
     var liveTimeText by remember { mutableStateOf(currentDateTimeText()) }
     LaunchedEffect(Unit) {
         while (true) {
@@ -921,7 +945,28 @@ private fun GoldVisionApp() {
                     isRefreshing = false
                 }
             },
-            modifier = Modifier.weight(1f)
+            modifier = Modifier
+                .weight(1f)
+                .pointerInput(currentSwipePage) {
+                    val page = currentSwipePage ?: return@pointerInput
+                    var accumulatedDrag = 0f
+                    val threshold = 80.dp.toPx()
+                    detectHorizontalDragGestures(
+                        onDragStart = { accumulatedDrag = 0f },
+                        onDragEnd = {
+                            // اتجاه RTL: سحب لليسار (تراكم سالب) ← الصفحة التالية
+                            // (1←2←3←4←5)، سحب لليمين (تراكم موجب) ← الصفحة السابقة
+                            when {
+                                accumulatedDrag <= -threshold -> goToSwipePage(page + 1)
+                                accumulatedDrag >= threshold -> goToSwipePage(page - 1)
+                            }
+                            accumulatedDrag = 0f
+                        }
+                    ) { change, dragAmount ->
+                        change.consume()
+                        accumulatedDrag += dragAmount
+                    }
+                }
         ) {
             if (showChartFull) {
                 PriceChartFullScreen(
