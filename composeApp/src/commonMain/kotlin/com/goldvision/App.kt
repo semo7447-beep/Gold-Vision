@@ -8269,11 +8269,20 @@ private fun NewsRow(dot: Color, text: String, time: String, link: String) {
     }
 }
 
-// ==================== جدول الفيدرالي ====================
+// ==================== جدول أهم المواعيد الاقتصادية ====================
+// FOMC (اجتماعات الفيدرالي) هو التبويب الوحيد ببيانات حقيقية حالياً —
+// بقية التبويبات (NFP/CPI/Core PCE/GDP) بانتظار مواعيد رسمية دقيقة من
+// المستخدم قبل تعبئتها (بلا مصدر بيانات حي من هذه البيئة، ولا يصح
+// اختلاق مواعيد اقتصادية حقيقية)
+private enum class EconomicEventTab(val label: String) {
+    FOMC("FOMC"), NFP("NFP"), CPI("CPI"), CORE_PCE("Core PCE"), GDP("GDP")
+}
+
 @Composable
 private fun FedSchedule(rows: List<FedMeetingRow>) {
+    var selectedTab by remember { mutableStateOf(EconomicEventTab.FOMC) }
     AppCard(
-        title = t("مواعيد اجتماعات الفيدرالي", "Fed Meeting Dates"),
+        title = t("أهم المواعيد ${todayLocalDate().year}", "Key Dates ${todayLocalDate().year}"),
         titleIcon = Icons.Outlined.CalendarMonth,
         // مواعيد الفيدرالي بيانات ثابتة مدمجة بالتطبيق (لا تُجلب من
         // الشبكة)، فلا يوجد لها مصدر خطأ خاص بها — تتبع حالة اتصال
@@ -8281,6 +8290,48 @@ private fun FedSchedule(rows: List<FedMeetingRow>) {
         isLive = GoldMarket.lastError == null,
         modifier = Modifier.fillMaxSize()
     ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            EconomicEventTab.entries.forEach { tab ->
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(if (selectedTab == tab) Gold else Color.Transparent)
+                        .border(1.dp, Border, RoundedCornerShape(6.dp))
+                        .clickable { selectedTab = tab }
+                        .padding(horizontal = 10.dp, vertical = 5.dp)
+                ) {
+                    Text(
+                        tab.label,
+                        color = if (selectedTab == tab) Black else White,
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+        }
+
+        Spacer(Modifier.height(6.dp))
+
+        if (selectedTab != EconomicEventTab.FOMC) {
+            Box(
+                modifier = Modifier.fillMaxWidth().padding(vertical = 20.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    t("قريباً — بانتظار المواعيد الرسمية", "Coming soon — awaiting official dates"),
+                    color = Gray,
+                    fontSize = 10.sp,
+                    textAlign = TextAlign.Center
+                )
+            }
+            return@AppCard
+        }
+
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -8422,6 +8473,7 @@ private fun FedSchedule(rows: List<FedMeetingRow>) {
 @Composable
 private fun FedMeetingsScreen(onBack: () -> Unit) {
     val rows = remember(AppLanguage.current) { upcomingFedMeetings() }
+    var selectedTab by remember { mutableStateOf(EconomicEventTab.FOMC) }
     Column(modifier = Modifier.fillMaxSize()) {
         Row(
             modifier = Modifier
@@ -8439,11 +8491,50 @@ private fun FedMeetingsScreen(onBack: () -> Unit) {
                     .clickable { onBack() }
             )
             Text(
-                t("مواعيد اجتماعات الفيدرالي", "Fed Meeting Dates"),
+                t("أهم المواعيد ${todayLocalDate().year}", "Key Dates ${todayLocalDate().year}"),
                 color = Gold,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold
             )
+        }
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp)
+                .horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            EconomicEventTab.entries.forEach { tab ->
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(if (selectedTab == tab) Gold else Color.Transparent)
+                        .border(1.dp, Border, RoundedCornerShape(8.dp))
+                        .clickable { selectedTab = tab }
+                        .padding(horizontal = 14.dp, vertical = 8.dp)
+                ) {
+                    Text(
+                        tab.label,
+                        color = if (selectedTab == tab) Black else White,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+        }
+
+        Spacer(Modifier.height(10.dp))
+
+        if (selectedTab != EconomicEventTab.FOMC) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text(
+                    t("قريباً — بانتظار المواعيد الرسمية", "Coming soon — awaiting official dates"),
+                    color = Gray,
+                    fontSize = 12.sp
+                )
+            }
+            return
         }
 
         Row(
