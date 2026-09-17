@@ -1106,7 +1106,6 @@ private fun GoldVisionApp() {
                         savedGoldItems = savedGoldItems,
                         onNavigateCalculator = { selectedBottom = 1 },
                         onNavigateChart = { showChartFull = true },
-                        onNavigateNews = { selectedBottom = 2 },
                         onNavigatePortfolio = { selectedBottom = 3 },
                         onNavigateFedSchedule = { showFedSchedule = true }
                     )
@@ -1204,7 +1203,6 @@ private fun HomeScreen(
     savedGoldItems: List<GoldItem>,
     onNavigateCalculator: () -> Unit,
     onNavigateChart: () -> Unit,
-    onNavigateNews: () -> Unit,
     onNavigatePortfolio: () -> Unit,
     onNavigateFedSchedule: () -> Unit
 ) {
@@ -1272,8 +1270,11 @@ private fun HomeScreen(
                 modifier = Modifier
                     .weight(1f)
                     .height(225.dp)
-                    .clickable { onNavigateNews() }
             ) {
+                // بلا .clickable على مستوى البطاقة كاملة عمداً: كل خبر بداخلها
+                // له وجهته الخاصة (فتح رابط المصدر عبر NewsRow)، وكان الضغط
+                // على البطاقة بدلاً من ذلك ينقل لقائمة الأخبار الكاملة بدل
+                // فتح رابط الخبر المضغوط عليه فعلياً — بطلب صريح من المستخدم
                 ImportantNews()
             }
 
