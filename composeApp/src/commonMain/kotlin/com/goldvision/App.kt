@@ -59,7 +59,6 @@ import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.KeyboardArrowDown
 import androidx.compose.material.icons.outlined.KeyboardArrowUp
 import androidx.compose.material.icons.outlined.Language
-import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.MoreHoriz
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Refresh
@@ -1708,23 +1707,12 @@ private fun CalculatorFullScreen(
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                Text(
-                    if (buyMode) t("عرض سعر", "Quotation") else t("عرض سعر للشراء", "Buy Quotation"),
-                    color = Gold,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold
-                )
-                Icon(
-                    imageVector = Icons.Outlined.LocationOn,
-                    contentDescription = null,
-                    tint = Gold,
-                    modifier = Modifier.size(15.dp)
-                )
-            }
+            Text(
+                if (buyMode) t("عرض سعر", "Quotation") else t("عرض سعر للشراء", "Buy Quotation"),
+                color = Gold,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Bold
+            )
         }
 
         if (savedDeals.isNotEmpty()) {
