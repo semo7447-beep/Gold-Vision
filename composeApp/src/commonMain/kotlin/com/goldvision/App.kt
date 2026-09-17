@@ -8278,6 +8278,32 @@ private enum class EconomicEventTab(val label: String) {
     FOMC("FOMC"), NFP("NFP"), CPI("CPI"), CORE_PCE("Core PCE"), GDP("GDP")
 }
 
+// شرح مختصر لكل رمز — معظم المستخدمين لا يعرفون معنى اختصارات مثل
+// "NFP" أو "Core PCE"، فيُعرض هذا الشرح مكان الجدول لحين توفر مواعيد
+// حقيقية له
+private fun economicEventDescription(tab: EconomicEventTab): String = when (tab) {
+    EconomicEventTab.FOMC -> t(
+        "اجتماعات لجنة السوق المفتوحة الفيدرالية — تحدد قرار سعر الفائدة الأمريكي، من أقوى المؤثرات على سعر الذهب",
+        "Federal Open Market Committee meetings — set the US interest rate decision, one of the strongest influences on gold prices"
+    )
+    EconomicEventTab.NFP -> t(
+        "تقرير الوظائف الأمريكية غير الزراعية (Non-Farm Payrolls) — يصدر شهرياً، ويعكس قوة سوق العمل الأمريكي وتأثيره على قرارات الفيدرالي والذهب",
+        "US Non-Farm Payrolls report — released monthly, reflects US labor market strength and influences Fed decisions and gold"
+    )
+    EconomicEventTab.CPI -> t(
+        "مؤشر أسعار المستهلك (Consumer Price Index) — يقيس التضخم الأمريكي شهرياً، من أهم المؤشرات المؤثرة على قرار الفائدة والذهب",
+        "Consumer Price Index — measures US inflation monthly, a key driver of interest rate decisions and gold prices"
+    )
+    EconomicEventTab.CORE_PCE -> t(
+        "مؤشر الإنفاق الاستهلاكي الشخصي الأساسي (Core PCE) — مقياس التضخم المفضَّل لدى الفيدرالي الأمريكي",
+        "Core Personal Consumption Expenditures — the Fed's preferred inflation gauge"
+    )
+    EconomicEventTab.GDP -> t(
+        "الناتج المحلي الإجمالي الأمريكي (Gross Domestic Product) — يصدر ربع سنوي، يعكس قوة الاقتصاد الأمريكي وتأثيره على الدولار والذهب",
+        "US Gross Domestic Product — released quarterly, reflects US economic strength and its effect on the dollar and gold"
+    )
+}
+
 @Composable
 private fun FedSchedule(rows: List<FedMeetingRow>) {
     var selectedTab by remember { mutableStateOf(EconomicEventTab.FOMC) }
@@ -8318,15 +8344,23 @@ private fun FedSchedule(rows: List<FedMeetingRow>) {
         Spacer(Modifier.height(6.dp))
 
         if (selectedTab != EconomicEventTab.FOMC) {
-            Box(
-                modifier = Modifier.fillMaxWidth().padding(vertical = 20.dp),
-                contentAlignment = Alignment.Center
+            Column(
+                modifier = Modifier.fillMaxWidth().padding(vertical = 14.dp, horizontal = 4.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    t("قريباً — بانتظار المواعيد الرسمية", "Coming soon — awaiting official dates"),
+                    economicEventDescription(selectedTab),
                     color = Gray,
-                    fontSize = 10.sp,
+                    fontSize = 9.5.sp,
+                    lineHeight = 14.sp,
                     textAlign = TextAlign.Center
+                )
+                Spacer(Modifier.height(10.dp))
+                Text(
+                    t("قريباً — بانتظار المواعيد الرسمية", "Coming soon — awaiting official dates"),
+                    color = Gold,
+                    fontSize = 9.sp,
+                    fontWeight = FontWeight.Bold
                 )
             }
             return@AppCard
@@ -8527,11 +8561,24 @@ private fun FedMeetingsScreen(onBack: () -> Unit) {
         Spacer(Modifier.height(10.dp))
 
         if (selectedTab != EconomicEventTab.FOMC) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Column(
+                modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Text(
+                    economicEventDescription(selectedTab),
+                    color = Gray,
+                    fontSize = 12.sp,
+                    lineHeight = 18.sp,
+                    textAlign = TextAlign.Center
+                )
+                Spacer(Modifier.height(14.dp))
                 Text(
                     t("قريباً — بانتظار المواعيد الرسمية", "Coming soon — awaiting official dates"),
-                    color = Gray,
-                    fontSize = 12.sp
+                    color = Gold,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold
                 )
             }
             return
