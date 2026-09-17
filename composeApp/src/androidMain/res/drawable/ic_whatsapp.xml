@@ -1,20 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- أيقونة زر مشاركة بطاقة السعر عبر واتساب بالويدجت — إعادة رسم
-     يدوية (بلا نسخ ملف أصلي) تحاكي شكل شعار واتساب المعروف: بطاقة
-     بيضاء بحواف دائرية، حلقة خضراء، ذيل فقاعة دردشة، وسمّاعة هاتف
-     بالمنتصف -->
+     يدوية (بلا نسخ ملف أصلي) تحاكي النسخة الأصفر/الأخضر من شعار
+     واتساب المعروف: بطاقة صفراء بحواف دائرية، حلقة خضراء، ذيل فقاعة
+     دردشة، وسمّاعة هاتف بيضاء بالمنتصف -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="26dp"
-    android:height="26dp"
+    android:width="36dp"
+    android:height="36dp"
     android:viewportWidth="24"
     android:viewportHeight="24">
     <path
-        android:fillColor="#FFFFFF"
+        android:fillColor="#FFC21A"
         android:pathData="M5,2 L19,2 A3,3 0 0 1 22,5 L22,19 A3,3 0 0 1 19,22 L5,22 A3,3 0 0 1 2,19 L2,5 A3,3 0 0 1 5,2 Z" />
     <path
         android:fillColor="#00000000"
         android:strokeColor="#25D366"
-        android:strokeWidth="1.7"
+        android:strokeWidth="1.9"
         android:pathData="M18.2,11.5 C18.2,7.93 15.57,5.3 12,5.3 C8.43,5.3 5.8,7.93 5.8,11.5 C5.8,15.07 8.43,17.7 12,17.7 C15.57,17.7 18.2,15.07 18.2,11.5 Z" />
     <path
         android:fillColor="#25D366"
@@ -27,7 +27,7 @@
         android:translateX="0.5"
         android:translateY="0">
         <path
-            android:fillColor="#25D366"
+            android:fillColor="#FFFFFF"
             android:pathData="M6.62,10.79c1.44,2.83 3.76,5.14 6.59,6.59l2.2,-2.2c0.27,-0.27 0.67,-0.36 1.02,-0.24 1.12,0.37 2.33,0.57 3.57,0.57 0.55,0 1,0.45 1,1L21,20c0,0.55 -0.45,1 -1,1 -9.39,0 -17,-7.61 -17,-17 0,-0.55 0.45,-1 1,-1h3.5c0.55,0 1,0.45 1,1 0,1.25 0.2,2.45 0.57,3.57 0.11,0.35 0.03,0.74 -0.25,1.02l-2.2,2.2z" />
     </group>
 </vector>
