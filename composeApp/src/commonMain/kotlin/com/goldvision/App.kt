@@ -1106,7 +1106,8 @@ private fun GoldVisionApp() {
                         onNavigateCalculator = { selectedBottom = 1 },
                         onNavigateChart = { showChartFull = true },
                         onNavigatePortfolio = { selectedBottom = 3 },
-                        onNavigateFedSchedule = { showFedSchedule = true }
+                        onNavigateFedSchedule = { showFedSchedule = true },
+                        onNavigateNews = { selectedBottom = 2 }
                     )
                     1 -> CalculatorFullScreen(
                         selectedKarat = selectedKarat,
@@ -1203,7 +1204,8 @@ private fun HomeScreen(
     onNavigateCalculator: () -> Unit,
     onNavigateChart: () -> Unit,
     onNavigatePortfolio: () -> Unit,
-    onNavigateFedSchedule: () -> Unit
+    onNavigateFedSchedule: () -> Unit,
+    onNavigateNews: () -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -1269,12 +1271,12 @@ private fun HomeScreen(
                 modifier = Modifier
                     .weight(1f)
                     .height(225.dp)
+                    .clickable { onNavigateNews() }
             ) {
-                // بلا .clickable على مستوى البطاقة كاملة عمداً: كل خبر بداخلها
-                // له وجهته الخاصة (فتح رابط المصدر عبر NewsRow)، وكان الضغط
-                // على البطاقة بدلاً من ذلك ينقل لقائمة الأخبار الكاملة بدل
-                // فتح رابط الخبر المضغوط عليه فعلياً — بطلب صريح من المستخدم
-                ImportantNews()
+                // الضغط بأي مكان بالبطاقة (أو أي خبر بداخلها) ينقل لصفحة "الأخبار"
+                // الكاملة داخل التطبيق، بدل فتح رابط المصدر بالمتصفح — بطلب صريح
+                // من المستخدم
+                ImportantNews(onNavigateNews = onNavigateNews)
             }
 
             Box(
@@ -8255,7 +8257,7 @@ private fun PriceChart(
 
 // ==================== أهم الأخبار ====================
 @Composable
-private fun ImportantNews() {
+private fun ImportantNews(onNavigateNews: () -> Unit) {
     val topThree = GoldNews.articles.take(3)
     AppCard(title = t("أهم الأخبار المؤثرة", "Top News"), isLive = GoldNews.lastError == null, modifier = Modifier.fillMaxSize()) {
         if (topThree.isEmpty()) {
@@ -8266,19 +8268,19 @@ private fun ImportantNews() {
             )
         } else {
             topThree.forEach { article ->
-                NewsRow(dot = Gold, text = article.title, time = article.publishedAt, link = article.link)
+                NewsRow(dot = Gold, text = article.title, time = article.publishedAt, link = article.link, onClick = onNavigateNews)
             }
         }
     }
 }
 
 @Composable
-private fun NewsRow(dot: Color, text: String, time: String, link: String) {
+private fun NewsRow(dot: Color, text: String, time: String, link: String, onClick: (() -> Unit)? = null) {
     val uriHandler = LocalUriHandler.current
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(enabled = link.isNotBlank()) { uriHandler.openUri(link) }
+            .clickable(enabled = onClick != null || link.isNotBlank()) { onClick?.invoke() ?: uriHandler.openUri(link) }
             .padding(vertical = 3.dp),
         horizontalArrangement = Arrangement.spacedBy(6.dp),
         verticalAlignment = Alignment.Top
