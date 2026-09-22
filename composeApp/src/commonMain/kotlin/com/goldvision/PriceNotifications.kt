@@ -102,17 +102,14 @@ internal fun buildGoldNewsNotificationText(articles: List<GoldNewsArticle>): Pai
     return "خبر مؤثر على الذهب" to latest.title
 }
 
-// نص الإشعار (عنوان + محتوى) يعرض سعري الافتتاح والإغلاق الفعليين
-// لعيار 24 وعيار 21 بالريال للجرام، من آخر شمعة يومية حقيقية متوفرة —
-// أو null إن لم تتوفر بيانات كافية بعد (أول تشغيل قبل أي جلب ناجح)
-internal fun buildDailyPriceNotificationText(bars: List<HistoryBar>): Pair<String, String>? {
-    val latest = bars.maxByOrNull { it.date } ?: return null
-    val open24 = usdPerOunceToSarPerGram(latest.open, "24K")
-    val close24 = usdPerOunceToSarPerGram(latest.close, "24K")
-    val open21 = usdPerOunceToSarPerGram(latest.open, "21K")
-    val close21 = usdPerOunceToSarPerGram(latest.close, "21K")
+// نص الإشعار (عنوان + محتوى) يعرض السعر الحالي (الحي) للجرام لعيار 24
+// وعيار 21 بالريال، من آخر سعر ناجح متوفر بـ GoldMarket — أو null إن لم
+// يتوفر سعر لأحد العيارين (أول تشغيل قبل أي جلب ناجح)
+internal fun buildDailyPriceNotificationText(prices: List<KaratPrice>): Pair<String, String>? {
+    val price24 = prices.firstOrNull { it.karat == "24K" }?.price ?: return null
+    val price21 = prices.firstOrNull { it.karat == "21K" }?.price ?: return null
     val title = "أسعار الذهب اليوم"
-    val body = "عيار 24: افتتاح ${fmt(open24, 2, grouped = true)} - إغلاق ${fmt(close24, 2, grouped = true)} ريال\n" +
-        "عيار 21: افتتاح ${fmt(open21, 2, grouped = true)} - إغلاق ${fmt(close21, 2, grouped = true)} ريال"
+    val body = "عيار 24: ${fmt(price24, 2, grouped = true)} ريال للجرام\n" +
+        "عيار 21: ${fmt(price21, 2, grouped = true)} ريال للجرام"
     return title to body
 }

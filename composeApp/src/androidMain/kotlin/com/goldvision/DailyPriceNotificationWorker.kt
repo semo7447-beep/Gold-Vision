@@ -18,8 +18,8 @@ private const val DAILY_PRICE_CHANNEL_ID = "gold_vision_daily_price"
 private const val DAILY_PRICE_NOTIFICATION_ID = 1001
 
 // يعمل حتى لو كان التطبيق مغلقاً تماماً (مُشغَّل من WorkManager): يجلب
-// آخر شمعة يومية حقيقية من مزوّد الأسعار، ويُصدر إشعاراً بسعري
-// الافتتاح والإغلاق الفعليين لعيار 24 وعيار 21
+// السعر الحي الحالي من مزوّد الأسعار، ويُصدر إشعاراً بسعر الجرام
+// الحالي لعيار 24 وعيار 21
 internal class DailyPriceNotificationWorker(
     context: Context,
     params: WorkerParameters
@@ -27,8 +27,8 @@ internal class DailyPriceNotificationWorker(
 
     override suspend fun doWork(): Result {
         return try {
-            GoldHistory.refresh(todayLocalDate())
-            val (title, body) = buildDailyPriceNotificationText(GoldHistory.dailyBarsUsdPerOunce)
+            GoldMarket.refresh()
+            val (title, body) = buildDailyPriceNotificationText(GoldMarket.prices)
                 ?: return Result.success()
             postNotification(title, body)
             Result.success()
