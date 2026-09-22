@@ -113,3 +113,18 @@ internal fun buildDailyPriceNotificationText(prices: List<KaratPrice>): Pair<Str
         "عيار 21: ${fmt(price21, 2, grouped = true)} ريال للجرام"
     return title to body
 }
+
+// نص إشعار أسبوعي (عنوان + محتوى) يعرض سعري الافتتاح والإغلاق الفعليين
+// لعيار 24 وعيار 21 بالريال للجرام، من آخر شمعة يومية حقيقية متوفرة —
+// أو null إن لم تتوفر بيانات كافية بعد (أول تشغيل قبل أي جلب ناجح)
+internal fun buildWeeklyOpenCloseNotificationText(bars: List<HistoryBar>): Pair<String, String>? {
+    val latest = bars.maxByOrNull { it.date } ?: return null
+    val open24 = usdPerOunceToSarPerGram(latest.open, "24K")
+    val close24 = usdPerOunceToSarPerGram(latest.close, "24K")
+    val open21 = usdPerOunceToSarPerGram(latest.open, "21K")
+    val close21 = usdPerOunceToSarPerGram(latest.close, "21K")
+    val title = "أسعار الذهب الأسبوعية"
+    val body = "عيار 24: افتتاح ${fmt(open24, 2, grouped = true)} - إغلاق ${fmt(close24, 2, grouped = true)} ريال\n" +
+        "عيار 21: افتتاح ${fmt(open21, 2, grouped = true)} - إغلاق ${fmt(close21, 2, grouped = true)} ريال"
+    return title to body
+}

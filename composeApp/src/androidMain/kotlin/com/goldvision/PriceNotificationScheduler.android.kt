@@ -7,9 +7,12 @@ import androidx.work.WorkManager
 import java.util.concurrent.TimeUnit
 
 private const val DAILY_PRICE_WORK_NAME = "gold_vision_daily_price_notification"
+private const val WEEKLY_OPEN_CLOSE_WORK_NAME = "gold_vision_weekly_open_close_notification"
 
-// يجدول عملاً دورياً كل ساعة عبر WorkManager يستمر حتى لو أُغلق
-// التطبيق تماماً (بعكس أي مؤقّت داخل التطبيق نفسه فقط، يتوقف بمجرد إغلاقه)
+// يجدول عملين دوريين عبر WorkManager يستمران حتى لو أُغلق التطبيق تماماً
+// (بعكس أي مؤقّت داخل التطبيق نفسه فقط، يتوقف بمجرد إغلاقه): إشعار كل
+// ساعة بسعر الجرام الحالي، وإشعار كل أسبوع بسعري الافتتاح والإغلاق —
+// الاثنان يتبعان نفس تفضيل "سعر الذهب اليومي"
 internal actual object PriceNotificationScheduler {
     private var appContext: Context? = null
 
@@ -22,14 +25,21 @@ internal actual object PriceNotificationScheduler {
         val context = appContext ?: return
         val workManager = WorkManager.getInstance(context)
         if (enabled) {
-            val request = PeriodicWorkRequestBuilder<DailyPriceNotificationWorker>(1, TimeUnit.HOURS).build()
+            val hourlyRequest = PeriodicWorkRequestBuilder<DailyPriceNotificationWorker>(1, TimeUnit.HOURS).build()
             workManager.enqueueUniquePeriodicWork(
                 DAILY_PRICE_WORK_NAME,
                 ExistingPeriodicWorkPolicy.KEEP,
-                request
+                hourlyRequest
+            )
+            val weeklyRequest = PeriodicWorkRequestBuilder<WeeklyOpenCloseNotificationWorker>(7, TimeUnit.DAYS).build()
+            workManager.enqueueUniquePeriodicWork(
+                WEEKLY_OPEN_CLOSE_WORK_NAME,
+                ExistingPeriodicWorkPolicy.KEEP,
+                weeklyRequest
             )
         } else {
             workManager.cancelUniqueWork(DAILY_PRICE_WORK_NAME)
+            workManager.cancelUniqueWork(WEEKLY_OPEN_CLOSE_WORK_NAME)
         }
     }
 }

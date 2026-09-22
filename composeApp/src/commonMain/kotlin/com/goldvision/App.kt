@@ -6890,7 +6890,10 @@ private fun NotificationSettingsScreen(
                 Text(t("سعر الذهب اليومي", "Daily Gold Price"), color = White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    t("إشعار كل ساعة بسعر الجرام الحالي عيار 24 و21", "An hourly notification with the current gram price for 24K and 21K"),
+                    t(
+                        "إشعار كل ساعة بسعر الجرام الحالي عيار 24 و21، وإشعار كل أسبوع بسعري الافتتاح والإغلاق",
+                        "An hourly notification with the current gram price for 24K and 21K, plus a weekly notification with the open and close prices"
+                    ),
                     color = Gray,
                     fontSize = 10.sp,
                     lineHeight = 15.sp
