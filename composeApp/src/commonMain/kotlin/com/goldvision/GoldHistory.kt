@@ -90,18 +90,21 @@ internal object GoldHistory {
     // تحليل دفاعي: شكل استجابة /v1/history غير موثّق بدقة كافية (لم تُتَح
     // تجربته مباشرة من هذه البيئة بسبب حجب الشبكة)، فبدل كائن Kotlin
     // صارم يفشل بالكامل عند أول اختلاف تسمية، نبحث يدوياً عن أول مصفوفة
-    // JSON في الاستجابة (بما فيها "points" الموثَّقة) ثم نقرأ كل شمعة
+    // JSON في الاستجابة (سواء كانت الاستجابة نفسها مصفوفة مباشرة، أو
+    // كائناً يحوي المصفوفة بحقل مثل "points" الموثَّق) ثم نقرأ كل شمعة
     // بمرونة (حروف مختصرة شائعة: d/c/h/l إضافة للأسماء الكاملة). حقل
     // الافتتاح غالباً غير متوفر بهذا المزوّد (شموع close/high/low فقط)،
     // فنشتقه من إغلاق اليوم السابق بعد الترتيب الزمني بدل استبعاد الشمعة
     private fun parseBars(bodyText: String): List<HistoryBar> {
-        val root = Json.parseToJsonElement(bodyText) as? JsonObject ?: return emptyList()
-
-        val arrayCandidateKeys = listOf("points", "bars", "data", "results", "items", "prices", "candles")
-        val barsArray: JsonArray = arrayCandidateKeys
-            .firstNotNullOfOrNull { key -> root[key] as? JsonArray }
-            ?: root.values.filterIsInstance<JsonArray>().firstOrNull()
-            ?: return emptyList()
+        val root = Json.parseToJsonElement(bodyText)
+        val barsArray: JsonArray = root as? JsonArray ?: run {
+            val obj = root as? JsonObject ?: return emptyList()
+            val arrayCandidateKeys = listOf("points", "bars", "data", "results", "items", "prices", "candles")
+            arrayCandidateKeys
+                .firstNotNullOfOrNull { key -> obj[key] as? JsonArray }
+                ?: obj.values.filterIsInstance<JsonArray>().firstOrNull()
+                ?: return emptyList()
+        }
 
         val dateKeys = listOf("d", "t", "date", "time", "timestamp")
         val closeKeys = listOf("c", "close")
