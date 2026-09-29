@@ -13,7 +13,6 @@ import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.jsonPrimitive
 
@@ -34,11 +33,7 @@ import kotlinx.serialization.json.jsonPrimitive
 // الأونصة = 31.1034768 جرام
 private const val TROY_OUNCE_GRAMS = 31.1034768
 
-// 8 ساعات كانت تستهلك 3 طلبات/يوم تلقائياً = 90/شهر تقريباً، يترك هامشاً
-// ضئيلاً جداً (10 طلبات فقط شهرياً) لأي ضغط يدوي على زر التحديث قبل
-// نفاد الحصة الشهرية بالكامل — رُفعت لـ12 ساعة (≈60/شهر تلقائياً) لترك
-// هامش حقيقي وتقليل تكرار مشكلة "غير محدث" الناتجة عن نفاد الحصة
-private const val MIN_AUTO_REFRESH_INTERVAL_MILLIS = 12L * 60 * 60 * 1000 // 12 ساعة
+private const val MIN_AUTO_REFRESH_INTERVAL_MILLIS = 8L * 60 * 60 * 1000 // 8 ساعات
 private const val lastFetchStorageFile = "gold_market_last_fetch.txt"
 private const val lastPricesStorageFile = "gold_market_last_prices.json"
 
@@ -133,10 +128,6 @@ internal object GoldMarket {
             rawBody = client.get("https://www.goldapi.io/api/price/XAU/USD") {
                 header("x-access-token", goldApiKey)
             }.bodyAsText()
-            // GoldAPI.io يرجّع خطأه هو نفسه كحقل "error" داخل جسم JSON عادي
-            // (وليس دائماً برمز HTTP غير 2xx)، أشهرها تجاوز الحصة الشهرية
-            // المجانية (100 طلب) — نلتقطه صراحة بدل تركه يفشل بخطأ تحليل عام
-            extractProviderError(rawBody)?.let { error("مزوّد الأسعار: $it") }
             val usdPerGram24k = extractUsdPerGram24k(rawBody)
                 ?.takeIf { it > 0.0 }
                 ?: error("شكل استجابة غير متوقع من مزوّد الأسعار")
@@ -161,27 +152,11 @@ internal object GoldMarket {
             if (lastError == null) {
                 reportSilentError("GoldMarket.refresh failed: ${e.message} | body: ${rawBody.take(500)}")
             }
-            // خطأ صريح من المزوّد نفسه (غالباً تجاوز الحصة الشهرية) يُعرض
-            // كما هو بدل الرسالة العامة، حتى يتضح السبب الحقيقي بدل الظهور
-            // كـ"غير محدث" غامض بلا تفسير
-            lastError = e.message?.takeIf { it.startsWith("مزوّد الأسعار: ") }
-                ?: "تعذر تحديث الأسعار العالمية، يتم عرض آخر سعر متوفر"
+            lastError = "تعذر تحديث الأسعار العالمية، يتم عرض آخر سعر متوفر"
         } finally {
             isLoading = false
         }
     }
-}
-
-// GoldAPI.io يرجّع رسالة الخطأ (تجاوز الحصة الشهرية، مفتاح غير صالح...)
-// كحقل "error" داخل جسم JSON عادي — يُقرأ صراحة قبل محاولة تفسير الجسم
-// كسعر، حتى يظهر سبب الفشل الحقيقي بدل "شكل استجابة غير متوقع" غامض
-private fun extractProviderError(bodyText: String): String? {
-    val root = try {
-        Json.parseToJsonElement(bodyText) as? JsonObject
-    } catch (e: Exception) {
-        null
-    } ?: return null
-    return root["error"]?.jsonPrimitive?.contentOrNull
 }
 
 // شكل استجابة GoldAPI.io موثّق وثابت (خلاف المزوّدين السابقين): يُحلَّل
