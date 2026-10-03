@@ -74,6 +74,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDatePickerState
@@ -474,7 +475,12 @@ fun App() {
             color = Black
         ) {
             val layoutDirection = if (AppLanguage.current == AppLang.EN) LayoutDirection.Ltr else LayoutDirection.Rtl
-            CompositionLocalProvider(LocalLayoutDirection provides layoutDirection) {
+            // وزن خط افتراضي أثقل (Medium بدل Normal) لكل نصوص التطبيق اللي
+            // ما تحدد وزنها بنفسها — أوضح للقراءة، والعناوين Bold تبقى كما هي
+            CompositionLocalProvider(
+                LocalLayoutDirection provides layoutDirection,
+                LocalTextStyle provides LocalTextStyle.current.copy(fontWeight = FontWeight.Medium)
+            ) {
                 LaunchedEffect(Unit) { seedDefaultPriceAlertsIfNeeded() }
                 var showOnboarding by remember { mutableStateOf(!hasSeenOnboarding()) }
                 if (showOnboarding) {
@@ -2923,7 +2929,7 @@ private fun PriceChartFullScreen(
                         periodLabel(period),
                         color = if (selectedPeriod == period) Black else White,
                         fontSize = 12.sp,
-                        fontWeight = if (selectedPeriod == period) FontWeight.Bold else FontWeight.Normal
+                        fontWeight = if (selectedPeriod == period) FontWeight.Bold else FontWeight.Medium
                     )
                 }
             }
@@ -3571,7 +3577,7 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawAxisLabel(
 ) {
     val layout = textMeasurer.measure(
         text = text,
-        style = TextStyle(color = color, fontSize = fontSize)
+        style = TextStyle(color = color, fontSize = fontSize, fontWeight = FontWeight.Medium)
     )
     val topLeftX = if (centered) x - layout.size.width / 2f else x
     val topLeftY = y - layout.size.height / 2f
@@ -7594,6 +7600,7 @@ private fun NumericInputField(
             textStyle = TextStyle(
                 color = White,
                 fontSize = fontSize,
+                fontWeight = FontWeight.Medium,
                 textAlign = TextAlign.Center
             ),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
@@ -7686,7 +7693,7 @@ private fun SelectableTextField(
                 if (new.text != value) onValueChange(new.text)
             },
             singleLine = true,
-            textStyle = TextStyle(color = White, fontSize = fontSize, textDirection = TextDirection.Content),
+            textStyle = TextStyle(color = White, fontSize = fontSize, fontWeight = FontWeight.Medium, textDirection = TextDirection.Content),
             cursorBrush = SolidColor(Gold),
             keyboardOptions = keyboardOptions,
             visualTransformation = visualTransformation,
@@ -7811,7 +7818,7 @@ private fun PriceChart(
                         periodLabel(period),
                         color = if (selectedPeriod == period) Black else White,
                         fontSize = 10.sp,
-                        fontWeight = if (selectedPeriod == period) FontWeight.Bold else FontWeight.Normal
+                        fontWeight = if (selectedPeriod == period) FontWeight.Bold else FontWeight.Medium
                     )
                 }
             }
@@ -8804,7 +8811,7 @@ private fun BottomNav(
                     tab.first,
                     color = if (active) Black else White,
                     fontSize = 11.sp,
-                    fontWeight = if (active) FontWeight.Bold else FontWeight.Normal,
+                    fontWeight = if (active) FontWeight.Bold else FontWeight.Medium,
                     maxLines = 1
                 )
             }
