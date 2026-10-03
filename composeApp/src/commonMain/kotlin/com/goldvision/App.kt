@@ -127,6 +127,7 @@ import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.goldvision.resources.Res
@@ -723,6 +724,7 @@ private fun GoldVisionApp() {
     var editingGoldItemIndex by remember { mutableStateOf<Int?>(null) }
     val savedDeals = remember { mutableStateListOf<SavedDeal>() }
     val savedGoldItems = remember { mutableStateListOf<GoldItem>().apply { addAll(loadSavedGoldItems()) } }
+    var prefillGoldItem by remember { mutableStateOf<GoldItem?>(null) }
     var userProfile by remember { mutableStateOf(loadUserProfile()) }
     var showProfileScreen by remember { mutableStateOf(false) }
     var showPrivacyPolicy by remember { mutableStateOf(false) }
@@ -866,6 +868,7 @@ private fun GoldVisionApp() {
             showAddGoldItem -> {
                 showAddGoldItem = false
                 editingGoldItemIndex = null
+                prefillGoldItem = null
             }
             showProfileScreen -> showProfileScreen = false
             showAuthScreen -> {
@@ -894,6 +897,7 @@ private fun GoldVisionApp() {
         showChartFull = false
         showAddGoldItem = false
         editingGoldItemIndex = null
+        prefillGoldItem = null
         showProfileScreen = false
         showAuthScreen = false
         showPrivacyPolicy = false
@@ -974,9 +978,11 @@ private fun GoldVisionApp() {
                 val editingIndex = editingGoldItemIndex
                 AddGoldItemScreen(
                     editingItem = editingIndex?.let { savedGoldItems.getOrNull(it) },
+                    prefillItem = prefillGoldItem,
                     onBack = {
                         showAddGoldItem = false
                         editingGoldItemIndex = null
+                        prefillGoldItem = null
                     },
                     onSave = { item ->
                         if (editingIndex != null && editingIndex in savedGoldItems.indices) {
@@ -986,8 +992,13 @@ private fun GoldVisionApp() {
                         }
                         persistGoldItems(savedGoldItems)
                         uploadPortfolioIfSignedIn(savedGoldItems, marketScope)
+                        // الحفظ القادم من "عرض سعر" ينقل للمحفظة ليرى القطعة فوراً
+                        if (prefillGoldItem != null) {
+                            selectedBottom = 3
+                        }
                         showAddGoldItem = false
                         editingGoldItemIndex = null
+                        prefillGoldItem = null
                     },
                     onDelete = if (editingIndex != null) {
                         {
@@ -998,6 +1009,7 @@ private fun GoldVisionApp() {
                         uploadPortfolioIfSignedIn(savedGoldItems, marketScope)
                             showAddGoldItem = false
                             editingGoldItemIndex = null
+                            prefillGoldItem = null
                         }
                     } else null
                 )
@@ -1095,7 +1107,11 @@ private fun GoldVisionApp() {
                         initialManufacturing = manufacturing,
                         savedDeals = savedDeals,
                         onBack = { selectedBottom = 0 },
-                        onSaveDeal = { deal -> savedDeals.add(0, deal) }
+                        onSaveDeal = { deal -> savedDeals.add(0, deal) },
+                        onSaveToPortfolio = { item ->
+                            prefillGoldItem = item
+                            showAddGoldItem = true
+                        }
                     )
                     2 -> NewsScreen(onBack = { selectedBottom = 0 })
                     3 -> PortfolioScreen(
@@ -1396,7 +1412,8 @@ private fun DealEvaluatorScreen(
     initialManufacturing: Double,
     savedDeals: List<SavedDeal>,
     onBack: () -> Unit,
-    onSaveDeal: (SavedDeal) -> Unit
+    onSaveDeal: (SavedDeal) -> Unit,
+    onSaveToPortfolio: (GoldItem) -> Unit
 ) {
     var buyMode by remember { mutableStateOf(true) }
     var karat by remember { mutableStateOf(initialKarat) }
@@ -1826,28 +1843,28 @@ private fun DealEvaluatorScreen(
 
                 Spacer(Modifier.height(4.dp))
                 if (!hasShopOffer) {
-                    Text(t("أدخل عرض المحل لتقييم الصفقة", "Enter the shop offer to evaluate the deal"), color = Gray, fontSize = 10.sp)
+                    Text(t("أدخل عرض المحل لتقييم الصفقة", "Enter the shop offer to evaluate the deal"), color = Gray, fontSize = 13.sp)
                 } else if (savings >= 0) {
                     Text(
                         if (buyMode) t("تدفع أقل من العادل", "You pay less than fair") else t("تحصل على أكثر من العادل", "You get more than fair"),
-                        color = Green, fontSize = 10.sp, fontWeight = FontWeight.Bold
+                        color = Green, fontSize = 13.sp, fontWeight = FontWeight.Bold
                     )
                     Text(
                         if (buyMode) t("وفرت ${fmt(savings, 2, grouped = true)} ريال", "You saved ${fmt(savings, 2, grouped = true)} SAR")
                         else t("زيادة ${fmt(savings, 2, grouped = true)} ريال لصالحك", "${fmt(savings, 2, grouped = true)} SAR in your favor"),
                         color = Green,
-                        fontSize = 10.sp
+                        fontSize = 13.sp
                     )
                 } else {
                     Text(
                         if (buyMode) t("تدفع أكثر من العادل", "You pay more than fair") else t("تحصل على أقل من العادل", "You get less than fair"),
-                        color = Red, fontSize = 10.sp, fontWeight = FontWeight.Bold
+                        color = Red, fontSize = 13.sp, fontWeight = FontWeight.Bold
                     )
                     Text(
                         if (buyMode) t("زيادة ${fmt(-savings, 2, grouped = true)} ريال", "Extra ${fmt(-savings, 2, grouped = true)} SAR")
                         else t("نقص ${fmt(-savings, 2, grouped = true)} ريال", "Short by ${fmt(-savings, 2, grouped = true)} SAR"),
                         color = Red,
-                        fontSize = 10.sp
+                        fontSize = 13.sp
                     )
                 }
                 if (buyMode && shopPriceWithTax > 0) {
@@ -1857,7 +1874,7 @@ private fun DealEvaluatorScreen(
                             "Above gold value: ${fmt(shopPriceWithTax - fairBeforeVat, 2, grouped = true)} SAR (incl. ${fmt(fairManufacturing, 2, grouped = true)} SAR workmanship)"
                         ),
                         color = Gray,
-                        fontSize = 10.sp
+                        fontSize = 13.sp
                     )
                 }
 
@@ -1875,24 +1892,27 @@ private fun DealEvaluatorScreen(
                 )
                 Spacer(Modifier.height(10.dp))
 
-                CalculatorRow(t("الإجمالي (بدون ضريبة)", "Total (excl. tax)"), "${fmt(fairSubtotal, 2, grouped = true)} ${t("ريال", "SAR")}")
-                CalculatorRow(t("الإجمالي (شامل الضريبة)", "Total (incl. tax)"), "${fmt(fairTotal, 2, grouped = true)} ${t("ريال", "SAR")}")
-                CalculatorRow(t("سعر الذهب", "Gold price"), "${fmt(fairBeforeVat, 2, grouped = true)} ${t("ريال", "SAR")}")
+                CalculatorRow(t("الإجمالي (بدون ضريبة)", "Total (excl. tax)"), "${fmt(fairSubtotal, 2, grouped = true)} ${t("ريال", "SAR")}", fontSize = 13.sp)
+                CalculatorRow(t("الإجمالي (شامل الضريبة)", "Total (incl. tax)"), "${fmt(fairTotal, 2, grouped = true)} ${t("ريال", "SAR")}", fontSize = 13.sp)
+                CalculatorRow(t("سعر الذهب", "Gold price"), "${fmt(fairBeforeVat, 2, grouped = true)} ${t("ريال", "SAR")}", fontSize = 13.sp)
                 CalculatorRow(
                     t("المصنعية", "Workmanship"),
                     if (buyMode) "${fmt(fairManufacturing, 2, grouped = true)} ${t("ريال", "SAR")} (${fmt(manufacturing, 2)} ${t("/جم", "/g")})"
-                    else "0.00 ${t("ريال", "SAR")}"
+                    else "0.00 ${t("ريال", "SAR")}",
+                    fontSize = 13.sp
                 )
                 // ربح المحل: بالشراء ما يأخذه فوق العادل، وبالبيع ما يخصمه منه
                 val shopMargin = if (buyMode) shopPriceWithTax - fairTotal else fairTotal - shopPriceWithTax
                 val shopMarginPerGram = if (weight > 0) shopMargin / weight else 0.0
                 CalculatorRow(
                     t("ربح المحل", "Shop profit"),
-                    if (hasShopOffer) "${fmt(shopMargin, 2, grouped = true)} ${t("ريال", "SAR")} (${fmt(shopMarginPerGram, 2)} ${t("/جم", "/g")})" else "—"
+                    if (hasShopOffer) "${fmt(shopMargin, 2, grouped = true)} ${t("ريال", "SAR")} (${fmt(shopMarginPerGram, 2)} ${t("/جم", "/g")})" else "—",
+                    fontSize = 13.sp
                 )
                 CalculatorRow(
                     if (isDealTaxExempt) t("ضريبة القيمة المضافة (معفى)", "VAT (exempt)") else t("ضريبة القيمة المضافة (${fmt(dealTaxPercent, 0)}%)", "VAT (${fmt(dealTaxPercent, 0)}%)"),
-                    "${fmt(fairVat, 2, grouped = true)} ${t("ريال", "SAR")}"
+                    "${fmt(fairVat, 2, grouped = true)} ${t("ريال", "SAR")}",
+                    fontSize = 13.sp
                 )
             }
 
@@ -1922,16 +1942,47 @@ private fun DealEvaluatorScreen(
 
             Spacer(Modifier.height(14.dp))
 
+            // يفتح "إضافة قطعة" معبّأة بالصفقة الحالية (السعر المدفوع فعلاً =
+            // عرض المحل إن أُدخل، وإلا السعر العادل)، فتُحفظ قطعةً بالمحفظة
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(48.dp)
                     .clip(RoundedCornerShape(10.dp))
                     .background(Gold)
-                    .clickable { showSaveDialog = true },
+                    .clickable {
+                        onSaveToPortfolio(
+                            GoldItem(
+                                name = "",
+                                emoji = pieceEmojiOptions.first().first,
+                                karat = karat,
+                                weightGrams = weight,
+                                purchasePriceWithTax = if (shopPrice > 0) shopPriceWithTax else fairTotal,
+                                manufacturingPerGram = if (buyMode) manufacturing else 0.0,
+                                purchaseDate = todayDateText(),
+                                notes = shopNote,
+                                isSold = !buyMode
+                            )
+                        )
+                    },
                 contentAlignment = Alignment.Center
             ) {
                 Text(t("حفظ في المحفظة", "Save to Portfolio"), color = Black, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+            }
+
+            Spacer(Modifier.height(10.dp))
+
+            // يحفظ السعر فقط بقائمة "الأسعار المحفوظة" أدناه (لا قطعةً بالمحفظة)
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .border(1.dp, Gold, RoundedCornerShape(10.dp))
+                    .clickable { showSaveDialog = true },
+                contentAlignment = Alignment.Center
+            ) {
+                Text(t("حفظ السعر", "Save Price"), color = Gold, fontSize = 13.sp, fontWeight = FontWeight.Bold)
             }
 
             if (savedDeals.isNotEmpty()) {
@@ -2227,10 +2278,13 @@ private fun AddGoldItemScreen(
     editingItem: GoldItem?,
     onBack: () -> Unit,
     onSave: (GoldItem) -> Unit,
-    onDelete: (() -> Unit)? = null
+    onDelete: (() -> Unit)? = null,
+    prefillItem: GoldItem? = null
 ) {
     val isEditing = editingItem != null
-    val initialValues = editingItem
+    // عند الحفظ من "عرض سعر" (prefillItem) تُملأ الحقول بنفس قيم الصفقة،
+    // لكن هذه تبقى "إضافة" جديدة وليست تعديلاً — بلا زر حذف
+    val initialValues = editingItem ?: prefillItem
     var showDeleteConfirm by remember { mutableStateOf(false) }
     var name by remember { mutableStateOf(initialValues?.name ?: "") }
     var selectedEmoji by remember { mutableStateOf(initialValues?.emoji ?: pieceEmojiOptions.first().first) }
@@ -7657,7 +7711,8 @@ private fun SelectableTextField(
 private fun CalculatorRow(
     label: String,
     value: String,
-    valueColor: Color = White
+    valueColor: Color = White,
+    fontSize: TextUnit = 10.sp
 ) {
     Row(
         modifier = Modifier
@@ -7665,7 +7720,7 @@ private fun CalculatorRow(
             .padding(vertical = 2.dp),
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Text(label, color = White, fontSize = 10.sp)
+        Text(label, color = White, fontSize = fontSize)
         // اتجاه الفقرة مفروض LTR صراحة (TextDirection.Ltr) بدل الاعتماد
         // على الاتجاه المحيط — نص مختلط كـ"350.00 ريال (35.00 /جم)"
         // يحتوي رقماً إنجليزياً وكلمة عربية داخل قوس واحد، وخوارزمية
@@ -7675,7 +7730,7 @@ private fun CalculatorRow(
         Text(
             value,
             color = valueColor,
-            fontSize = 10.sp,
+            fontSize = fontSize,
             fontWeight = FontWeight.Bold,
             style = TextStyle(textDirection = TextDirection.Ltr)
         )
