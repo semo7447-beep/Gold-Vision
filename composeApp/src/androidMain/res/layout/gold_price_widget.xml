@@ -24,7 +24,8 @@
             android:layout_weight="1"
             android:text=""
             android:textColor="#B8B8B8"
-            android:textSize="11sp" />
+            android:textSize="11sp"
+            android:fontFamily="sans-serif-medium" />
         <TextView
             android:id="@+id/widget_title"
             android:layout_width="wrap_content"
@@ -78,7 +79,8 @@
             android:layout_height="wrap_content"
             android:text=""
             android:textColor="#B8B8B8"
-            android:textSize="11sp" />
+            android:textSize="11sp"
+            android:fontFamily="sans-serif-medium" />
     </LinearLayout>
 
     <FrameLayout
@@ -112,7 +114,8 @@
             android:layout_marginEnd="6dp"
             android:text="ريال/جرام"
             android:textColor="#B8B8B8"
-            android:textSize="10sp" />
+            android:textSize="10sp"
+            android:fontFamily="sans-serif-medium" />
         <TextView
             android:id="@+id/widget_big_price"
             android:layout_width="wrap_content"
@@ -275,7 +278,8 @@
                     android:layout_weight="1"
                     android:text="افتتاح"
                     android:textColor="#B8B8B8"
-                    android:textSize="11sp" />
+                    android:textSize="11sp"
+                    android:fontFamily="sans-serif-medium" />
                 <TextView
                     android:id="@+id/widget_oc21_open"
                     android:layout_width="wrap_content"
@@ -297,7 +301,8 @@
                     android:layout_weight="1"
                     android:text="إغلاق"
                     android:textColor="#B8B8B8"
-                    android:textSize="11sp" />
+                    android:textSize="11sp"
+                    android:fontFamily="sans-serif-medium" />
                 <TextView
                     android:id="@+id/widget_oc21_close"
                     android:layout_width="wrap_content"
@@ -359,7 +364,8 @@
                     android:layout_weight="1"
                     android:text="افتتاح"
                     android:textColor="#B8B8B8"
-                    android:textSize="11sp" />
+                    android:textSize="11sp"
+                    android:fontFamily="sans-serif-medium" />
                 <TextView
                     android:id="@+id/widget_oc24_open"
                     android:layout_width="wrap_content"
@@ -381,7 +387,8 @@
                     android:layout_weight="1"
                     android:text="إغلاق"
                     android:textColor="#B8B8B8"
-                    android:textSize="11sp" />
+                    android:textSize="11sp"
+                    android:fontFamily="sans-serif-medium" />
                 <TextView
                     android:id="@+id/widget_oc24_close"
                     android:layout_width="wrap_content"
