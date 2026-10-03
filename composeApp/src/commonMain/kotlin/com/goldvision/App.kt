@@ -852,7 +852,8 @@ private fun GoldVisionApp() {
     // "شراء" قطعة من المحل حيث تُضاف المصنعية والضريبة كاملة
     val manufacturingTotal = if (buyMode) manufacturing * weight else 0.0
     val isCalculatorTaxExempt = !buyMode || selectedKarat == "24K"
-    val vat = if (isCalculatorTaxExempt) 0.0 else (beforeVat + manufacturingTotal) * (taxPercent / 100.0)
+    // الضريبة على قيمة الذهب فقط — المصنعية بلا ضريبة
+    val vat = if (isCalculatorTaxExempt) 0.0 else beforeVat * (taxPercent / 100.0)
     val total = beforeVat + manufacturingTotal + vat
 
     // يربط زر/إيماءة الرجوع في النظام بنفس تنقّل زر الرجوع داخل التطبيق:
@@ -1919,10 +1920,12 @@ private fun DealEvaluatorScreen(
     val fairBeforeVat = karatPrice * weight
     val fairManufacturing = if (buyMode) manufacturing * weight else 0.0
     val fairSubtotal = fairBeforeVat + fairManufacturing
-    val fairVat = if (isDealTaxExempt) 0.0 else fairSubtotal * (dealTaxPercent / 100.0)
+    // الضريبة على قيمة الذهب فقط — المصنعية بلا ضريبة
+    val fairVat = if (isDealTaxExempt) 0.0 else fairBeforeVat * (dealTaxPercent / 100.0)
     val fairTotal = fairSubtotal + fairVat
 
-    val shopPriceWithTax = if (isDealTaxExempt || includingTax) shopPrice else shopPrice * (1 + dealTaxPercent / 100.0)
+    // عرض بدون ضريبة: تُضاف ضريبة قيمة الذهب فقط، لا على كامل العرض
+    val shopPriceWithTax = if (isDealTaxExempt || includingTax) shopPrice else shopPrice + fairVat
     // بالبيع العرض الأعلى من المحل هو الأفضل لك، فتنعكس المقارنة — بحيث
     // يبقى ratio الأصغر = الأفضل دائماً، ويعمل المؤشر والتقييم بنفس المنطق
     val savings = if (buyMode) fairTotal - shopPriceWithTax else shopPriceWithTax - fairTotal
@@ -2298,18 +2301,23 @@ private fun DealEvaluatorScreen(
                     .background(CardBlack)
                     .padding(14.dp)
             ) {
-                Row(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(6.dp))
-                        .background(tierColor.copy(alpha = 0.15f))
-                        .padding(horizontal = 8.dp, vertical = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Text(tierLabel, color = tierColor, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                }
+                // بلا عرض محل مُدخل لا يوجد ما يُقيَّم — كان يظهر "صفقة ممتازة
+                // / وفرت كامل المبلغ" وربح محل سالب بشكل مضلل
+                val hasShopOffer = shopPrice > 0
+                if (hasShopOffer) {
+                    Row(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(tierColor.copy(alpha = 0.15f))
+                            .padding(horizontal = 8.dp, vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Text(tierLabel, color = tierColor, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                    }
 
-                Spacer(Modifier.height(10.dp))
+                    Spacer(Modifier.height(10.dp))
+                }
 
                 Text(t("السعر العادل (شامل الضريبة)", "Fair price (incl. tax)"), color = Gray, fontSize = 11.sp)
                 Text(
@@ -2320,7 +2328,9 @@ private fun DealEvaluatorScreen(
                 )
 
                 Spacer(Modifier.height(4.dp))
-                if (savings >= 0) {
+                if (!hasShopOffer) {
+                    Text(t("أدخل عرض المحل لتقييم الصفقة", "Enter the shop offer to evaluate the deal"), color = Gray, fontSize = 10.sp)
+                } else if (savings >= 0) {
                     Text(
                         if (buyMode) t("تدفع أقل من العادل", "You pay less than fair") else t("تحصل على أكثر من العادل", "You get more than fair"),
                         color = Green, fontSize = 10.sp, fontWeight = FontWeight.Bold
@@ -2354,9 +2364,10 @@ private fun DealEvaluatorScreen(
                     )
                 }
 
-                Spacer(Modifier.height(12.dp))
-
-                DealGauge(ratio = ratio, poorLabel = if (buyMode) t("مرتفع", "High") else t("منخفض", "Low"))
+                if (hasShopOffer) {
+                    Spacer(Modifier.height(12.dp))
+                    DealGauge(ratio = ratio, poorLabel = if (buyMode) t("مرتفع", "High") else t("منخفض", "Low"))
+                }
 
                 Spacer(Modifier.height(14.dp))
                 Box(
@@ -2380,7 +2391,7 @@ private fun DealEvaluatorScreen(
                 val shopMarginPerGram = if (weight > 0) shopMargin / weight else 0.0
                 CalculatorRow(
                     t("ربح المحل", "Shop profit"),
-                    "${fmt(shopMargin, 2, grouped = true)} ${t("ريال", "SAR")} (${fmt(shopMarginPerGram, 2)} ${t("/جم", "/g")})"
+                    if (hasShopOffer) "${fmt(shopMargin, 2, grouped = true)} ${t("ريال", "SAR")} (${fmt(shopMarginPerGram, 2)} ${t("/جم", "/g")})" else "—"
                 )
                 CalculatorRow(
                     if (isDealTaxExempt) t("ضريبة القيمة المضافة (معفى)", "VAT (exempt)") else t("ضريبة القيمة المضافة (${fmt(dealTaxPercent, 0)}%)", "VAT (${fmt(dealTaxPercent, 0)}%)"),
@@ -2695,13 +2706,16 @@ private fun AddGoldItemScreen(
     val currentBeforeVat = karatPrice * weight
     val currentManufacturing = manufacturing * weight
     val currentSubtotal = currentBeforeVat + currentManufacturing
-    val currentVat = if (isTaxExempt) 0.0 else currentSubtotal * 0.15
+    // الضريبة على قيمة الذهب فقط — المصنعية بلا ضريبة
+    val currentVat = if (isTaxExempt) 0.0 else currentBeforeVat * 0.15
     val currentTotal = currentSubtotal + currentVat
 
+    // سعر شراء بدون ضريبة: تُضاف الضريبة على جزء الذهب منه فقط (بعد
+    // خصم المصنعية)، لأن المصنعية بلا ضريبة
     val purchasePriceWithTax = when {
         isTaxExempt -> purchasePrice
         includingTax -> purchasePrice
-        else -> purchasePrice * 1.15
+        else -> purchasePrice + (purchasePrice - currentManufacturing).coerceAtLeast(0.0) * 0.15
     }
     val profit = currentTotal - purchasePriceWithTax
     val profitPercent = if (purchasePriceWithTax > 0) (profit / purchasePriceWithTax) * 100.0 else 0.0
@@ -4653,13 +4667,14 @@ private fun persistUserProfile(profile: UserProfile) {
     AppStorage.writeText(userProfileStorageFile, Json.encodeToString(profile))
 }
 
-// يحسب القيمة الحالية لقطعة بسعر السوق الحي (ذهب + مصنعية + ضريبة، معفى لعيار 24)
+// يحسب القيمة الحالية لقطعة بسعر السوق الحي (ذهب + مصنعية + ضريبة على
+// الذهب فقط — المصنعية بلا ضريبة، وعيار 24 معفى)
 private fun GoldItem.currentValue(): Double {
     val pricePerGram = GoldMarket.prices.first { it.karat == karat }.price
     val beforeVat = pricePerGram * weightGrams
     val manufacturingValue = manufacturingPerGram * weightGrams
     val subtotal = beforeVat + manufacturingValue
-    val vat = if (karat == "24K") 0.0 else subtotal * 0.15
+    val vat = if (karat == "24K") 0.0 else beforeVat * 0.15
     return subtotal + vat
 }
 

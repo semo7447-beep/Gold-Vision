@@ -67,7 +67,7 @@ private fun goldItemCurrentValue(item: GoldItem): Double {
     val beforeVat = pricePerGram * item.weightGrams
     val manufacturingValue = item.manufacturingPerGram * item.weightGrams
     val subtotal = beforeVat + manufacturingValue
-    val vat = if (item.karat == "24K") 0.0 else subtotal * 0.15
+    val vat = if (item.karat == "24K") 0.0 else beforeVat * 0.15
     return subtotal + vat
 }
 
