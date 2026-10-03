@@ -716,16 +716,13 @@ private fun GoldVisionApp() {
     var buyMode by remember { mutableStateOf(true) }
     var weight by remember { mutableDoubleStateOf(0.0) }
     var manufacturing by remember { mutableDoubleStateOf(0.0) }
-    var selectedCountryTax by remember { mutableStateOf(countryTaxOptions.first()) }
-    var taxPercent by remember { mutableDoubleStateOf(countryTaxOptions.first().vatPercent) }
+    val taxPercent = countryTaxOptions.first().vatPercent
     var selectedBottom by remember { mutableIntStateOf(0) }
     var showChartFull by remember { mutableStateOf(false) }
-    var showDealEvaluator by remember { mutableStateOf(false) }
     var showAddGoldItem by remember { mutableStateOf(false) }
     var editingGoldItemIndex by remember { mutableStateOf<Int?>(null) }
     val savedDeals = remember { mutableStateListOf<SavedDeal>() }
     val savedGoldItems = remember { mutableStateListOf<GoldItem>().apply { addAll(loadSavedGoldItems()) } }
-    var prefillGoldItem by remember { mutableStateOf<GoldItem?>(null) }
     var userProfile by remember { mutableStateOf(loadUserProfile()) }
     var showProfileScreen by remember { mutableStateOf(false) }
     var showPrivacyPolicy by remember { mutableStateOf(false) }
@@ -860,17 +857,15 @@ private fun GoldVisionApp() {
     // يقفل أي شاشة مفتوحة فوق التبويبات، أو يرجع لتبويب "الرئيسية" —
     // بنفس ترتيب أولوية العرض أدناه بالضبط. لو ما فيه شيء مفتوح، الزر/
     // الإيماءة تترك للنظام (يخرج من التطبيق كالمعتاد)
-    val hasOverlayScreen = showChartFull || showDealEvaluator || showAddGoldItem ||
+    val hasOverlayScreen = showChartFull || showAddGoldItem ||
         showProfileScreen || showAuthScreen || showPrivacyPolicy || showNotificationSettings ||
         showFedSchedule || showSharePriceCard || selectedBottom != 0
     BackHandler(enabled = hasOverlayScreen) {
         when {
             showChartFull -> showChartFull = false
-            showDealEvaluator -> showDealEvaluator = false
             showAddGoldItem -> {
                 showAddGoldItem = false
                 editingGoldItemIndex = null
-                prefillGoldItem = null
             }
             showProfileScreen -> showProfileScreen = false
             showAuthScreen -> {
@@ -897,7 +892,6 @@ private fun GoldVisionApp() {
     // أصلاً في BottomNav.onSelected أدناه)
     fun closeOverlayScreens() {
         showChartFull = false
-        showDealEvaluator = false
         showAddGoldItem = false
         editingGoldItemIndex = null
         showProfileScreen = false
@@ -976,23 +970,13 @@ private fun GoldVisionApp() {
                     selectedKarat = selectedKarat,
                     onBack = { showChartFull = false }
                 )
-            } else if (showDealEvaluator) {
-                DealEvaluatorScreen(
-                    initialKarat = selectedKarat,
-                    initialWeight = weight,
-                    initialManufacturing = manufacturing,
-                    onBack = { showDealEvaluator = false },
-                    onSaveDeal = { deal -> savedDeals.add(0, deal) }
-                )
             } else if (showAddGoldItem) {
                 val editingIndex = editingGoldItemIndex
                 AddGoldItemScreen(
                     editingItem = editingIndex?.let { savedGoldItems.getOrNull(it) },
-                    prefillItem = prefillGoldItem,
                     onBack = {
                         showAddGoldItem = false
                         editingGoldItemIndex = null
-                        prefillGoldItem = null
                     },
                     onSave = { item ->
                         if (editingIndex != null && editingIndex in savedGoldItems.indices) {
@@ -1002,14 +986,8 @@ private fun GoldVisionApp() {
                         }
                         persistGoldItems(savedGoldItems)
                         uploadPortfolioIfSignedIn(savedGoldItems, marketScope)
-                        // الحفظ القادم من الحاسبة (prefillGoldItem) ينقل تلقائياً
-                        // إلى شاشة المحفظة، حتى يرى المستخدم القطعة فور حفظها
-                        if (prefillGoldItem != null) {
-                            selectedBottom = 3
-                        }
                         showAddGoldItem = false
                         editingGoldItemIndex = null
-                        prefillGoldItem = null
                     },
                     onDelete = if (editingIndex != null) {
                         {
@@ -1020,7 +998,6 @@ private fun GoldVisionApp() {
                         uploadPortfolioIfSignedIn(savedGoldItems, marketScope)
                             showAddGoldItem = false
                             editingGoldItemIndex = null
-                            prefillGoldItem = null
                         }
                     } else null
                 )
@@ -1110,30 +1087,15 @@ private fun GoldVisionApp() {
                         onNavigateFedSchedule = { showFedSchedule = true },
                         onNavigateNews = { selectedBottom = 2 }
                     )
-                    1 -> CalculatorFullScreen(
-                        selectedKarat = selectedKarat,
-                        buyMode = buyMode,
-                        weight = weight,
-                        manufacturing = manufacturing,
-                        beforeVat = beforeVat,
-                        vat = vat,
-                        total = total,
-                        selectedCountryTax = selectedCountryTax,
-                        onCountrySelected = { selectedCountryTax = it },
-                        taxPercent = taxPercent,
-                        onTaxPercentChanged = { taxPercent = it },
-                        isTaxExempt = isCalculatorTaxExempt,
-                        onBuyModeChanged = { buyMode = it },
-                        onKaratChanged = { selectedKarat = it },
-                        onWeightChanged = { weight = it },
-                        onManufacturingChanged = { manufacturing = it },
-                        onNavigateDealEvaluator = { showDealEvaluator = true },
+                    // تبويب "حاسبة الذهب" يعرض شاشة "عرض سعر" مباشرة بدل
+                    // شاشة الحاسبة القديمة — بطلب صريح
+                    1 -> DealEvaluatorScreen(
+                        initialKarat = selectedKarat,
+                        initialWeight = weight,
+                        initialManufacturing = manufacturing,
                         savedDeals = savedDeals,
-                        onSaveToPortfolio = { item ->
-                            prefillGoldItem = item
-                            showAddGoldItem = true
-                        },
-                        onBack = { selectedBottom = 0 }
+                        onBack = { selectedBottom = 0 },
+                        onSaveDeal = { deal -> savedDeals.add(0, deal) }
                     )
                     2 -> NewsScreen(onBack = { selectedBottom = 0 })
                     3 -> PortfolioScreen(
@@ -1306,475 +1268,9 @@ private fun HomeScreen(
     }
 }
 
-// ==================== شاشة حاسبة الذهب الكاملة ====================
 internal fun karatLabel(karat: String): String {
     val number = karat.removeSuffix("K")
     return t("عيار $number", "${number}K")
-}
-
-@Composable
-private fun CalculatorFullScreen(
-    selectedKarat: String,
-    buyMode: Boolean,
-    weight: Double,
-    manufacturing: Double,
-    beforeVat: Double,
-    vat: Double,
-    total: Double,
-    selectedCountryTax: CountryTaxOption,
-    onCountrySelected: (CountryTaxOption) -> Unit,
-    taxPercent: Double,
-    onTaxPercentChanged: (Double) -> Unit,
-    isTaxExempt: Boolean,
-    onBuyModeChanged: (Boolean) -> Unit,
-    onKaratChanged: (String) -> Unit,
-    onWeightChanged: (Double) -> Unit,
-    onManufacturingChanged: (Double) -> Unit,
-    onNavigateDealEvaluator: () -> Unit,
-    savedDeals: List<SavedDeal>,
-    onSaveToPortfolio: (GoldItem) -> Unit,
-    onBack: () -> Unit
-) {
-    val selectedPrice = GoldMarket.prices.first { it.karat == selectedKarat }
-    val marketScope = rememberCoroutineScope()
-
-    // تكبير خط شاشة الحاسبة فقط (بناءً على طلب صريح لهذه الشاشة تحديداً،
-    // لا كل التطبيق) — آمن هنا تحديداً لأن الشاشة كلها Column قابل للتمرير
-    // عمودياً أصلاً (verticalScroll)، فأي زيادة بارتفاع النص تُترجم لتمرير
-    // إضافي بدل قصّ محتوى، خلافاً لبطاقات الشاشة الرئيسية ذات الارتفاع الثابت
-    val baseDensity = LocalDensity.current
-    val calculatorDensity = remember(baseDensity) {
-        Density(density = baseDensity.density, fontScale = baseDensity.fontScale * 1.15f)
-    }
-    CompositionLocalProvider(LocalDensity provides calculatorDensity) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 14.dp, vertical = 8.dp)
-    ) {
-        Box(modifier = Modifier.fillMaxWidth()) {
-            Icon(
-                imageVector = Icons.Outlined.Refresh,
-                contentDescription = t("تحديث", "Refresh"),
-                tint = Gold,
-                modifier = Modifier
-                    .size(22.dp)
-                    .align(Alignment.CenterStart)
-                    .clickable { marketScope.launch { GoldMarket.refresh(force = true) } }
-            )
-            Text(
-                t("الحاسبة", "Calculator"),
-                color = White,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.align(Alignment.Center)
-            )
-            Icon(
-                imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
-                contentDescription = t("رجوع", "Back"),
-                tint = Gold,
-                modifier = Modifier
-                    .size(22.dp)
-                    .align(Alignment.CenterEnd)
-                    .clickable { onBack() }
-            )
-        }
-
-        Spacer(Modifier.height(16.dp))
-
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(44.dp)
-                .clip(RoundedCornerShape(10.dp))
-                .border(1.dp, Border, RoundedCornerShape(10.dp))
-        ) {
-            CalculatorMode(
-                text = t("بيع", "Sell"),
-                selected = !buyMode,
-                modifier = Modifier.weight(1f)
-            ) { onBuyModeChanged(false) }
-
-            CalculatorMode(
-                text = t("شراء", "Buy"),
-                selected = buyMode,
-                modifier = Modifier.weight(1f)
-            ) { onBuyModeChanged(true) }
-        }
-
-        Spacer(Modifier.height(10.dp))
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            listOf("24K", "21K", "22K", "18K").forEach { k ->
-                ChoiceButton(
-                    text = karatLabel(k),
-                    selected = k == selectedKarat,
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(46.dp)
-                ) { onKaratChanged(k) }
-            }
-        }
-
-        Spacer(Modifier.height(14.dp))
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column {
-                Text(
-                    "▲ ${fmt(selectedPrice.percent, 2)}%",
-                    color = Green,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold
-                )
-                Text(t("تحديث منذ دقائق", "Updated minutes ago"), color = Gray, fontSize = 9.sp)
-            }
-
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(t("سعر جرام الذهب", "Gold price per gram"), color = Gray, fontSize = 10.sp)
-                Text(
-                    fmt(selectedPrice.price, 2),
-                    color = Gold,
-                    fontSize = 22.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-
-            PdfExportIcon(
-                enabled = weight > 0,
-                onClick = {
-                    val manufacturingTotal = if (buyMode) manufacturing * weight else 0.0
-                    PdfExport.exportReport(
-                        title = t("تقرير الصفقة — Gold Vision", "Deal Report — Gold Vision"),
-                        generatedAt = t("تاريخ التصدير: ${todayDateText()}", "Export date: ${todayDateText()}"),
-                        summary = listOf(
-                            PdfReportRow(t("نوع العملية", "Transaction type"), if (buyMode) t("شراء", "Buy") else t("بيع", "Sell")),
-                            PdfReportRow(t("العيار", "Karat"), karatLabel(selectedKarat)),
-                            PdfReportRow(t("الوزن", "Weight"), "${fmt(weight, 2)} ${t("جرام", "g")}"),
-                            PdfReportRow(t("الإجمالي (شامل الضريبة)", "Total (incl. tax)"), "${fmt(total, 2, grouped = true)} ${t("ريال", "SAR")}")
-                        ),
-                        rows = buildList {
-                            add(PdfReportRow(t("سعر الذهب", "Gold price"), "${fmt(beforeVat, 2, grouped = true)} ${t("ريال", "SAR")}"))
-                            if (buyMode) {
-                                add(PdfReportRow(t("المصنعية (للجرام)", "Workmanship (per gram)"), "${fmt(manufacturing, 2)} ${t("ريال", "SAR")}"))
-                                add(PdfReportRow(t("إجمالي المصنعية", "Total workmanship"), "${fmt(manufacturingTotal, 2, grouped = true)} ${t("ريال", "SAR")}"))
-                            } else {
-                                add(PdfReportRow(t("المصنعية", "Workmanship"), "0.00 ${t("ريال", "SAR")}"))
-                            }
-                            add(
-                                PdfReportRow(
-                                    if (isTaxExempt) t("ضريبة القيمة المضافة (معفى)", "VAT (exempt)") else t("ضريبة القيمة المضافة (${fmt(taxPercent, 0)}%)", "VAT (${fmt(taxPercent, 0)}%)"),
-                                    "${fmt(vat, 2, grouped = true)} ${t("ريال", "SAR")}"
-                                )
-                            )
-                        }
-                    )
-                }
-            )
-        }
-
-        Spacer(Modifier.height(14.dp))
-
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(10.dp))
-                .border(1.dp, Border, RoundedCornerShape(10.dp))
-                .padding(10.dp)
-        ) {
-            Text(
-                t("الوزن (جرام)", "Weight (grams)"),
-                color = Gray,
-                fontSize = 10.sp,
-                modifier = Modifier.fillMaxWidth(),
-                textAlign = TextAlign.End
-            )
-            Spacer(Modifier.height(6.dp))
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(38.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                SmallActionButton("−") {
-                    onWeightChanged((weight - 1).coerceAtLeast(0.1))
-                }
-                NumericInputField(
-                    value = weight,
-                    onValueChanged = onWeightChanged,
-                    fontSize = 18.sp,
-                    placeholderStyle = true,
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxHeight()
-                )
-                SmallActionButton("+") {
-                    onWeightChanged(weight + 1)
-                }
-            }
-        }
-
-        if (!buyMode) {
-            Spacer(Modifier.height(6.dp))
-            Text(
-                t("سعر البيع للمحل: قيمة الذهب فقط - بدون مصنعية أو ضريبة", "Sell price to shop: gold value only - no workmanship or tax"),
-                color = Gray,
-                fontSize = 10.sp,
-                modifier = Modifier.fillMaxWidth(),
-                textAlign = TextAlign.Center
-            )
-        } else if (manufacturing <= 0.0) {
-            Spacer(Modifier.height(6.dp))
-            Text(
-                t("ذهب خالص - بدون مصنعية أو ضريبة", "Pure gold - no workmanship or tax"),
-                color = Gray,
-                fontSize = 10.sp,
-                modifier = Modifier.fillMaxWidth(),
-                textAlign = TextAlign.Center
-            )
-        }
-
-        Spacer(Modifier.height(14.dp))
-
-        CountryTaxSelector(
-            selectedCountry = selectedCountryTax,
-            onCountrySelected = onCountrySelected,
-            taxPercent = taxPercent,
-            onTaxPercentChanged = onTaxPercentChanged,
-            isTaxExempt = isTaxExempt
-        )
-
-        Spacer(Modifier.height(14.dp))
-
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(12.dp))
-                .border(1.dp, Border, RoundedCornerShape(12.dp))
-                .background(CardBlack)
-                .padding(14.dp)
-        ) {
-            CalculatorRow(t("سعر الذهب", "Gold price"), "${fmt(beforeVat, 2, grouped = true)} ${t("ريال", "SAR")}")
-            if (buyMode) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 2.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(t("المصنعية (للجرام) ✎", "Workmanship (per gram) ✎"), color = White, fontSize = 10.sp)
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        NumericInputField(
-                            value = manufacturing,
-                            onValueChanged = { onManufacturingChanged(it.coerceAtMost(500.0)) },
-                            fontSize = 10.sp,
-                            minValue = 0.0,
-                            placeholderStyle = true,
-                            modifier = Modifier
-                                .width(50.dp)
-                                .height(18.dp)
-                                .clip(RoundedCornerShape(5.dp))
-                                .border(1.dp, Border, RoundedCornerShape(5.dp))
-                        )
-                        Text(t("ريال", "SAR"), color = Gray, fontSize = 9.sp)
-                    }
-                }
-                CalculatorRow(t("إجمالي المصنعية", "Total workmanship"), "${fmt(manufacturing * weight, 2, grouped = true)} ${t("ريال", "SAR")}")
-            } else {
-                CalculatorRow(t("المصنعية", "Workmanship"), "0.00 ${t("ريال", "SAR")}")
-            }
-            CalculatorRow(
-                if (isTaxExempt) t("ضريبة القيمة المضافة (معفى)", "VAT (exempt)") else t("ضريبة القيمة المضافة (${fmt(taxPercent, 0)}%)", "VAT (${fmt(taxPercent, 0)}%)"),
-                "${fmt(vat, 2, grouped = true)} ${t("ريال", "SAR")}"
-            )
-
-            Spacer(Modifier.height(10.dp))
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(1.dp)
-                    .background(Border)
-            )
-            Spacer(Modifier.height(14.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    val isLive = GoldMarket.lastError == null
-                    Box(
-                        modifier = Modifier
-                            .size(8.dp)
-                            .clip(RoundedCornerShape(4.dp))
-                            .background(if (isLive) Green else Red)
-                    )
-                    Text(
-                        if (isLive) t("مباشر", "Live") else t("غير مباشر", "Not Live"),
-                        color = if (isLive) White else Red,
-                        fontSize = 11.sp
-                    )
-                }
-
-                Row(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(6.dp))
-                        .background(Color(0xFF123321))
-                        .padding(horizontal = 8.dp, vertical = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Text(t("صفقة ممتازة", "Great deal"), color = Green, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                }
-            }
-
-            Spacer(Modifier.height(10.dp))
-
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(t("الإجمالي (شامل الضريبة)", "Total (incl. tax)"), color = Gray, fontSize = 11.sp)
-                Text(
-                    "${fmt(total, 2, grouped = true)} ${t("ريال", "SAR")}",
-                    color = Gold,
-                    fontSize = 26.sp,
-                    fontWeight = FontWeight.Bold
-                )
-                Spacer(Modifier.height(6.dp))
-                Row(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(20.dp))
-                        .border(1.dp, Border, RoundedCornerShape(20.dp))
-                        .padding(horizontal = 10.dp, vertical = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Text(
-                        if (isTaxExempt) t("معفى من الضريبة", "Tax exempt") else "${countryDisplayName(selectedCountryTax)} · ${fmt(taxPercent, 0)}%",
-                        color = Gray,
-                        fontSize = 9.sp
-                    )
-                    Icon(
-                        imageVector = Icons.Outlined.Info,
-                        contentDescription = null,
-                        tint = Gray,
-                        modifier = Modifier.size(11.dp)
-                    )
-                }
-            }
-        }
-
-        Spacer(Modifier.height(14.dp))
-
-        SaveToPortfolioBox {
-            onSaveToPortfolio(
-                GoldItem(
-                    name = "",
-                    emoji = pieceEmojiOptions.first().first,
-                    karat = selectedKarat,
-                    weightGrams = weight,
-                    purchasePriceWithTax = total,
-                    manufacturingPerGram = if (buyMode) manufacturing else 0.0,
-                    purchaseDate = todayDateText(),
-                    notes = "",
-                    isSold = !buyMode
-                )
-            )
-        }
-
-        Spacer(Modifier.height(14.dp))
-
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(48.dp)
-                .clip(RoundedCornerShape(10.dp))
-                .border(1.dp, Gold, RoundedCornerShape(10.dp))
-                .clickable { onNavigateDealEvaluator() },
-            horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                if (buyMode) t("عرض سعر", "Quotation") else t("عرض سعر للشراء", "Buy Quotation"),
-                color = Gold,
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Bold
-            )
-        }
-
-        if (savedDeals.isNotEmpty()) {
-            Spacer(Modifier.height(14.dp))
-            Text(t("الأسعار المحفوظة", "Saved Prices"), color = Gray, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-            Spacer(Modifier.height(6.dp))
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(10.dp))
-                    .border(1.dp, Border, RoundedCornerShape(10.dp))
-                    .background(CardBlack)
-            ) {
-                savedDeals.forEachIndexed { index, deal ->
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 12.dp, vertical = 10.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Outlined.Store,
-                                contentDescription = null,
-                                tint = deal.tierColor,
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Column {
-                                Text(deal.shopName, color = White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                                Text(deal.tierLabel, color = deal.tierColor, fontSize = 9.sp)
-                            }
-                        }
-                        Text(
-                            "${fmt(deal.totalPrice, 2, grouped = true)} ${t("ريال", "SAR")}",
-                            color = Gold,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                    if (index != savedDeals.lastIndex) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 12.dp)
-                                .height(1.dp)
-                                .background(Border)
-                        )
-                    }
-                }
-            }
-        }
-
-        Spacer(Modifier.height(16.dp))
-    }
-    }
 }
 
 // أيقونة تصدير PDF موحّدة تُستخدم في كل مكان بالتطبيق (الحاسبة، محل
@@ -1898,6 +1394,7 @@ private fun DealEvaluatorScreen(
     initialKarat: String,
     initialWeight: Double,
     initialManufacturing: Double,
+    savedDeals: List<SavedDeal>,
     onBack: () -> Unit,
     onSaveDeal: (SavedDeal) -> Unit
 ) {
@@ -2437,6 +1934,60 @@ private fun DealEvaluatorScreen(
                 Text(t("حفظ في المحفظة", "Save to Portfolio"), color = Black, fontSize = 13.sp, fontWeight = FontWeight.Bold)
             }
 
+            if (savedDeals.isNotEmpty()) {
+                Spacer(Modifier.height(14.dp))
+                Text(t("الأسعار المحفوظة", "Saved Prices"), color = Gray, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.height(6.dp))
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(10.dp))
+                        .border(1.dp, Border, RoundedCornerShape(10.dp))
+                        .background(CardBlack)
+                ) {
+                    savedDeals.forEachIndexed { index, deal ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 12.dp, vertical = 10.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Outlined.Store,
+                                    contentDescription = null,
+                                    tint = deal.tierColor,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Column {
+                                    Text(deal.shopName, color = White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                    Text(deal.tierLabel, color = deal.tierColor, fontSize = 9.sp)
+                                }
+                            }
+                            Text(
+                                "${fmt(deal.totalPrice, 2, grouped = true)} ${t("ريال", "SAR")}",
+                                color = Gold,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                        if (index != savedDeals.lastIndex) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 12.dp)
+                                    .height(1.dp)
+                                    .background(Border)
+                            )
+                        }
+                    }
+                }
+            }
+
             Spacer(Modifier.height(16.dp))
         }
 
@@ -2676,13 +2227,10 @@ private fun AddGoldItemScreen(
     editingItem: GoldItem?,
     onBack: () -> Unit,
     onSave: (GoldItem) -> Unit,
-    onDelete: (() -> Unit)? = null,
-    prefillItem: GoldItem? = null
+    onDelete: (() -> Unit)? = null
 ) {
     val isEditing = editingItem != null
-    // عند الحفظ من الحاسبة (prefillItem) تُملأ الحقول بنفس قيم الحساب
-    // الأخير، لكن هذه تبقى "إضافة" جديدة وليست تعديلاً — بلا زر حذف
-    val initialValues = editingItem ?: prefillItem
+    val initialValues = editingItem
     var showDeleteConfirm by remember { mutableStateOf(false) }
     var name by remember { mutableStateOf(initialValues?.name ?: "") }
     var selectedEmoji by remember { mutableStateOf(initialValues?.emoji ?: pieceEmojiOptions.first().first) }
@@ -7909,37 +7457,6 @@ private fun CountryTaxSelector(
                     }
                 }
             }
-        }
-    }
-}
-
-// صندوق "حفظ في المحفظة" في شاشة الحاسبة، يظهر قبل زر "المحل أعطاك
-// سعراً؟". يفتح شاشة "إضافة قطعة" نفسها معبّأة بنتيجة الحساب الحالي
-// (عيار/وزن/إجمالي)، حتى يستفيد المستخدم من خيارات التعديل والتاريخ
-// والاسم الموجودة أصلاً هناك بدل قائمة حفظ منفصلة
-@Composable
-private fun SaveToPortfolioBox(onClick: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(44.dp)
-            .clip(RoundedCornerShape(10.dp))
-            .border(1.dp, Border, RoundedCornerShape(10.dp))
-            .clickable(onClick = onClick),
-        horizontalArrangement = Arrangement.Center,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            Icon(
-                imageVector = Icons.Outlined.AccountBalanceWallet,
-                contentDescription = null,
-                tint = Gray,
-                modifier = Modifier.size(15.dp)
-            )
-            Text(t("حفظ في المحفظة", "Save to Portfolio"), color = White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
         }
     }
 }
