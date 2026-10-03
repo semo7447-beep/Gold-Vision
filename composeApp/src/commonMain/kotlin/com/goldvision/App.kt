@@ -1900,10 +1900,10 @@ private fun DealEvaluatorScreen(
     onBack: () -> Unit,
     onSaveDeal: (SavedDeal) -> Unit
 ) {
+    var buyMode by remember { mutableStateOf(true) }
     var karat by remember { mutableStateOf(initialKarat) }
     var weight by remember { mutableDoubleStateOf(initialWeight) }
-    // قابلة للتعديل هنا مباشرة (بدل قيمة ثابتة من شاشة الحاسبة فقط)،
-    // عبر حقل "المصنعية (للجرام)" الجديد ضمن قسم "إظهار المزيد"
+    // قابلة للتعديل هنا مباشرة (بدل قيمة ثابتة من شاشة الحاسبة فقط)
     var manufacturing by remember { mutableDoubleStateOf(initialManufacturing) }
     var shopPrice by remember { mutableDoubleStateOf(0.0) }
     var includingTax by remember { mutableStateOf(true) }
@@ -1911,24 +1911,31 @@ private fun DealEvaluatorScreen(
     var showSaveDialog by remember { mutableStateOf(false) }
     var dealCountryTax by remember { mutableStateOf(countryTaxOptions.first()) }
     var dealTaxPercent by remember { mutableDoubleStateOf(countryTaxOptions.first().vatPercent) }
-    var showKaratPicker by remember { mutableStateOf(false) }
-    val isDealTaxExempt = karat == "24K"
+    // البيع للمحل: قيمة الذهب فقط بلا مصنعية ولا ضريبة (نفس قاعدة الحاسبة)
+    val isDealTaxExempt = karat == "24K" || !buyMode
 
-    val karatPrice = GoldMarket.prices.first { it.karat == karat }.price
+    val selectedPrice = GoldMarket.prices.first { it.karat == karat }
+    val karatPrice = selectedPrice.price
     val fairBeforeVat = karatPrice * weight
-    val fairManufacturing = manufacturing * weight
+    val fairManufacturing = if (buyMode) manufacturing * weight else 0.0
     val fairSubtotal = fairBeforeVat + fairManufacturing
     val fairVat = if (isDealTaxExempt) 0.0 else fairSubtotal * (dealTaxPercent / 100.0)
     val fairTotal = fairSubtotal + fairVat
 
     val shopPriceWithTax = if (isDealTaxExempt || includingTax) shopPrice else shopPrice * (1 + dealTaxPercent / 100.0)
-    val savings = fairTotal - shopPriceWithTax
-    val ratio = if (fairTotal > 0) (shopPriceWithTax / fairTotal).toFloat() else 1f
+    // بالبيع العرض الأعلى من المحل هو الأفضل لك، فتنعكس المقارنة — بحيث
+    // يبقى ratio الأصغر = الأفضل دائماً، ويعمل المؤشر والتقييم بنفس المنطق
+    val savings = if (buyMode) fairTotal - shopPriceWithTax else shopPriceWithTax - fairTotal
+    val ratio = when {
+        buyMode -> if (fairTotal > 0) (shopPriceWithTax / fairTotal).toFloat() else 1f
+        else -> if (shopPriceWithTax > 0) (fairTotal / shopPriceWithTax).toFloat() else 0f
+    }
 
     val (tierLabel, tierColor) = when {
         ratio <= 1.0f -> t("صفقة ممتازة", "Great deal") to Green
         ratio <= 1.05f -> t("سعر عادل", "Fair price") to Yellow
-        else -> t("سعر مرتفع", "High price") to Red
+        buyMode -> t("سعر مرتفع", "High price") to Red
+        else -> t("سعر منخفض", "Low price") to Red
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -1970,27 +1977,106 @@ private fun DealEvaluatorScreen(
 
             Spacer(Modifier.height(16.dp))
 
-            Text(t("العيار", "Karat"), color = Gray, fontSize = 10.sp)
-            Spacer(Modifier.height(4.dp))
+            // نفس شريط بيع/شراء وقوالب العيارات بشاشة الحاسبة تماماً
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(42.dp)
-                    .clip(RoundedCornerShape(9.dp))
-                    .border(1.dp, Border, RoundedCornerShape(9.dp))
-                    .clickable { showKaratPicker = true }
-                    .padding(horizontal = 12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
+                    .height(44.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .border(1.dp, Border, RoundedCornerShape(10.dp))
             ) {
-                Text(karatLabel(karat), color = White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                Text("˅", color = Gold, fontSize = 13.sp)
+                CalculatorMode(
+                    text = t("بيع", "Sell"),
+                    selected = !buyMode,
+                    modifier = Modifier.weight(1f)
+                ) { buyMode = false }
+
+                CalculatorMode(
+                    text = t("شراء", "Buy"),
+                    selected = buyMode,
+                    modifier = Modifier.weight(1f)
+                ) { buyMode = true }
             }
 
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(10.dp))
 
-            Text(t("الوزن (جرام)", "Weight (grams)"), color = Gray, fontSize = 10.sp)
-            Spacer(Modifier.height(4.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                listOf("24K", "21K", "22K", "18K").forEach { k ->
+                    ChoiceButton(
+                        text = karatLabel(k),
+                        selected = k == karat,
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(46.dp)
+                    ) { karat = k }
+                }
+            }
+
+            Spacer(Modifier.height(14.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text(
+                        "▲ ${fmt(selectedPrice.percent, 2)}%",
+                        color = Green,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(t("تحديث منذ دقائق", "Updated minutes ago"), color = Gray, fontSize = 9.sp)
+                }
+
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(t("سعر جرام الذهب", "Gold price per gram"), color = Gray, fontSize = 10.sp)
+                    Text(
+                        fmt(karatPrice, 2),
+                        color = Gold,
+                        fontSize = 22.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+
+                PdfExportIcon(
+                    enabled = weight > 0,
+                    onClick = {
+                        PdfExport.exportReport(
+                            title = t("عرض سعر — Gold Vision", "Price Quote — Gold Vision"),
+                            generatedAt = t("تاريخ التصدير: ${todayDateText()}", "Export date: ${todayDateText()}"),
+                            summary = listOfNotNull(
+                                shopNote.takeIf { it.isNotBlank() }
+                                    ?.let { PdfReportRow(t("اسم المحل", "Shop name"), it) },
+                                PdfReportRow(t("نوع العملية", "Transaction type"), if (buyMode) t("شراء", "Buy") else t("بيع", "Sell")),
+                                PdfReportRow(t("العيار", "Karat"), karatLabel(karat)),
+                                PdfReportRow(t("الوزن", "Weight"), "${fmt(weight, 2)} ${t("جرام", "g")}"),
+                                PdfReportRow(t("سعر الجرام", "Price per gram"), "${fmt(karatPrice, 2)} ${t("ريال", "SAR")}")
+                            ),
+                            rows = listOf(
+                                PdfReportRow(t("عرض المحل", "Shop offer"), "${fmt(shopPriceWithTax, 2, grouped = true)} ${t("ريال", "SAR")}"),
+                                PdfReportRow(t("السعر العادل (شامل الضريبة)", "Fair price (incl. tax)"), "${fmt(fairTotal, 2, grouped = true)} ${t("ريال", "SAR")}"),
+                                PdfReportRow(
+                                    when {
+                                        buyMode && savings >= 0 -> t("وفرت", "You saved")
+                                        buyMode -> t("دفعت أكثر بمقدار", "You paid more by")
+                                        savings >= 0 -> t("حصلت على أكثر بمقدار", "You got more by")
+                                        else -> t("حصلت على أقل بمقدار", "You got less by")
+                                    },
+                                    "${fmt(kotlin.math.abs(savings), 2, grouped = true)} ${t("ريال", "SAR")}"
+                                ),
+                                PdfReportRow(t("التقييم", "Verdict"), tierLabel)
+                            )
+                        )
+                    }
+                )
+            }
+
+            Spacer(Modifier.height(14.dp))
+
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -2027,41 +2113,6 @@ private fun DealEvaluatorScreen(
             run {
                 Spacer(Modifier.height(10.dp))
 
-                // أيقونة تصدير PDF الموحّدة، بصف مستقل بتدفّق طبيعي فوق
-                // البوكسين — بلا أي تموضع مطلق أو إزاحات سلبية (كانت هذه
-                // الحيل تُنتج نتائج غير متوقعة)
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End
-                ) {
-                    PdfExportIcon(
-                        enabled = weight > 0,
-                        onClick = {
-                            PdfExport.exportReport(
-                                title = t("عرض سعر — Gold Vision", "Price Quote — Gold Vision"),
-                                generatedAt = t("تاريخ التصدير: ${todayDateText()}", "Export date: ${todayDateText()}"),
-                                summary = listOfNotNull(
-                                    shopNote.takeIf { it.isNotBlank() }
-                                        ?.let { PdfReportRow(t("اسم المحل", "Shop name"), it) },
-                                    PdfReportRow(t("العيار", "Karat"), karatLabel(karat)),
-                                    PdfReportRow(t("الوزن", "Weight"), "${fmt(weight, 2)} ${t("جرام", "g")}"),
-                                    PdfReportRow(t("سعر الجرام", "Price per gram"), "${fmt(karatPrice, 2)} ${t("ريال", "SAR")}")
-                                ),
-                                rows = listOf(
-                                    PdfReportRow(t("عرض المحل", "Shop offer"), "${fmt(shopPriceWithTax, 2, grouped = true)} ${t("ريال", "SAR")}"),
-                                    PdfReportRow(t("السعر العادل (شامل الضريبة)", "Fair price (incl. tax)"), "${fmt(fairTotal, 2, grouped = true)} ${t("ريال", "SAR")}"),
-                                    PdfReportRow(
-                                        if (savings >= 0) t("وفرت", "You saved") else t("دفعت أكثر بمقدار", "You paid more by"),
-                                        "${fmt(kotlin.math.abs(savings), 2, grouped = true)} ${t("ريال", "SAR")}"
-                                    ),
-                                    PdfReportRow(t("التقييم", "Verdict"), tierLabel)
-                                )
-                            )
-                        }
-                    )
-                }
-                Spacer(Modifier.height(8.dp))
-
                 // ثلاث بوكسات جنباً إلى جنب، بنفس المستوى بالضبط: عناوين
                 // البوكسات متطابقة تماماً بالبنية (نص واحد بلا أي عنصر
                 // إضافي بجانبه)، حتى لا يختلف ارتفاعها ويختل التطابق
@@ -2084,9 +2135,11 @@ private fun DealEvaluatorScreen(
                         )
                     }
 
-                    // بوكس 2 (30%): مصنعية الجرام، قابلة للتعديل هنا مباشرة
-                    // (بدل الاعتماد فقط على القيمة القادمة من شاشة الحاسبة)
-                    Column(modifier = Modifier.weight(0.30f)) {
+                    // بوكس 2 (30%): مصنعية الجرام، بالشراء فقط — بالبيع تبقى
+                    // مساحته فارغة حتى لا يتحرك بوكس سعر الجرام عند التبديل
+                    if (!buyMode) {
+                        Spacer(Modifier.weight(0.30f))
+                    } else Column(modifier = Modifier.weight(0.30f)) {
                         Text(
                             t("مصنعية/جم", "Workmanship/g"),
                             color = Gray,
@@ -2240,16 +2293,24 @@ private fun DealEvaluatorScreen(
 
                 Spacer(Modifier.height(4.dp))
                 if (savings >= 0) {
-                    Text(t("تدفع أقل من العادل", "You pay less than fair"), color = Green, fontSize = 10.sp, fontWeight = FontWeight.Bold)
                     Text(
-                        t("وفرت ${fmt(savings, 2, grouped = true)} ريال", "You saved ${fmt(savings, 2, grouped = true)} SAR"),
+                        if (buyMode) t("تدفع أقل من العادل", "You pay less than fair") else t("تحصل على أكثر من العادل", "You get more than fair"),
+                        color = Green, fontSize = 10.sp, fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        if (buyMode) t("وفرت ${fmt(savings, 2, grouped = true)} ريال", "You saved ${fmt(savings, 2, grouped = true)} SAR")
+                        else t("زيادة ${fmt(savings, 2, grouped = true)} ريال لصالحك", "${fmt(savings, 2, grouped = true)} SAR in your favor"),
                         color = Green,
                         fontSize = 10.sp
                     )
                 } else {
-                    Text(t("تدفع أكثر من العادل", "You pay more than fair"), color = Red, fontSize = 10.sp, fontWeight = FontWeight.Bold)
                     Text(
-                        t("زيادة ${fmt(-savings, 2, grouped = true)} ريال", "Extra ${fmt(-savings, 2, grouped = true)} SAR"),
+                        if (buyMode) t("تدفع أكثر من العادل", "You pay more than fair") else t("تحصل على أقل من العادل", "You get less than fair"),
+                        color = Red, fontSize = 10.sp, fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        if (buyMode) t("زيادة ${fmt(-savings, 2, grouped = true)} ريال", "Extra ${fmt(-savings, 2, grouped = true)} SAR")
+                        else t("نقص ${fmt(-savings, 2, grouped = true)} ريال", "Short by ${fmt(-savings, 2, grouped = true)} SAR"),
                         color = Red,
                         fontSize = 10.sp
                     )
@@ -2257,7 +2318,7 @@ private fun DealEvaluatorScreen(
 
                 Spacer(Modifier.height(12.dp))
 
-                DealGauge(ratio = ratio)
+                DealGauge(ratio = ratio, poorLabel = if (buyMode) t("مرتفع", "High") else t("منخفض", "Low"))
 
                 Spacer(Modifier.height(14.dp))
                 Box(
@@ -2273,9 +2334,11 @@ private fun DealEvaluatorScreen(
                 CalculatorRow(t("سعر الذهب", "Gold price"), "${fmt(fairBeforeVat, 2, grouped = true)} ${t("ريال", "SAR")}")
                 CalculatorRow(
                     t("المصنعية", "Workmanship"),
-                    "${fmt(fairManufacturing, 2, grouped = true)} ${t("ريال", "SAR")} (${fmt(manufacturing, 2)} ${t("/جم", "/g")})"
+                    if (buyMode) "${fmt(fairManufacturing, 2, grouped = true)} ${t("ريال", "SAR")} (${fmt(manufacturing, 2)} ${t("/جم", "/g")})"
+                    else "0.00 ${t("ريال", "SAR")}"
                 )
-                val shopMargin = shopPriceWithTax - fairTotal
+                // ربح المحل: بالشراء ما يأخذه فوق العادل، وبالبيع ما يخصمه منه
+                val shopMargin = if (buyMode) shopPriceWithTax - fairTotal else fairTotal - shopPriceWithTax
                 val shopMarginPerGram = if (weight > 0) shopMargin / weight else 0.0
                 CalculatorRow(
                     t("ربح المحل", "Shop profit"),
@@ -2300,9 +2363,15 @@ private fun DealEvaluatorScreen(
                 Text(t("أسعار للتفاوض (شامل الضريبة)", "Negotiation prices (incl. tax)"), color = White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(10.dp))
 
-                NegotiationRow(t("صفقة ممتازة", "Great deal"), fairTotal, shopPriceWithTax, Green)
-                NegotiationRow(t("سعر عادل", "Fair price"), fairTotal * 1.05, shopPriceWithTax, Yellow)
-                NegotiationRow(t("الحد الأقصى", "Maximum"), fairTotal * 1.10, shopPriceWithTax, Red)
+                if (buyMode) {
+                    NegotiationRow(t("صفقة ممتازة", "Great deal"), fairTotal, shopPriceWithTax, Green)
+                    NegotiationRow(t("سعر عادل", "Fair price"), fairTotal * 1.05, shopPriceWithTax, Yellow)
+                    NegotiationRow(t("الحد الأقصى", "Maximum"), fairTotal * 1.10, shopPriceWithTax, Red)
+                } else {
+                    NegotiationRow(t("صفقة ممتازة", "Great deal"), fairTotal, shopPriceWithTax, Green, sellMode = true)
+                    NegotiationRow(t("سعر عادل", "Fair price"), fairTotal / 1.05, shopPriceWithTax, Yellow, sellMode = true)
+                    NegotiationRow(t("الحد الأدنى", "Minimum"), fairTotal / 1.10, shopPriceWithTax, Red, sellMode = true)
+                }
             }
 
             Spacer(Modifier.height(14.dp))
@@ -2340,67 +2409,6 @@ private fun DealEvaluatorScreen(
                     showSaveDialog = false
                 }
             )
-        }
-
-        if (showKaratPicker) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.65f))
-                    .clickable(
-                        indication = null,
-                        interactionSource = remember { MutableInteractionSource() }
-                    ) { showKaratPicker = false },
-                contentAlignment = Alignment.Center
-            ) {
-                Column(
-                    modifier = Modifier
-                        .padding(horizontal = 28.dp)
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(14.dp))
-                        .border(1.dp, Border, RoundedCornerShape(14.dp))
-                        .background(CardBlack)
-                        .clickable(
-                            indication = null,
-                            interactionSource = remember { MutableInteractionSource() }
-                        ) { }
-                        .padding(vertical = 8.dp)
-                ) {
-                    Text(
-                        t("اختر العيار", "Choose karat"),
-                        color = White,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 14.dp, vertical = 8.dp),
-                        textAlign = TextAlign.End
-                    )
-                    listOf("24K", "22K", "21K", "18K").forEach { option ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    karat = option
-                                    showKaratPicker = false
-                                }
-                                .padding(horizontal = 14.dp, vertical = 12.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                karatLabel(option),
-                                color = if (option == karat) Gold else White,
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                            if (option == karat) {
-                                Text("✓", color = Gold, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                            }
-                        }
-                    }
-                }
-            }
         }
     }
 }
@@ -2512,7 +2520,7 @@ private fun SaveDealDialog(
 
 // مقياس أفقي (ممتاز - عادل - مرتفع) مع مؤشر دائري يبيّن موقع سعر المحل
 @Composable
-private fun DealGauge(ratio: Float) {
+private fun DealGauge(ratio: Float, poorLabel: String) {
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -2520,7 +2528,7 @@ private fun DealGauge(ratio: Float) {
         ) {
             Text(t("ممتاز", "Great"), color = Green, fontSize = 9.sp)
             Text(t("عادل", "Fair"), color = Yellow, fontSize = 9.sp)
-            Text(t("مرتفع", "High"), color = Red, fontSize = 9.sp)
+            Text(poorLabel, color = Red, fontSize = 9.sp)
         }
         Spacer(Modifier.height(4.dp))
         // يُقرآن هنا (سياق Composable) لا داخل Canvas، لأن الأخير DrawScope
@@ -2563,8 +2571,9 @@ private fun DealGauge(ratio: Float) {
 
 // سطر ضمن بطاقة "أسعار للتفاوض": اسم المستوى + سعره + مقدار التوفير مقارنة بعرض المحل
 @Composable
-private fun NegotiationRow(label: String, price: Double, shopPriceWithTax: Double, tint: Color) {
-    val savings = shopPriceWithTax - price
+private fun NegotiationRow(label: String, price: Double, shopPriceWithTax: Double, tint: Color, sellMode: Boolean = false) {
+    // بالبيع يكون المكسب حين ترفع عرض المحل إلى هذا السعر، لا حين تخفضه
+    val savings = if (sellMode) price - shopPriceWithTax else shopPriceWithTax - price
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -2600,7 +2609,12 @@ private fun NegotiationRow(label: String, price: Double, shopPriceWithTax: Doubl
                 fontWeight = FontWeight.Bold
             )
             if (savings > 0) {
-                Text(t("وفر ${fmt(savings, 2, grouped = true)}", "Save ${fmt(savings, 2, grouped = true)}"), color = Green, fontSize = 9.sp)
+                Text(
+                    if (sellMode) t("زِد ${fmt(savings, 2, grouped = true)}", "Gain ${fmt(savings, 2, grouped = true)}")
+                    else t("وفر ${fmt(savings, 2, grouped = true)}", "Save ${fmt(savings, 2, grouped = true)}"),
+                    color = Green,
+                    fontSize = 9.sp
+                )
             }
         }
     }
