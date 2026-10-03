@@ -2056,20 +2056,48 @@ private fun DealEvaluatorScreen(
                                 PdfReportRow(t("الوزن", "Weight"), "${fmt(weight, 2)} ${t("جرام", "g")}"),
                                 PdfReportRow(t("سعر الجرام", "Price per gram"), "${fmt(karatPrice, 2)} ${t("ريال", "SAR")}")
                             ),
-                            rows = listOf(
-                                PdfReportRow(t("عرض المحل", "Shop offer"), "${fmt(shopPriceWithTax, 2, grouped = true)} ${t("ريال", "SAR")}"),
-                                PdfReportRow(t("السعر العادل (شامل الضريبة)", "Fair price (incl. tax)"), "${fmt(fairTotal, 2, grouped = true)} ${t("ريال", "SAR")}"),
-                                PdfReportRow(
-                                    when {
-                                        buyMode && savings >= 0 -> t("وفرت", "You saved")
-                                        buyMode -> t("دفعت أكثر بمقدار", "You paid more by")
-                                        savings >= 0 -> t("حصلت على أكثر بمقدار", "You got more by")
-                                        else -> t("حصلت على أقل بمقدار", "You got less by")
-                                    },
-                                    "${fmt(kotlin.math.abs(savings), 2, grouped = true)} ${t("ريال", "SAR")}"
-                                ),
-                                PdfReportRow(t("التقييم", "Verdict"), tierLabel)
-                            )
+                            // تفصيل كامل: قيمة الذهب + المصنعية + الضريبة = العادل،
+                            // ثم الفرق عن قيمة الذهب وحدها (شاملاً المصنعية) والفرق
+                            // عن العادل، حتى لا يبدو المدفوع زيادةً أقل من الحقيقة
+                            rows = buildList {
+                                add(PdfReportRow(t("سعر الذهب", "Gold value"), "${fmt(fairBeforeVat, 2, grouped = true)} ${t("ريال", "SAR")}"))
+                                if (buyMode) {
+                                    add(
+                                        PdfReportRow(
+                                            t("المصنعية", "Workmanship"),
+                                            "${fmt(fairManufacturing, 2, grouped = true)} ${t("ريال", "SAR")} (${fmt(manufacturing, 2)} ${t("/جم", "/g")})"
+                                        )
+                                    )
+                                }
+                                add(
+                                    PdfReportRow(
+                                        if (isDealTaxExempt) t("ضريبة القيمة المضافة (معفى)", "VAT (exempt)") else t("ضريبة القيمة المضافة (${fmt(dealTaxPercent, 0)}%)", "VAT (${fmt(dealTaxPercent, 0)}%)"),
+                                        "${fmt(fairVat, 2, grouped = true)} ${t("ريال", "SAR")}"
+                                    )
+                                )
+                                add(PdfReportRow(t("السعر العادل (شامل الضريبة)", "Fair price (incl. tax)"), "${fmt(fairTotal, 2, grouped = true)} ${t("ريال", "SAR")}"))
+                                add(PdfReportRow(t("عرض المحل", "Shop offer"), "${fmt(shopPriceWithTax, 2, grouped = true)} ${t("ريال", "SAR")}"))
+                                if (buyMode) {
+                                    add(
+                                        PdfReportRow(
+                                            t("الزيادة فوق سعر الذهب (شاملة المصنعية والضريبة)", "Paid above gold value (incl. workmanship & tax)"),
+                                            "${fmt(shopPriceWithTax - fairBeforeVat, 2, grouped = true)} ${t("ريال", "SAR")}"
+                                        )
+                                    )
+                                }
+                                add(
+                                    PdfReportRow(
+                                        when {
+                                            buyMode && savings >= 0 -> t("أقل من السعر العادل بمقدار", "Below fair price by")
+                                            buyMode -> t("الزيادة فوق السعر العادل (ربح المحل)", "Above fair price (shop profit)")
+                                            savings >= 0 -> t("حصلت على أكثر بمقدار", "You got more by")
+                                            else -> t("حصلت على أقل بمقدار", "You got less by")
+                                        },
+                                        "${fmt(kotlin.math.abs(savings), 2, grouped = true)} ${t("ريال", "SAR")}"
+                                    )
+                                )
+                                add(PdfReportRow(t("التقييم", "Verdict"), tierLabel))
+                            }
                         )
                     }
                 )
@@ -2312,6 +2340,16 @@ private fun DealEvaluatorScreen(
                         if (buyMode) t("زيادة ${fmt(-savings, 2, grouped = true)} ريال", "Extra ${fmt(-savings, 2, grouped = true)} SAR")
                         else t("نقص ${fmt(-savings, 2, grouped = true)} ريال", "Short by ${fmt(-savings, 2, grouped = true)} SAR"),
                         color = Red,
+                        fontSize = 10.sp
+                    )
+                }
+                if (buyMode && shopPriceWithTax > 0) {
+                    Text(
+                        t(
+                            "الزيادة فوق سعر الذهب: ${fmt(shopPriceWithTax - fairBeforeVat, 2, grouped = true)} ريال (منها مصنعية ${fmt(fairManufacturing, 2, grouped = true)} ريال)",
+                            "Above gold value: ${fmt(shopPriceWithTax - fairBeforeVat, 2, grouped = true)} SAR (incl. ${fmt(fairManufacturing, 2, grouped = true)} SAR workmanship)"
+                        ),
+                        color = Gray,
                         fontSize = 10.sp
                     )
                 }
