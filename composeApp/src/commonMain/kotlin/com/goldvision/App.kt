@@ -810,8 +810,10 @@ private fun GoldVisionApp() {
     }
 
     // يجلب أخبار الذهب الحقيقية (GoldNews.kt) عند فتح التطبيق، ثم كل
-    // 3 دقائق — بناءً على طلب صريح لتحديث أسرع من كل 30 دقيقة سابقاً
-    LaunchedEffect(Unit) {
+    // 3 دقائق — بناءً على طلب صريح لتحديث أسرع من كل 30 دقيقة سابقاً.
+    // مفتاحه اللغة: تبديلها يعيد التشغيل فوراً فتُجلب أخبار باللغة الجديدة
+    LaunchedEffect(AppLanguage.current) {
+        GoldNews.showCachedForCurrentLanguage()
         while (true) {
             GoldNews.refresh()
             delay(180.seconds)

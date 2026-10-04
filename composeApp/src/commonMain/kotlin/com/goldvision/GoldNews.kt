@@ -25,13 +25,16 @@ import kotlinx.serialization.json.Json
 @Serializable
 internal data class GoldNewsArticle(val title: String, val source: String, val publishedAt: String, val link: String = "")
 
-private const val lastArticlesStorageFile = "gold_news_last_articles.json"
+// نسخة محفوظة منفصلة لكل لغة، حتى لا تظهر أخبار عربية بواجهة إنجليزية
+// (أو العكس) عند تبديل اللغة أو التشغيل بلا إنترنت
+private fun articlesStorageFile(lang: AppLang): String =
+    if (lang == AppLang.EN) "gold_news_last_articles_en.json" else "gold_news_last_articles.json"
 
 // نفس فكرة GoldMarket.loadCachedPrices: يقرأ آخر أخبار حُفظت فعلياً عند
 // إقلاع التطبيق، بدل قائمة فارغة ثابتة تجعل أي إعادة تشغيل بلا إنترنت
 // تبدو وكأنه لا توجد أخبار إطلاقاً حتى لو كان آخر تحديث ناجحاً قبل قليل
-private fun loadCachedArticles(): List<GoldNewsArticle>? {
-    val text = AppStorage.readText(lastArticlesStorageFile) ?: return null
+private fun loadCachedArticles(lang: AppLang): List<GoldNewsArticle>? {
+    val text = AppStorage.readText(articlesStorageFile(lang)) ?: return null
     return try {
         Json.decodeFromString<List<GoldNewsArticle>>(text).takeIf { it.isNotEmpty() }
     } catch (e: Exception) {
@@ -48,11 +51,21 @@ private fun loadCachedArticles(): List<GoldNewsArticle>? {
 // XML كاملة غير متاحة أصلاً بشكل موحّد بين أندرويد و iOS)، ويُلتقط نص
 // الاستجابة الخام في Sentry عند الفشل لتشخيصه فوراً لو احتاج تعديلاً
 internal object GoldNews {
-    private const val FEED_URL =
+    private const val FEED_URL_AR =
         "https://news.google.com/rss/search?q=%D8%A7%D9%84%D8%B0%D9%87%D8%A8%20%D8%A7%D9%84%D9%81%D9%8A%D8%AF%D8%B1%D8%A7%D9%84%D9%8A%20when:3d&hl=ar&gl=SA&ceid=SA:ar"
 
-    var articles by mutableStateOf(loadCachedArticles() ?: emptyList())
+    // نفس البحث ("الذهب الفيدرالي") من نسخة Google News الإنجليزية
+    private const val FEED_URL_EN =
+        "https://news.google.com/rss/search?q=gold%20price%20Fed%20when:3d&hl=en-US&gl=US&ceid=US:en"
+
+    var articles by mutableStateOf(loadCachedArticles(AppLanguage.current) ?: emptyList())
         private set
+
+    // يُستدعى عند تغيير اللغة: يعرض فوراً آخر أخبار محفوظة بهذه اللغة
+    // (أو لا شيء) بدل إبقاء أخبار اللغة السابقة لحين انتهاء التحديث
+    fun showCachedForCurrentLanguage() {
+        articles = loadCachedArticles(AppLanguage.current) ?: emptyList()
+    }
 
     var isLoading by mutableStateOf(false)
         private set
@@ -86,6 +99,7 @@ internal object GoldNews {
     }
 
     suspend fun refresh() {
+        val lang = AppLanguage.current
         offlineMarked = false
         isLoading = true
         var rawBody = ""
@@ -93,7 +107,7 @@ internal object GoldNews {
             // بعض خوادم Google News RSS ترفض أو تعيد استجابة مختلفة لطلبات
             // بلا User-Agent يشبه المتصفح — أضيف هنا كإصلاح احترازي لخطأ
             // "تعذر تحديث الأخبار" الذي أبلغ عنه المستخدم فعلياً على جهازه
-            rawBody = client.get(FEED_URL) {
+            rawBody = client.get(if (lang == AppLang.EN) FEED_URL_EN else FEED_URL_AR) {
                 header(
                     HttpHeaders.UserAgent,
                     "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0 Mobile Safari/537.36"
@@ -101,9 +115,11 @@ internal object GoldNews {
             }.bodyAsText()
             val parsed = parseRssItems(rawBody)
             if (parsed.isEmpty()) error("لم يُعثر على أي عنصر أخبار في الاستجابة")
+            AppStorage.writeText(articlesStorageFile(lang), Json.encodeToString(parsed))
+            // تغيّرت اللغة أثناء الطلب: تُحفظ النتيجة للغتها، لكن لا تُعرض
+            if (lang != AppLanguage.current) return
             articles = parsed
             lastError = null
-            AppStorage.writeText(lastArticlesStorageFile, Json.encodeToString(parsed))
         } catch (e: Exception) {
             if (lastError == null) {
                 reportSilentError("GoldNews.refresh failed: ${e.message} | body: ${rawBody.take(500)}")
