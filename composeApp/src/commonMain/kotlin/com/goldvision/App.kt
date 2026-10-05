@@ -30,6 +30,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
@@ -196,14 +197,6 @@ private data class UserProfile(
 )
 
 private val profileAvatarOptions = listOf("👤", "😊", "🧑", "👨", "👩", "🧔", "👳", "🕵️")
-
-// بيانات صفقة محفوظة من شاشة "عرض سعر" (اسم المحل + السعر + مستوى التقييم)
-private data class SavedDeal(
-    val shopName: String,
-    val totalPrice: Double,
-    val tierLabel: String,
-    val tierColor: Color
-)
 
 // ==================== بيانات شاشة الزكاة ====================
 private data class ZakatItem(
@@ -728,7 +721,6 @@ private fun GoldVisionApp() {
     var showChartFull by remember { mutableStateOf(false) }
     var showAddGoldItem by remember { mutableStateOf(false) }
     var editingGoldItemIndex by remember { mutableStateOf<Int?>(null) }
-    val savedDeals = remember { mutableStateListOf<SavedDeal>() }
     val savedGoldItems = remember { mutableStateListOf<GoldItem>().apply { addAll(loadSavedGoldItems()) } }
     var prefillGoldItem by remember { mutableStateOf<GoldItem?>(null) }
     var userProfile by remember { mutableStateOf(loadUserProfile()) }
@@ -1113,9 +1105,7 @@ private fun GoldVisionApp() {
                         initialKarat = selectedKarat,
                         initialWeight = weight,
                         initialManufacturing = manufacturing,
-                        savedDeals = savedDeals,
                         onBack = { selectedBottom = 0 },
-                        onSaveDeal = { deal -> savedDeals.add(0, deal) },
                         onSaveToPortfolio = { item ->
                             prefillGoldItem = item
                             showAddGoldItem = true
@@ -1418,9 +1408,7 @@ private fun DealEvaluatorScreen(
     initialKarat: String,
     initialWeight: Double,
     initialManufacturing: Double,
-    savedDeals: List<SavedDeal>,
     onBack: () -> Unit,
-    onSaveDeal: (SavedDeal) -> Unit,
     onSaveToPortfolio: (GoldItem) -> Unit
 ) {
     var buyMode by remember { mutableStateOf(true) }
@@ -1431,7 +1419,6 @@ private fun DealEvaluatorScreen(
     var shopPrice by remember { mutableDoubleStateOf(0.0) }
     var includingTax by remember { mutableStateOf(true) }
     var shopNote by remember { mutableStateOf("") }
-    var showSaveDialog by remember { mutableStateOf(false) }
     var dealCountryTax by remember { mutableStateOf(countryTaxOptions.first()) }
     var dealTaxPercent by remember { mutableDoubleStateOf(countryTaxOptions.first().vatPercent) }
     // البيع للمحل: قيمة الذهب فقط بلا مصنعية ولا ضريبة (نفس قاعدة الحاسبة)
@@ -1483,7 +1470,7 @@ private fun DealEvaluatorScreen(
                         .clickable { onBack() }
                 )
                 Text(
-                    t("عرض سعر", "Quotation"),
+                    t("الحاسبة", "Calculator"),
                     color = White,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
@@ -1978,201 +1965,7 @@ private fun DealEvaluatorScreen(
                 Text(t("حفظ في المحفظة", "Save to Portfolio"), color = Black, fontSize = 13.sp, fontWeight = FontWeight.Bold)
             }
 
-            Spacer(Modifier.height(10.dp))
-
-            // يحفظ السعر فقط بقائمة "الأسعار المحفوظة" أدناه (لا قطعةً بالمحفظة)
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(48.dp)
-                    .clip(RoundedCornerShape(10.dp))
-                    .border(1.dp, Gold, RoundedCornerShape(10.dp))
-                    .clickable { showSaveDialog = true },
-                contentAlignment = Alignment.Center
-            ) {
-                Text(t("حفظ السعر", "Save Price"), color = Gold, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-            }
-
-            if (savedDeals.isNotEmpty()) {
-                Spacer(Modifier.height(14.dp))
-                Text(t("الأسعار المحفوظة", "Saved Prices"), color = Gray, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                Spacer(Modifier.height(6.dp))
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(10.dp))
-                        .border(1.dp, Border, RoundedCornerShape(10.dp))
-                        .background(CardBlack)
-                ) {
-                    savedDeals.forEachIndexed { index, deal ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 12.dp, vertical = 10.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Outlined.Store,
-                                    contentDescription = null,
-                                    tint = deal.tierColor,
-                                    modifier = Modifier.size(16.dp)
-                                )
-                                Column {
-                                    Text(deal.shopName, color = White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                                    Text(deal.tierLabel, color = deal.tierColor, fontSize = 9.sp)
-                                }
-                            }
-                            Text(
-                                "${fmt(deal.totalPrice, 2, grouped = true)} ${t("ريال", "SAR")}",
-                                color = Gold,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                        if (index != savedDeals.lastIndex) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 12.dp)
-                                    .height(1.dp)
-                                    .background(Border)
-                            )
-                        }
-                    }
-                }
-            }
-
             Spacer(Modifier.height(16.dp))
-        }
-
-        if (showSaveDialog) {
-            SaveDealDialog(
-                totalPrice = shopPriceWithTax,
-                tierLabel = tierLabel,
-                tierColor = tierColor,
-                onDismiss = { showSaveDialog = false },
-                onConfirm = { shopName ->
-                    onSaveDeal(
-                        SavedDeal(
-                            shopName = shopName,
-                            totalPrice = shopPriceWithTax,
-                            tierLabel = tierLabel,
-                            tierColor = tierColor
-                        )
-                    )
-                    showSaveDialog = false
-                }
-            )
-        }
-    }
-}
-
-// نافذة صغيرة لإدخال اسم المحل قبل الحفظ في القائمة
-@Composable
-private fun SaveDealDialog(
-    totalPrice: Double,
-    tierLabel: String,
-    tierColor: Color,
-    onDismiss: () -> Unit,
-    onConfirm: (String) -> Unit
-) {
-    var shopName by remember { mutableStateOf("") }
-
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.65f))
-            .clickable(
-                indication = null,
-                interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
-            ) { onDismiss() },
-        contentAlignment = Alignment.Center
-    ) {
-        Column(
-            modifier = Modifier
-                .padding(horizontal = 28.dp)
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(14.dp))
-                .border(1.dp, Border, RoundedCornerShape(14.dp))
-                .background(CardBlack)
-                .clickable(
-                    indication = null,
-                    interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
-                ) { }
-                .padding(18.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(t("حفظ السعر", "Save Price"), color = White, fontSize = 15.sp, fontWeight = FontWeight.Bold)
-                Icon(
-                    imageVector = Icons.Outlined.Close,
-                    contentDescription = t("إغلاق", "Close"),
-                    tint = Gray,
-                    modifier = Modifier
-                        .size(18.dp)
-                        .clickable { onDismiss() }
-                )
-            }
-
-            Spacer(Modifier.height(6.dp))
-            Text(
-                "${fmt(totalPrice, 2, grouped = true)} ${t("ريال", "SAR")} • $tierLabel",
-                color = tierColor,
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Bold
-            )
-
-            Spacer(Modifier.height(14.dp))
-            Text(t("اسم المحل", "Shop name"), color = Gray, fontSize = 10.sp)
-            Spacer(Modifier.height(6.dp))
-
-            SelectableTextField(
-                value = shopName,
-                onValueChange = { shopName = it },
-                placeholder = t("مثال: مجوهرات الأصيل", "e.g. Al-Asil Jewelry"),
-                modifier = Modifier.fillMaxWidth().height(42.dp)
-            )
-
-            Spacer(Modifier.height(16.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(42.dp)
-                        .clip(RoundedCornerShape(9.dp))
-                        .border(1.dp, Border, RoundedCornerShape(9.dp))
-                        .clickable { onDismiss() },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(t("إلغاء", "Cancel"), color = Gray, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                }
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(42.dp)
-                        .clip(RoundedCornerShape(9.dp))
-                        .background(Gold)
-                        .clickable {
-                            val finalName = shopName.trim().ifEmpty { t("محل بدون اسم", "Unnamed shop") }
-                            onConfirm(finalName)
-                        },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(t("حفظ", "Save"), color = Black, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                }
-            }
         }
     }
 }
@@ -8771,7 +8564,7 @@ private fun BottomNav(
 ) {
     val tabs: List<Pair<String, ImageVector>> = listOf(
         t("الرئيسية", "Home") to Icons.Outlined.Home,
-        t("حاسبة الذهب", "Calculator") to Icons.Outlined.Calculate,
+        t("الحاسبة", "Calculator") to Icons.Outlined.Calculate,
         t("الأخبار", "News") to Icons.AutoMirrored.Outlined.Article,
         t("المحفظة", "Portfolio") to Icons.Outlined.AccountBalanceWallet,
         t("الزكاة", "Zakat") to Icons.Outlined.Balance,
@@ -8809,12 +8602,17 @@ private fun BottomNav(
                     modifier = Modifier.size(22.dp)
                 )
                 Spacer(Modifier.height(2.dp))
+                // يُقاس النص بعرضه الكامل ويُوسَّط فوق الأيقونة، بدل قصّه من
+                // جهة واحدة لو كان أعرض قليلاً من الخانة (كان يبدو مُزاحاً لليمين)
                 Text(
                     tab.first,
                     color = if (active) Black else White,
                     fontSize = 11.sp,
                     fontWeight = if (active) FontWeight.Bold else FontWeight.Medium,
-                    maxLines = 1
+                    maxLines = 1,
+                    softWrap = false,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.wrapContentWidth(unbounded = true)
                 )
             }
         }
