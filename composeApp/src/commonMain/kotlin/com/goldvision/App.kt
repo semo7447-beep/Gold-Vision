@@ -1606,7 +1606,9 @@ private fun DealEvaluatorScreen(
                                             savings >= 0 -> t("حصلت على أكثر بمقدار", "You got more by")
                                             else -> t("حصلت على أقل بمقدار", "You got less by")
                                         },
-                                        "${fmt(kotlin.math.abs(savings), 2, grouped = true)} ${t("ريال", "SAR")}"
+                                        // نفس صيغة سطر "ربح المحل" بالحاسبة: الإجمالي ثم لكل جرام
+                                        "${fmt(kotlin.math.abs(savings), 2, grouped = true)} ${t("ريال", "SAR")} " +
+                                            "(${fmt(if (weight > 0) kotlin.math.abs(savings) / weight else 0.0, 2)} ${t("/جم", "/g")})"
                                     )
                                 )
                                 add(PdfReportRow(t("التقييم", "Verdict"), tierLabel))

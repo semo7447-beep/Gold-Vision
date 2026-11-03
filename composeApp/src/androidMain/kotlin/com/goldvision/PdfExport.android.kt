@@ -173,7 +173,8 @@ internal actual object PdfExport {
 
             // ==================== جدول التفاصيل (بحدود وتظليل متبادل) ====================
             if (rows.isNotEmpty()) {
-                val valueColWidth = 110f
+                // 150 بدل 110: قيم مثل "128.51 ريال (4.13 /جم)" تبقى بسطر واحد
+                val valueColWidth = 150f
                 val labelColWidth = contentWidth - valueColWidth
                 val tableLeft = MARGIN
                 val tableRight = PAGE_WIDTH - MARGIN
@@ -197,7 +198,9 @@ internal actual object PdfExport {
 
                 rows.forEachIndexed { index, row ->
                     val labelHeight = measureRtlHeight(row.label, labelPaint, (labelColWidth - cellPadH * 2).toInt())
-                    val rowHeight = maxOf(labelHeight, 12f) + cellPadV * 2
+                    // ارتفاع القيمة أيضاً، حتى لا تفيض قيمة من سطرين فوق الصف التالي
+                    val valueHeight = measureRtlHeight(row.value, valuePaint, (valueColWidth - cellPadH * 2).toInt())
+                    val rowHeight = maxOf(labelHeight, valueHeight, 12f) + cellPadV * 2
 
                     // لو الصف بيتجاوز الصفحة الحالية، ابدأ صفحة جديدة وأعد رسم رأس الجدول
                     if (y + rowHeight > PAGE_HEIGHT - MARGIN) {
