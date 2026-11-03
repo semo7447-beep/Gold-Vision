@@ -103,6 +103,7 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.SolidColor
@@ -1987,10 +1988,15 @@ private fun DealGauge(ratio: Float, poorLabel: String) {
         // عادي لا يسمح بقراءة ألوان مرتبطة بالوضع الفاتح/الداكن مباشرة
         val indicatorOuter = White
         val indicatorInner = Black
+        // الرسم يبدأ من اليسار دائماً، بينما صف التسميات أعلاه ينعكس
+        // بالعربي (ممتاز يميناً) — فيُعكس الرسم بالعربي ليبقى الأخضر تحت
+        // "ممتاز" والأحمر تحت "مرتفع"، ومؤشر الصفقة الممتازة جهة الأخضر
+        val mirrorForRtl = LocalLayoutDirection.current == LayoutDirection.Rtl
         Canvas(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(10.dp)
+                .graphicsLayer { scaleX = if (mirrorForRtl) -1f else 1f }
         ) {
             val barHeight = size.height
             val third = size.width / 3f
